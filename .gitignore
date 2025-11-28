@@ -1,0 +1,12 @@
+build
+.vscode
+Dockerfile
+local
+.DS_Store
+python/tmp
+python/__pycache__
+.idea
+.cache
+venv
+CMakePresets.json
+bin
