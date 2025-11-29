@@ -7,7 +7,7 @@
 Metrics calc_metrics(TestData test_data, Answer answer) {
     Metrics metrics;
 
-    metrics.boxes = test_data.boxes.size();
+    metrics.boxes = answer.positions.size();
     metrics.length = test_data.length;
     metrics.width = test_data.width;
 

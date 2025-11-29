@@ -71,9 +71,13 @@ void launch_solvers() {
 
 
     /*
+     Solver:
+     Total relative volume: 0.0899587
+     Total time: 119.989ms
+
      SolverGreedy:
-     Total relative volume: 0.608856
-     Total time: 254.859s
+     Total relative volume: 0.618471
+     Total time: 275.46s
      */
 
     // 0.0890463
