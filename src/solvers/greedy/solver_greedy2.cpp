@@ -19,11 +19,18 @@ Answer SolverGreedy2::solve(TimePoint end_time) {
         return lhs.length * lhs.width > rhs.length * rhs.width; // ok
     });
 
-    for (auto box: test_data.boxes) {
-        for (uint32_t q = 0; q < box.quantity; q++) {
-            uint32_t best_h = -1;
-            uint32_t best_x = -1;
-            uint32_t best_y = -1;
+    std::vector<std::pair<uint32_t, uint32_t>> order;
+    for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
+        order.emplace_back(i, test_data.boxes[i].quantity);
+    }
+    while (!order.empty()) {
+        uint32_t best_h = -1;
+        uint32_t best_i = -1;
+        uint32_t best_x = -1;
+        uint32_t best_y = -1;
+        for (uint32_t i = 0; i < order.size(); i++) {
+            uint32_t box_id = order[i].first;
+            auto box = test_data.boxes[box_id];
 
             auto get_h = [&](uint32_t x, uint32_t y) {
                 uint32_t X = x + box.length - 1;
@@ -49,30 +56,37 @@ Answer SolverGreedy2::solve(TimePoint end_time) {
                         uint32_t h = get_h(x, y);
                         if (h < best_h) {
                             best_h = h;
+                            best_i = i;
                             best_x = x;
                             best_y = y;
                         }
                     }
                 }
             }
-            ASSERT(best_h != -1, "unable to put box");
-            Position pos = {
-                    box.sku,
-                    best_x,
-                    best_y,
-                    best_h,
-                    best_x + box.length,
-                    best_y + box.width,
-                    best_h + box.height,
-            };
-            answer.positions.push_back(pos);
-            height_rects.push_back(
-                    HeightRect{best_x, best_y, best_x + box.length - 1, best_y + box.width - 1, best_h + box.height});
-
-            std::sort(height_rects.begin(), height_rects.end(), [&](const HeightRect &lhs, const HeightRect &rhs) {
-                return lhs.h > rhs.h;
-            });
         }
+        ASSERT(best_h != -1, "unable to put box");
+        auto box = test_data.boxes[order[best_i].first];
+        Position pos = {
+                box.sku,
+                best_x,
+                best_y,
+                best_h,
+                best_x + box.length,
+                best_y + box.width,
+                best_h + box.height,
+        };
+        answer.positions.push_back(pos);
+        height_rects.push_back(
+                HeightRect{best_x, best_y, best_x + box.length - 1, best_y + box.width - 1, best_h + box.height});
+
+        order[best_i].second--;
+        if (order[best_i].second == 0) {
+            order.erase(order.begin() + best_i);
+        }
+
+        std::sort(height_rects.begin(), height_rects.end(), [&](const HeightRect &lhs, const HeightRect &rhs) {
+            return lhs.h > rhs.h;
+        });
     }
     return answer;
 }

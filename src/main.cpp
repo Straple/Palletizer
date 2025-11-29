@@ -70,7 +70,6 @@ void launch_solvers() {
                        << ',' << metrics.relative_volume << '\n';
     }
 
-
     /*
      Solver:
      Total relative volume: 0.0899587
@@ -81,8 +80,8 @@ void launch_solvers() {
      Total time: 69.3727s
 
      SolverGreedy2:
-     Total relative volume: 0.624956
-     Total time: 36.8317ms
+     Total relative volume: 0.730913
+     Total time: 842.032ms
      */
     std::cout << "Total relative volume: " << total_relative_volume / (visited.size() - 1) << '\n';
     std::cout << "Total time: " << timer << '\n';
