@@ -75,11 +75,11 @@ void launch_solvers() {
      Total relative volume: 0.0899587
      Total time: 31.5898ms
 
-     SolverGreedy:
+     GreedySolver:
      Total relative volume: 0.619928
      Total time: 69.3727s
 
-     SolverGreedy2:
+     GreedySolver2:
      Total relative volume: 0.730913
      Total time: 842.032ms
      */

@@ -24,6 +24,21 @@ Metrics calc_metrics(TestData test_data, Answer answer) {
     }
     metrics.pallet_volume = test_data.length * static_cast<uint64_t>(test_data.width) * metrics.height;
     metrics.relative_volume = static_cast<double>(metrics.boxes_volume) / metrics.pallet_volume;
-    // TODO: validate collision boxes
+
+    // validate collision boxes
+    for (uint32_t i = 0; i < answer.positions.size(); i++) {
+        for (uint32_t j = i + 1; j < answer.positions.size(); j++) {
+            auto pos1 = answer.positions[i];
+            auto pos2 = answer.positions[j];
+
+            auto is_intersect = [&](uint32_t x, uint32_t X, uint32_t y, uint32_t Y) {
+                return !(Y <= x || X <= y);
+            };
+
+            ASSERT(!(is_intersect(pos1.x, pos1.X, pos2.x, pos2.X) &&
+                     is_intersect(pos1.y, pos1.Y, pos2.y, pos2.Y) &&
+                     is_intersect(pos1.z, pos1.Z, pos2.z, pos2.Z)), "boxes intersects");
+        }
+    }
     return metrics;
 }
