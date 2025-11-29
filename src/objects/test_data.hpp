@@ -17,6 +17,9 @@ struct Box {
 };
 
 struct TestData {
+    // TODO: or 1200x1000
+    uint32_t length = 1200;
+    uint32_t width = 800;
     std::vector<Box> boxes;
 };
 

@@ -30,6 +30,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 file(GLOB SOURCES
         src/utils/*.cpp
         src/objects/*.cpp
+        src/solvers/*.cpp
+        src/solvers/greedy/*.cpp
         )
 
 add_executable(main src/main.cpp ${SOURCES})

@@ -18,4 +18,4 @@ struct Answer {
     std::vector<Position> positions;
 };
 
-std::ostream &operator>>(std::ostream &output, const Answer &answer);
+std::ostream &operator<<(std::ostream &output, const Answer &answer);
