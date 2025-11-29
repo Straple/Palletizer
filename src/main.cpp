@@ -55,7 +55,7 @@ void launch_solvers() {
             {
                 std::unique_lock locker(mutex);
 
-                std::cout << test << std::endl;
+                std::cout << test << ' ' << metrics.relative_volume << std::endl;
 
                 total_relative_volume += metrics.relative_volume;
             }

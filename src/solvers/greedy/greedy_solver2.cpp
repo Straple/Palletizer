@@ -4,6 +4,8 @@
 
 #include <map>
 
+#include <fstream>
+
 uint32_t GreedySolver2::get_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
     for (auto rect: height_rects) {
         if (!(X < rect.x || rect.X < x) &&
@@ -11,8 +13,7 @@ uint32_t GreedySolver2::get_height(uint32_t x, uint32_t y, uint32_t X, uint32_t 
             return rect.h;
         }
     }
-    ASSERT(false, "unable to get_height");
-    return 0;
+    return -1;
 }
 
 GreedySolver2::GreedySolver2(TestData test_data) : Solver(test_data),
@@ -34,27 +35,6 @@ Answer GreedySolver2::solve(TimePoint end_time) {
         order.emplace_back(i, test_data.boxes[i].quantity);
     }
 
-    auto get_min_h = [&](Box box) {
-        uint32_t h = -1;
-        for (auto rect: height_rects) {
-            std::vector<std::pair<uint32_t, uint32_t>> xys = {
-                    {rect.x,     rect.y},
-                    {rect.x,     rect.Y + 1},
-                    {rect.X + 1, rect.y},
-                    {rect.X + 1, rect.Y + 1},
-            };
-            for (auto [x, y]: xys) {
-                if (x + box.length <= test_data.length && y + box.width <= test_data.width) {
-                    h = std::min(h, get_height(x, y, x + box.length - 1, y + box.width - 1));
-                }
-                if (x + box.width <= test_data.length && y + box.length <= test_data.width) {
-                    h = std::min(h, get_height(x, y, x + box.width - 1, y + box.length - 1));
-                }
-            }
-        }
-        return h;
-    };
-
     while (!order.empty()) {
         double best_score = 1e300;
         uint32_t best_i = -1;
@@ -66,24 +46,7 @@ Answer GreedySolver2::solve(TimePoint end_time) {
             auto box = test_data.boxes[box_id];
 
             auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y) {
-                uint32_t h = get_height(x, y, X, Y);
-
-                // нужно посмотреть что за место он занимает
-                height_rects.push_back(HeightRect{x, y, X, Y, h + box.height});
-                uint32_t sum_next_h = 0;
-                for (uint32_t j = 0; j < order.size(); j++) {
-                    if (i == j) {
-                        continue;
-                    }
-                    auto box = test_data.boxes[order[j].first];
-                    uint32_t h = get_min_h(box);
-                    sum_next_h += h;
-                }
-                height_rects.pop_back();
-                // h += box.height;
-                double avg_next_h = sum_next_h * 1.0 / order.size();
-                double score = h * 10 + avg_next_h;
-                return score;
+                return get_height(x, y, X, Y);
             };
 
             for (auto rect: height_rects) {
@@ -159,7 +122,7 @@ Answer GreedySolver2::solve(TimePoint end_time) {
             return lhs.h > rhs.h;
         });
 
-        std::cout << best_x << ' ' << best_y << ' ' << best_score << std::endl;
+        // std::cout << best_x << ' ' << best_y << ' ' << best_score << std::endl;
         /*for (uint32_t i = 0; i < height_rects.size(); i++) {
             for (uint32_t j = i + 1; j < height_rects.size(); j++) {
                 if (height_rects[i].x <= height_rects[j].x &&
