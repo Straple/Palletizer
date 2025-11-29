@@ -3,6 +3,7 @@
 #include <objects/metrics.hpp>
 #include <solvers/solver.hpp>
 #include <solvers/greedy/solver_greedy.hpp>
+#include <solvers/greedy/solver_greedy2.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -41,7 +42,7 @@ void launch_solvers() {
             TestData test_data;
             input >> test_data;
 
-            Answer answer = SolverGreedy(test_data).solve(get_now() + Milliseconds(1'000));
+            Answer answer = SolverGreedy2(test_data).solve(get_now() + Milliseconds(1'000));
 
             std::ofstream output("answers/" + std::to_string(test) + ".csv");
             output << answer;
@@ -73,14 +74,16 @@ void launch_solvers() {
     /*
      Solver:
      Total relative volume: 0.0899587
-     Total time: 119.989ms
+     Total time: 31.5898ms
 
      SolverGreedy:
      Total relative volume: 0.619928
-     Total time: 294.617s
-     */
+     Total time: 69.3727s
 
-    // 0.0890463
+     SolverGreedy2:
+     Total relative volume: 0.624956
+     Total time: 36.8317ms
+     */
     std::cout << "Total relative volume: " << total_relative_volume / (visited.size() - 1) << '\n';
     std::cout << "Total time: " << timer << '\n';
 }
