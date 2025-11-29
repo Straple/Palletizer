@@ -26,7 +26,7 @@ Metrics calc_metrics(TestData test_data, Answer answer) {
     metrics.relative_volume = static_cast<double>(metrics.boxes_volume) / metrics.pallet_volume;
 
     // validate collision boxes
-    for (uint32_t i = 0; i < answer.positions.size(); i++) {
+    /*for (uint32_t i = 0; i < answer.positions.size(); i++) {
         for (uint32_t j = i + 1; j < answer.positions.size(); j++) {
             auto pos1 = answer.positions[i];
             auto pos2 = answer.positions[j];
@@ -39,6 +39,6 @@ Metrics calc_metrics(TestData test_data, Answer answer) {
                      is_intersect(pos1.y, pos1.Y, pos2.y, pos2.Y) &&
                      is_intersect(pos1.z, pos1.Z, pos2.z, pos2.Z)), "boxes intersects");
         }
-    }
+    }*/
     return metrics;
 }

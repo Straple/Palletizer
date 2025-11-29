@@ -32,6 +32,7 @@ file(GLOB SOURCES
         src/objects/*.cpp
         src/solvers/*.cpp
         src/solvers/greedy/*.cpp
+        src/solvers/lns/*.cpp
         )
 
 add_executable(main src/main.cpp ${SOURCES})

@@ -28,13 +28,12 @@ Answer GreedySolver2::solve(TimePoint end_time) {
         uint32_t best_i = -1;
         uint32_t best_x = -1;
         uint32_t best_y = -1;
+        bool best_rotate = false;
         for (uint32_t i = 0; i < order.size(); i++) {
             uint32_t box_id = order[i].first;
             auto box = test_data.boxes[box_id];
 
-            auto get_h = [&](uint32_t x, uint32_t y) {
-                uint32_t X = x + box.length - 1;
-                uint32_t Y = y + box.width - 1;
+            auto get_h = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y) {
                 for (auto rect: height_rects) {
                     if (!(X < rect.x || rect.X < x) &&
                         !(Y < rect.y || rect.Y < y)) {
@@ -53,12 +52,24 @@ Answer GreedySolver2::solve(TimePoint end_time) {
                 };
                 for (auto [x, y]: xys) {
                     if (x + box.length <= test_data.length && y + box.width <= test_data.width) {
-                        uint32_t h = get_h(x, y);
+                        uint32_t h = get_h(x, y, x + box.length - 1, y + box.width - 1);
                         if (h < best_h) {
                             best_h = h;
                             best_i = i;
                             best_x = x;
                             best_y = y;
+                            best_rotate = false;
+                        }
+                    }
+
+                    if (x + box.width <= test_data.length && y + box.length <= test_data.width) {
+                        uint32_t h = get_h(x, y, x + box.width - 1, y + box.length - 1);
+                        if (h < best_h) {
+                            best_h = h;
+                            best_i = i;
+                            best_x = x;
+                            best_y = y;
+                            best_rotate = true;
                         }
                     }
                 }
@@ -66,18 +77,34 @@ Answer GreedySolver2::solve(TimePoint end_time) {
         }
         ASSERT(best_h != -1, "unable to put box");
         auto box = test_data.boxes[order[best_i].first];
-        Position pos = {
-                box.sku,
-                best_x,
-                best_y,
-                best_h,
-                best_x + box.length,
-                best_y + box.width,
-                best_h + box.height,
-        };
-        answer.positions.push_back(pos);
-        height_rects.push_back(
-                HeightRect{best_x, best_y, best_x + box.length - 1, best_y + box.width - 1, best_h + box.height});
+
+        if (best_rotate) {
+            Position pos = {
+                    box.sku,
+                    best_x,
+                    best_y,
+                    best_h,
+                    best_x + box.width,
+                    best_y + box.length,
+                    best_h + box.height,
+            };
+            answer.positions.push_back(pos);
+            height_rects.push_back(
+                    HeightRect{best_x, best_y, best_x + box.width - 1, best_y + box.length - 1, best_h + box.height});
+        } else {
+            Position pos = {
+                    box.sku,
+                    best_x,
+                    best_y,
+                    best_h,
+                    best_x + box.length,
+                    best_y + box.width,
+                    best_h + box.height,
+            };
+            answer.positions.push_back(pos);
+            height_rects.push_back(
+                    HeightRect{best_x, best_y, best_x + box.length - 1, best_y + box.width - 1, best_h + box.height});
+        }
 
         order[best_i].second--;
         if (order[best_i].second == 0) {
