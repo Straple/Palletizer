@@ -5,6 +5,7 @@
 #include <utils/time.hpp>
 
 class Solver{
+protected:
     TestData test_data;
 public:
 

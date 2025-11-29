@@ -2,15 +2,17 @@
 #include <utils/tools.hpp>
 #include <objects/metrics.hpp>
 #include <solvers/solver.hpp>
+#include <solvers/greedy/solver_greedy.hpp>
 
 #include <iostream>
 #include <fstream>
 
 int main() {
     std::ofstream metrics_output("answers/metrics.csv");
-    metrics_output << "test,boxes_num,length,width,height,boxes_volume,pallet_volume,relative_volume\n";
+    metrics_output << "test,boxes_num,length,width,height,boxes_volume,pallet_volume,relative_volume" << std::endl;
     double total_relative_volume = 0;
-    int test = 1;
+    int test = 261;
+    Timer timer;
     for (;; test++) {
         std::ifstream input("tests/" + std::to_string(test) + ".csv");
         if (!input) {
@@ -22,7 +24,7 @@ int main() {
 
         // std::cout << test << ' ' << test_data.boxes.size() << std::endl;
 
-        Answer answer = Solver(test_data).solve(get_now() + Milliseconds(1'000));
+        Answer answer = SolverGreedy(test_data).solve(get_now() + Milliseconds(1'000));
 
         std::ofstream output("answers/" + std::to_string(test) + ".csv");
         output << answer;
@@ -33,10 +35,12 @@ int main() {
 
         metrics_output << test << ',' << test_data.boxes.size() << ',' << test_data.length << ',' << test_data.width
                        << ',' << metrics.height << ',' << metrics.boxes_volume << ',' << metrics.pallet_volume << ','
-                       << metrics.relative_volume << '\n';
+                       << metrics.relative_volume << std::endl;
 
         total_relative_volume += metrics.relative_volume;
     }
 
+    // 0.0890463
     std::cout << "Total relative volume: " << total_relative_volume / test << '\n';
+    std::cout << "Total time: " << timer << '\n';
 }
