@@ -1,15 +1,15 @@
-#include <solvers/greedy/solver_greedy.hpp>
+#include <solvers/greedy/greedy_solver.hpp>
 
 #include <utils/assert.hpp>
 
 #include <map>
 
-SolverGreedy::SolverGreedy(TestData test_data) : Solver(test_data),
+GreedySolver::GreedySolver(TestData test_data) : Solver(test_data),
                                                  heights(test_data.length, std::vector<uint32_t>(test_data.width)) {
 
 }
 
-uint32_t SolverGreedy::get_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
+uint32_t GreedySolver::get_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
     ASSERT(x <= X && X < test_data.length, "invalid x");
     ASSERT(Y <= Y && Y < test_data.width, "invalid y");
     uint32_t h = 0;
@@ -21,7 +21,7 @@ uint32_t SolverGreedy::get_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y
     return h;
 }
 
-void SolverGreedy::set_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) {
+void GreedySolver::set_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) {
     ASSERT(x <= X && X < test_data.length, "invalid x");
     ASSERT(Y <= Y && Y < test_data.width, "invalid y");
     for (uint32_t xi = x; xi <= X; xi++) {
@@ -31,7 +31,7 @@ void SolverGreedy::set_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, ui
     }
 }
 
-Answer SolverGreedy::solve(TimePoint end_time) {
+Answer GreedySolver::solve(TimePoint end_time) {
     Answer answer;
     std::sort(test_data.boxes.begin(), test_data.boxes.end(), [&](const Box &lhs, const Box &rhs) {
         // return lhs.length * lhs.width < rhs.length * rhs.width; // very bad

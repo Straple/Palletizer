@@ -1,10 +1,10 @@
-#include <solvers/greedy/solver_greedy2.hpp>
+#include <solvers/greedy/greedy_solver2.hpp>
 
 #include <utils/assert.hpp>
 
 #include <map>
 
-SolverGreedy2::SolverGreedy2(TestData test_data) : Solver(test_data),
+GreedySolver2::GreedySolver2(TestData test_data) : Solver(test_data),
                                                    height_rects(
                                                            {HeightRect{0, 0, test_data.length - 1, test_data.width - 1,
                                                                        0}}) {
@@ -12,7 +12,7 @@ SolverGreedy2::SolverGreedy2(TestData test_data) : Solver(test_data),
 }
 
 
-Answer SolverGreedy2::solve(TimePoint end_time) {
+Answer GreedySolver2::solve(TimePoint end_time) {
     Answer answer;
     std::sort(test_data.boxes.begin(), test_data.boxes.end(), [&](const Box &lhs, const Box &rhs) {
         // return lhs.length * lhs.width < rhs.length * rhs.width; // very bad

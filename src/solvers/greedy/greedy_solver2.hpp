@@ -2,7 +2,7 @@
 
 #include <solvers/solver.hpp>
 
-class SolverGreedy2 : public Solver {
+class GreedySolver2 : public Solver {
 protected:
 
     struct HeightRect {
@@ -17,7 +17,7 @@ protected:
 
 public:
 
-    explicit SolverGreedy2(TestData test_data);
+    explicit GreedySolver2(TestData test_data);
 
     Answer solve(TimePoint end_time);
 };

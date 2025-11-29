@@ -2,7 +2,7 @@
 
 #include <solvers/solver.hpp>
 
-class SolverGreedy : public Solver {
+class GreedySolver : public Solver {
 protected:
 
     // [x][y]
@@ -14,7 +14,7 @@ protected:
 
 public:
 
-    explicit SolverGreedy(TestData test_data);
+    explicit GreedySolver(TestData test_data);
 
     Answer solve(TimePoint end_time);
 };

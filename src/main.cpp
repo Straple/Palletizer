@@ -2,8 +2,8 @@
 #include <utils/tools.hpp>
 #include <objects/metrics.hpp>
 #include <solvers/solver.hpp>
-#include <solvers/greedy/solver_greedy.hpp>
-#include <solvers/greedy/solver_greedy2.hpp>
+#include <solvers/greedy/greedy_solver.hpp>
+#include <solvers/greedy/greedy_solver2.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -42,7 +42,7 @@ void launch_solvers() {
             TestData test_data;
             input >> test_data;
 
-            Answer answer = SolverGreedy2(test_data).solve(get_now() + Milliseconds(1'000));
+            Answer answer = GreedySolver2(test_data).solve(get_now() + Milliseconds(1'000));
 
             std::ofstream output("answers/" + std::to_string(test) + ".csv");
             output << answer;
