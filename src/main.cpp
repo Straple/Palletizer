@@ -76,8 +76,8 @@ void launch_solvers() {
      Total time: 119.989ms
 
      SolverGreedy:
-     Total relative volume: 0.618471
-     Total time: 275.46s
+     Total relative volume: 0.619928
+     Total time: 294.617s
      */
 
     // 0.0890463

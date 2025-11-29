@@ -33,6 +33,11 @@ void SolverGreedy::set_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, ui
 
 Answer SolverGreedy::solve(TimePoint end_time) {
     Answer answer;
+    std::sort(test_data.boxes.begin(), test_data.boxes.end(), [&](const Box &lhs, const Box &rhs) {
+        // return lhs.length * lhs.width < rhs.length * rhs.width; // very bad
+        return lhs.length * lhs.width > rhs.length * rhs.width; // ok
+    });
+
     for (auto box: test_data.boxes) {
         for (uint32_t q = 0; q < box.quantity; q++) {
             uint32_t best_h = -1;
