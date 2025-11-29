@@ -15,6 +15,9 @@ protected:
 
     std::vector<HeightRect> height_rects;
 
+
+    [[nodiscard]] uint32_t get_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const;
+
 public:
 
     explicit GreedySolver2(TestData test_data);

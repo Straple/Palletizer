@@ -43,7 +43,7 @@ void launch_solvers() {
             TestData test_data;
             input >> test_data;
 
-            Answer answer = LNSSolver(test_data).solve(get_now() + Milliseconds(30'000));
+            Answer answer = GreedySolver2(test_data).solve(get_now() + Milliseconds(5'000));
 
             std::ofstream output("answers/" + std::to_string(test) + ".csv");
             output << answer;
@@ -55,7 +55,7 @@ void launch_solvers() {
             {
                 std::unique_lock locker(mutex);
 
-                // std::cout << test << std::endl;
+                std::cout << test << std::endl;
 
                 total_relative_volume += metrics.relative_volume;
             }
