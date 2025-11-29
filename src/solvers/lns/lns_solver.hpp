@@ -14,7 +14,12 @@ protected:
         uint32_t h = 0;
     };
 
-    std::vector<uint32_t> order;
+    struct BoxMeta {
+        uint32_t box_id = 0;
+        uint32_t k = 0;
+    };
+
+    std::vector<BoxMeta> order;
 
     std::tuple<Answer, Metrics, double> simulate() const;
 
