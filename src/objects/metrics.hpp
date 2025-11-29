@@ -6,6 +6,12 @@
 #include <cstdint>
 
 struct Metrics {
+    uint32_t boxes = 0;
+
+    uint32_t length = 0;
+
+    uint32_t width = 0;
+
     // суммарная высота паллета
     uint32_t height = 0;
 

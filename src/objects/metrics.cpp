@@ -7,6 +7,10 @@
 Metrics calc_metrics(TestData test_data, Answer answer) {
     Metrics metrics;
 
+    metrics.boxes = test_data.boxes.size();
+    metrics.length = test_data.length;
+    metrics.width = test_data.width;
+
     std::unordered_map<uint32_t, uint32_t> sku_to_index;
     for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
         sku_to_index[test_data.boxes[i].sku] = i;
