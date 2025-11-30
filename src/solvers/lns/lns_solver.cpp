@@ -6,12 +6,7 @@
 
 #include <map>
 
-LNSSolver::LNSSolver(TestData test_data) : Solver(test_data) {
-
-}
-
-
-std::tuple<Answer, Metrics, double> LNSSolver::simulate() const {
+std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const std::vector<BoxMeta> &order) {
     Answer answer;
     HeightHandler height_handler;
     height_handler.add_rect(HeightRect{0, 0, test_data.length - 1, test_data.width - 1, 0});
@@ -94,19 +89,24 @@ std::tuple<Answer, Metrics, double> LNSSolver::simulate() const {
     return {answer, metrics, score};
 }
 
+LNSSolver::LNSSolver(TestData test_data) : Solver(test_data) {
+
+}
+
 Answer LNSSolver::solve(TimePoint end_time) {
     std::sort(test_data.boxes.begin(), test_data.boxes.end(), [&](const Box &lhs, const Box &rhs) {
         // return lhs.length * lhs.width < rhs.length * rhs.width; // very bad
         return lhs.length * lhs.width > rhs.length * rhs.width; // ok
     });
 
+    std::vector<BoxMeta> order;
     for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
         for (uint32_t q = 0; q < test_data.boxes[i].quantity; q++) {
             order.push_back({i});
         }
     }
 
-    auto [best_answer, best_metrics, best_score] = simulate();
+    auto [best_answer, best_metrics, best_score] = simulate(test_data, order);
     //std::cout << best_score << "->";
     //std::cout.flush();
 
@@ -124,7 +124,7 @@ Answer LNSSolver::solve(TimePoint end_time) {
         }
         std::swap(order[a], order[b]);
 
-        auto [answer, metrics, score] = simulate();
+        auto [answer, metrics, score] = simulate(test_data, order);
         if (score < best_score + AVAILABLE_UP) {
             if (score + 1e-6 < best_score) {
                 last_updated.reset();
@@ -154,7 +154,7 @@ Answer LNSSolver::solve(TimePoint end_time) {
             std::shuffle(order.begin() + l, order.begin() + r, rnd.generator);
         }
 
-        auto [answer, metrics, score] = simulate();
+        auto [answer, metrics, score] = simulate(test_data, order);
         if (score < best_score + AVAILABLE_UP) {
             if (score + 1e-6 < best_score) {
                 last_updated.reset();
@@ -188,7 +188,7 @@ Answer LNSSolver::solve(TimePoint end_time) {
             order[i].y_weight = rnd.get_d(-1000, 1000);
         }*/
 
-        auto [answer, metrics, score] = simulate();
+        auto [answer, metrics, score] = simulate(test_data, order);
         if (score < best_score + AVAILABLE_UP) {
             if (score + 1e-6 < best_score) {
                 last_updated.reset();

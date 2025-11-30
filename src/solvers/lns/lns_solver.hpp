@@ -3,20 +3,18 @@
 #include <solvers/solver.hpp>
 #include <objects/metrics.hpp>
 
+struct BoxMeta {
+    uint32_t box_id = 0;
+    double h_weight = 1000;
+    double x_weight = 1;
+    double y_weight = 1;
+    uint32_t k = 0;
+};
+
+std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const std::vector<BoxMeta> &order);
+
 class LNSSolver : public Solver {
 protected:
-
-    struct BoxMeta {
-        uint32_t box_id = 0;
-        double h_weight = 1000;
-        double x_weight = 1;
-        double y_weight = 1;
-        uint32_t k = 0;
-    };
-
-    std::vector<BoxMeta> order;
-
-    std::tuple<Answer, Metrics, double> simulate() const;
 
 public:
 
