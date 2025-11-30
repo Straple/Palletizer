@@ -5,6 +5,7 @@
 #include <solvers/greedy/greedy_solver.hpp>
 #include <solvers/greedy/greedy_solver2.hpp>
 #include <solvers/lns/lns_solver.hpp>
+#include <solvers/lns/genetic_solver.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -106,14 +107,21 @@ void launch_solvers() {
      LNSSolver(30s):
      Relative volume: 0.771941avg 0.725566min 0.843749max
      Time: 420.067s
+
+     GeneticSolver(1s):
+     Relative volume: 0.698772avg 0.60223min 0.825097max
+     Time: 74.9252s
      */
-    std::cout << "Relative volume: " << sum_relative_volume / (visited.size() - 1) << "avg " << min_relative_volume << "min " << max_relative_volume << "max\n";
+    std::cout << "Relative volume: " << sum_relative_volume / (visited.size() - 1) << "avg " << min_relative_volume
+              << "min " << max_relative_volume << "max\n";
     std::cout << "Time: " << timer << '\n';
 }
 
 int main() {
     launch_solvers<LNSSolver>();
-    /*Metrics metrics = launch_one_solver<GreedySolver2>(261);
+    return 0;
+
+    Metrics metrics = launch_one_solver<GeneticSolver>(261);
     std::cout << "Height: " << metrics.height << std::endl;
-    std::cout << "Relative volume: " << metrics.relative_volume << std::endl;*/
+    std::cout << "Relative volume: " << metrics.relative_volume << std::endl;
 }
