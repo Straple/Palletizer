@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 20)
 option(ENABLE_ASSERT "Enable assertions" ON)
 
 # Configurable compile-time values
-set(THREADS_NUM "32" CACHE STRING "Allowed number of threads")
+set(THREADS_NUM "4" CACHE STRING "Allowed number of threads")
 
 # Apply configuration
 if (ENABLE_ASSERT)

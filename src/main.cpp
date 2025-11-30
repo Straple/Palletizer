@@ -11,6 +11,22 @@
 #include <mutex>
 #include <atomic>
 
+template<typename SolverType>
+Metrics launch_one_solver(uint32_t test) {
+    std::ifstream input("tests/" + std::to_string(test) + ".csv");
+    TestData test_data;
+    input >> test_data;
+
+    Answer answer = SolverType(test_data).solve(get_now() + Milliseconds(30'000));
+
+    std::ofstream output("answers/" + std::to_string(test) + ".csv");
+    output << answer;
+
+    Metrics metrics = calc_metrics(test_data, answer);
+    return metrics;
+}
+
+template<typename SolverType>
 void launch_solvers() {
     Timer timer;
     double total_relative_volume = 0;
@@ -39,16 +55,7 @@ void launch_solvers() {
                 continue;
             }
 
-            std::ifstream input("tests/" + std::to_string(test) + ".csv");
-            TestData test_data;
-            input >> test_data;
-
-            Answer answer = GreedySolver2(test_data).solve(get_now() + Milliseconds(5'000));
-
-            std::ofstream output("answers/" + std::to_string(test) + ".csv");
-            output << answer;
-
-            Metrics metrics = calc_metrics(test_data, answer);
+            Metrics metrics = launch_one_solver<SolverType>(test);
 
             tests_metrics[test] = metrics;
 
@@ -93,5 +100,8 @@ void launch_solvers() {
 }
 
 int main() {
-    launch_solvers();
+    launch_solvers<GreedySolver2>();
+    /*Metrics metrics = launch_one_solver<GreedySolver2>(261);
+    std::cout << "Height: " << metrics.height << std::endl;
+    std::cout << "Relative volume: " << metrics.relative_volume << std::endl;*/
 }
