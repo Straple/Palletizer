@@ -29,7 +29,9 @@ Metrics launch_one_solver(uint32_t test) {
 template<typename SolverType>
 void launch_solvers() {
     Timer timer;
-    double total_relative_volume = 0;
+    double sum_relative_volume = 0;
+    double max_relative_volume = 0;
+    double min_relative_volume = 1;
 
     std::vector<int> tests;
     {
@@ -64,7 +66,9 @@ void launch_solvers() {
 
                 std::cout << test << ' ' << metrics.relative_volume << std::endl;
 
-                total_relative_volume += metrics.relative_volume;
+                sum_relative_volume += metrics.relative_volume;
+                max_relative_volume = std::max(max_relative_volume, metrics.relative_volume);
+                min_relative_volume = std::min(min_relative_volume, metrics.relative_volume);
             }
         }
     });
@@ -80,27 +84,35 @@ void launch_solvers() {
 
     /*
      Solver:
-     Total relative volume: 0.0899587
-     Total time: 31.5898ms
+     Relative volume: 0.0899587avg 0.0752863min 0.130973max
+     Time: 38.2145ms
 
      GreedySolver:
-     Total relative volume: 0.619928
-     Total time: 69.3727s
+     Relative volume: 0.619928avg 0.534164min 0.801497max
+     Time: 64.7938s
 
      GreedySolver2:
-     Total relative volume: 0.753517
-     Total time: 1.03333s
+     Relative volume: 0.729021avg 0.560539min 0.852097max
+     Time: 4.32552s
 
-     LNSSolver:
-     Total relative volume: 0.742927
-     Total time: 420.043s
+     LNSSolver(1s):
+     Relative volume: 0.744476avg 0.672775min 0.825097max
+     Time: 14.0609s
+
+     LNSSolver(5s):
+     Relative volume: 0.759711avg 0.70389min 0.843749max
+     Time: 70.0614s
+
+     LNSSolver(30s):
+     Relative volume: 0.771941avg 0.725566min 0.843749max
+     Time: 420.067s
      */
-    std::cout << "Total relative volume: " << total_relative_volume / (visited.size() - 1) << '\n';
-    std::cout << "Total time: " << timer << '\n';
+    std::cout << "Relative volume: " << sum_relative_volume / (visited.size() - 1) << "avg " << min_relative_volume << "min " << max_relative_volume << "max\n";
+    std::cout << "Time: " << timer << '\n';
 }
 
 int main() {
-    launch_solvers<GreedySolver2>();
+    launch_solvers<LNSSolver>();
     /*Metrics metrics = launch_one_solver<GreedySolver2>(261);
     std::cout << "Height: " << metrics.height << std::endl;
     std::cout << "Relative volume: " << metrics.relative_volume << std::endl;*/
