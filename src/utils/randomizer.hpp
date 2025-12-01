@@ -34,4 +34,6 @@ public:
         ASSERT(!container.empty(), "container is empty");
         return *std::next(container.begin(), get(0, container.size() - 1));
     }
+
+    uint32_t get(const std::vector<uint32_t> &w);
 };

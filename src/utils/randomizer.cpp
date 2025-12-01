@@ -29,3 +29,16 @@ double Randomizer::get_d(double left, double right) {
     ASSERT(left <= p && p <= right, "invalid result");
     return p;
 }
+
+uint32_t Randomizer::get(const std::vector<uint32_t> &w) {
+    uint32_t sum = std::accumulate(w.begin(), w.end(), 0);
+    uint32_t x = get(0, sum - 1);
+    for (uint32_t i = 0; i < w.size(); i++) {
+        if (x < w[i]) {
+            return i;
+        }
+        x -= w[i];
+    }
+    ASSERT(false, "invalid get");
+    return -1;
+}

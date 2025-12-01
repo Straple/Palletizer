@@ -18,7 +18,7 @@ Metrics launch_one_solver(uint32_t test) {
     TestData test_data;
     input >> test_data;
 
-    Answer answer = SolverType(test_data).solve(get_now() + Milliseconds(30'000));
+    Answer answer = SolverType(test_data).solve(get_now() + Milliseconds(5'000));
 
     std::ofstream output("answers/" + std::to_string(test) + ".csv");
     output << answer;
@@ -103,6 +103,7 @@ void launch_solvers() {
      LNSSolver(5s):
      Relative volume: 0.759711avg 0.70389min 0.843749max
      Time: 70.0614s
+     Relative volume: 0.754483avg 0.695243min 0.835781max
 
      LNSSolver(30s):
      Relative volume: 0.771941avg 0.725566min 0.843749max
@@ -117,11 +118,26 @@ void launch_solvers() {
     std::cout << "Time: " << timer << '\n';
 }
 
+#include <utils/randomizer.hpp>
+
+#include <map>
+
 int main() {
+    /*Randomizer rnd;
+    std::map<uint32_t, uint32_t> map;
+    uint32_t N = 10000;
+    for(int i = 0; i < N; i++){
+        uint32_t x = rnd.get({1, 1, 10, 1});
+        map[x]++;
+    }
+    for(auto [x, cnt] : map){
+        std::cout << x << ' ' << cnt << ' ' << cnt * 100.0 / N << '\n';
+    }
+    return 0;*/
     launch_solvers<LNSSolver>();
     return 0;
 
-    Metrics metrics = launch_one_solver<GeneticSolver>(261);
+    Metrics metrics = launch_one_solver<LNSSolver>(261);
     std::cout << "Height: " << metrics.height << std::endl;
     std::cout << "Relative volume: " << metrics.relative_volume << std::endl;
 }
