@@ -23,34 +23,24 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
         };
 
         auto available_boxes = get_available_boxes(test_data.header, box);
-
-        height_handler.iterate([&](HeightRect rect) {
-            std::vector<std::pair<uint32_t, uint32_t>> xys = {
-                    {rect.x,     rect.y},
-                    {rect.x,     rect.Y + 1},
-                    {rect.X + 1, rect.y},
-                    {rect.X + 1, rect.Y + 1},
-            };
-            for (auto [x, y]: xys) {
-                for (auto [box_length, box_width, box_height, box_rotate]: available_boxes) {
-                    if (x + box_length <= test_data.header.length && y + box_width <= test_data.header.width) {
-                        double score = get_score(x, y, x + box_length - 1, y + box_width - 1, box_height);
-                        if (score + 1e-6 < best_score) {
-                            best_score = score;
-                            items.clear();
-                        }
-                        if (std::abs(score - best_score) < 1e-6) {
-                            items.emplace_back(x, y, box_length, box_width, box_height, box_rotate);
-                        }
-                    }
+        for (const auto &box: available_boxes) {
+            auto dots = height_handler.get_dots(test_data.header, box);
+            for (auto [x, y]: dots) {
+                uint32_t score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
+                if (score < best_score) {
+                    best_score = score;
+                    items.clear();
+                }
+                if (score == best_score) {
+                    items.emplace_back(x, y, box.length, box.width, box.height, box.rotation);
                 }
             }
-        });
+        }
 
         ASSERT(!items.empty(), "unable to put box");
 
         std::stable_sort(items.begin(), items.end());
-        auto [x, y, length, width, height, rotate] = items[box_meta.k % items.size()];
+        auto [x, y, length, width, height, rotation] = items[box_meta.k % items.size()];
 
         uint32_t h = height_handler.get(x, y, x + length - 1, y + width - 1);
 

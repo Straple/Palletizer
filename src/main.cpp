@@ -17,7 +17,7 @@ Metrics launch_one_solver(uint32_t test) {
     TestData test_data;
     input >> test_data;
 
-    Answer answer = SolverType(test_data).solve(get_now() + Milliseconds(1'000));
+    Answer answer = SolverType(test_data).solve(get_now() + Milliseconds(30'000));
 
     std::ofstream output("answers/" + std::to_string(test) + ".csv");
     output << answer;
@@ -92,16 +92,16 @@ void launch_solvers() {
      Time: 30.4917s
 
      LNSSolver(1s):
-     Relative volume: 0.741825avg 0.672775min 0.81803max
-     Time: 14.0583s
+     Relative volume: 0.741682avg 0.670614min 0.80424max
+     Time: 14.1826s
 
      LNSSolver(5s):
-     Relative volume: 0.753472avg 0.672775min 0.818765max
-     Time: 70.0657s
+     Relative volume: 0.754834avg 0.694881min 0.812013max
+     Time: 70.1654s
 
      LNSSolver(30s):
-     Relative volume: 0.763658avg 0.672775min 0.823947max
-     Time: 420.062s
+     Relative volume: 0.766605avg 0.722126min 0.821718max
+     Time: 420.183s
 
      GeneticSolver(1s):
      Relative volume: 0.698772avg 0.60223min 0.825097max
