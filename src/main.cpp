@@ -96,12 +96,12 @@ void launch_solvers() {
      Time: 14.1826s
 
      LNSSolver(5s):
-     Relative volume: 0.754834avg 0.694881min 0.812013max
+     Relative volume: 0.753918avg 0.60223min 0.840189max
      Time: 70.1654s
 
      LNSSolver(30s):
-     Relative volume: 0.766605avg 0.722126min 0.821718max
-     Time: 420.183s
+     Relative volume: 0.767062avg 0.603211min 0.872398max
+     Time: 420.182s
 
      GeneticSolver(1s):
      Relative volume: 0.698772avg 0.60223min 0.825097max
@@ -119,7 +119,7 @@ int main() {
     launch_solvers<LNSSolver>();
     return 0;
 
-    Metrics metrics = launch_one_solver<GreedySolver>(261);
+    Metrics metrics = launch_one_solver<LNSSolver>(261);
     std::cout << "Height: " << metrics.height << std::endl;
     std::cout << "Relative volume: " << metrics.relative_volume << std::endl;
 }

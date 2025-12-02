@@ -40,7 +40,30 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
         ASSERT(!items.empty(), "unable to put box");
 
         std::stable_sort(items.begin(), items.end());
-        auto [x, y, length, width, height, rotation] = items[box_meta.k % items.size()];
+        auto best_item = items[0];
+        for (auto item: items) {
+            if (box_meta.mode == 0) {
+                if (std::get<0>(item) + std::get<1>(item) < std::get<0>(best_item) + std::get<1>(best_item)) {
+                    best_item = item;
+                }
+            } else if (box_meta.mode == 1) {
+                if ((int) std::get<0>(item) - (int) std::get<1>(item) <
+                    (int) std::get<0>(best_item) - (int) std::get<1>(best_item)) {
+                    best_item = item;
+                }
+            } else if (box_meta.mode == 2) {
+                if (-(int) std::get<0>(item) + (int) std::get<1>(item) <
+                    -(int) std::get<0>(best_item) + (int) std::get<1>(best_item)) {
+                    best_item = item;
+                }
+            } else if (box_meta.mode == 3) {
+                if ((int) std::get<0>(item) - (int) std::get<1>(item) <
+                    -(int) std::get<0>(best_item) - (int) std::get<1>(best_item)) {
+                    best_item = item;
+                }
+            }
+        }
+        auto [x, y, length, width, height, rotation] = best_item;
 
         uint32_t h = height_handler.get(x, y, x + length - 1, y + width - 1);
 
@@ -76,12 +99,17 @@ Answer LNSSolver::solve(TimePoint end_time) {
     }
 
     auto [best_answer, best_metrics, best_score] = simulate(test_data, order);
-    // std::cout << best_score << "->";
-    // std::cout.flush();
+    //std::cout << best_score << "->";
+    //std::cout.flush();
+
+    Answer real_answer = best_answer;
+    auto real_score = best_score;
 
     Randomizer rnd;
 
     double AVAILABLE_UP = 0;
+
+    Timer last_update;
 
     uint32_t cnt = 0;
     double min_score = 1e300;
@@ -95,7 +123,7 @@ Answer LNSSolver::solve(TimePoint end_time) {
             uint32_t type = rnd.get({20, 10, 20, 10, 20});
             if (type == 0) {
                 uint32_t i = rnd.get(0, order.size() - 1);
-                order[i].k = rnd.get();
+                order[i].mode = rnd.get(-1, 3);
             } else if (type == 1) {
                 uint32_t l = rnd.get(0, order.size() - 1);
                 uint32_t r = rnd.get(0, order.size() - 1);
@@ -130,8 +158,13 @@ Answer LNSSolver::solve(TimePoint end_time) {
             auto [answer, metrics, score] = simulate(test_data, order);
             if (score < best_score + AVAILABLE_UP) {
                 if (score + 1e-6 < best_score) {
-                    // std::cout << score << "->";
-                    // std::cout.flush();
+                    last_update.reset();
+                    //std::cout << score << "->";
+                    //std::cout.flush();
+                }
+                if(score < real_score) {
+                    real_score = score;
+                    real_answer = answer;
                 }
                 best_answer = answer;
                 best_metrics = metrics;
@@ -143,9 +176,21 @@ Answer LNSSolver::solve(TimePoint end_time) {
         cnt++;
         min_score = std::min(min_score, best_score);
         temp *= 0.999;
+
+        if (last_update.get_ms() > 1'000) {
+            //std::cout << "RESET->";
+            temp = 1;
+            last_update.reset();
+            std::shuffle(order.begin(), order.end(), rnd.generator);
+            for (auto &box_meta: order) {
+                box_meta.mode = rnd.get(-1, 3);
+            }
+            std::tie(best_answer, best_metrics, best_score) = simulate(test_data, order);
+        }
     }
-    // std::cout << std::endl;
-    // std::cout << cnt << ' ' << best_metrics.relative_volume << ' ' << best_score << std::endl;
-    // std::cout << min_score << std::endl;
-    return best_answer;
+    auto real_metrics = calc_metrics(test_data, real_answer);
+    //std::cout << std::endl;
+    //std::cout << cnt << ' ' << real_metrics.relative_volume << ' ' << real_metrics.height << std::endl;
+    //std::cout << min_score << std::endl;
+    return real_answer;
 }

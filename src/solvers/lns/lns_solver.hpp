@@ -5,10 +5,7 @@
 
 struct BoxMeta {
     uint32_t box_id = 0;
-    double h_weight = 1000;
-    double x_weight = 1;
-    double y_weight = 1;
-    uint32_t k = 0;
+    uint32_t mode = -1;
 };
 
 std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const std::vector<BoxMeta> &order);
