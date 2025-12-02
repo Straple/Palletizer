@@ -1,118 +1,110 @@
 #include <solvers/greedy/greedy_solver.hpp>
 
 #include <utils/assert.hpp>
+#include <solvers/height_handler.hpp>
 
-#include <map>
+#include <tuple>
 
-GreedySolver::GreedySolver(TestData test_data) : Solver(test_data),
-                                                 heights(test_data.length, std::vector<uint32_t>(test_data.width)) {
+GreedySolver::GreedySolver(TestData test_data) : Solver(test_data) {
 
-}
-
-uint32_t GreedySolver::get_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
-    ASSERT(x <= X && X < test_data.length, "invalid x");
-    ASSERT(Y <= Y && Y < test_data.width, "invalid y");
-    uint32_t h = 0;
-    for (uint32_t xi = x; xi <= X; xi++) {
-        for (uint32_t yi = y; yi <= Y; yi++) {
-            h = std::max(h, heights[xi][yi]);
-        }
-    }
-    return h;
-}
-
-void GreedySolver::set_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) {
-    ASSERT(x <= X && X < test_data.length, "invalid x");
-    ASSERT(Y <= Y && Y < test_data.width, "invalid y");
-    for (uint32_t xi = x; xi <= X; xi++) {
-        for (uint32_t yi = y; yi <= Y; yi++) {
-            heights[xi][yi] = h;
-        }
-    }
 }
 
 Answer GreedySolver::solve(TimePoint end_time) {
     Answer answer;
     std::sort(test_data.boxes.begin(), test_data.boxes.end(), [&](const Box &lhs, const Box &rhs) {
-        // return lhs.length * lhs.width < rhs.length * rhs.width; // very bad
-        return lhs.length * lhs.width > rhs.length * rhs.width; // ok
+        // TODO: мы же можем поворачивать коробку
+        return lhs.length * lhs.width > rhs.length * rhs.width;
     });
 
-    for (auto box: test_data.boxes) {
-        for (uint32_t q = 0; q < box.quantity; q++) {
-            uint32_t best_h = -1;
-            uint32_t best_x = -1;
-            uint32_t best_y = -1;
+    HeightHandler height_handler;
+    height_handler.add_rect(HeightRect{0, 0, test_data.length - 1, test_data.width - 1, 0});
 
-            auto dp = heights;
-            for (uint32_t x = 0; x < test_data.length; x++) {
-                std::map<uint32_t, uint32_t> map;
-                uint32_t r = 0;
-                for (uint32_t y = 0; y + box.width <= test_data.width; y++) {
-                    while (r < y + box.width) {
-                        map[heights[x][r]]++;
-                        r++;
-                    }
-                    dp[x][y] = (--map.end())->first;
+    std::vector<std::pair<uint32_t, uint32_t>> order;
+    for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
+        order.emplace_back(i, test_data.boxes[i].quantity);
+    }
 
-                    map[heights[x][y]]--;
-                    if (map[heights[x][y]] == 0) {
-                        map.erase(heights[x][y]);
-                    }
-                }
-            }
+    while (!order.empty()) {
+        double best_score = 1e300;
+        uint32_t best_i = -1;
+        uint32_t best_x = -1;
+        uint32_t best_y = -1;
+        uint32_t best_length = -1;
+        uint32_t best_width = -1;
+        uint32_t best_height = -1;
+        uint32_t best_rotate = -1;
+        for (uint32_t i = 0; i < order.size(); i++) {
+            uint32_t box_id = order[i].first;
+            auto box = test_data.boxes[box_id];
 
-            auto dp2 = dp;
-
-            for (uint32_t y = 0; y < test_data.width; y++) {
-                std::map<uint32_t, uint32_t> map;
-                uint32_t r = 0;
-                for (uint32_t x = 0; x + box.length <= test_data.length; x++) {
-                    while (r < x + box.length) {
-                        map[dp[r][y]]++;
-                        r++;
-                    }
-                    dp2[x][y] = (--map.end())->first;
-                    map[dp[x][y]]--;
-                    if (map[dp[x][y]] == 0) {
-                        map.erase(dp[x][y]);
-                    }
-                }
-            }
-
-            auto get_h = [&](uint32_t x, uint32_t y) {
-                /*uint32_t h = 0;
-                for (uint32_t xi = x; xi < x + box.length; xi++) {
-                    h = std::max(h, dp[xi][y]);
-                }
-                ASSERT(h == dp2[x][y], "invalid h");*/
-                return dp2[x][y];
+            auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
+                uint32_t h = height_handler.get(x, y, X, Y);
+                double score = 1000.0 * h + (x + y);
+                return score;
             };
 
-            for (uint32_t x = 0; x < test_data.length; x++) {
-                for (uint32_t y = 0; y + box.width <= test_data.width; y++) {
-                    if (x + box.length <= test_data.length && y + box.width <= test_data.width) {
-                        uint32_t h = get_h(x, y);
-                        if (h < best_h) {
-                            best_h = h;
-                            best_x = x;
-                            best_y = y;
+            std::vector<std::tuple<uint32_t, uint32_t, uint32_t, uint32_t>> available_box_sizes;
+            {
+                available_box_sizes.emplace_back(box.length, box.width, box.height, 0);
+                if (test_data.can_swap_length_width) {
+                    available_box_sizes.emplace_back(box.width, box.length, box.height, 1);
+                }
+                if (test_data.can_swap_width_height) {
+                    available_box_sizes.emplace_back(box.length, box.height, box.width, 2);
+                }
+                if (test_data.can_swap_length_width && test_data.can_swap_width_height) {
+                    available_box_sizes.emplace_back(box.width, box.height, box.length, 3);
+                    available_box_sizes.emplace_back(box.height, box.length, box.width, 4);
+                    available_box_sizes.emplace_back(box.height, box.width, box.length, 5);
+                }
+            }
+
+            height_handler.iterate([&](HeightRect rect) {
+                std::vector<std::pair<uint32_t, uint32_t>> xys = {
+                        {rect.x,     rect.y},
+                        {rect.x,     rect.Y + 1},
+                        {rect.X + 1, rect.y},
+                        {rect.X + 1, rect.Y + 1},
+                };
+                for (auto [x, y]: xys) {
+                    for (auto [box_length, box_width, box_height, box_rotate]: available_box_sizes) {
+                        if (x + box_length <= test_data.length && y + box_width <= test_data.width) {
+                            double score = get_score(x, y, x + box_length - 1, y + box_width - 1, box_height);
+                            if (score < best_score) {
+                                best_score = score;
+                                best_i = i;
+                                best_x = x;
+                                best_y = y;
+                                best_length = box_length;
+                                best_width = box_width;
+                                best_height = box_height;
+                                best_rotate = box_rotate;
+                            }
                         }
                     }
                 }
-            }
-            ASSERT(best_h != -1, "unable to put box");
-            Position pos = {
-                    box.sku,
-                    best_x,
-                    best_y,
-                    best_h,
-                    best_x + box.length,
-                    best_y + box.width,
-                    best_h + box.height,
-            };
-            answer.positions.push_back(pos);
-            set_height(best_x, best_y, best_x + box.length - 1, best_y + box.width - 1, best_h + box.height);
+            });
+        }
+        ASSERT(best_i != -1, "unable to put box");
+        auto box = test_data.boxes[order[best_i].first];
+
+        uint32_t best_h = height_handler.get(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1);
+        Position pos = {
+                box.sku,
+                best_x,
+                best_y,
+                best_h,
+                best_x + best_length,
+                best_y + best_width,
+                best_h + best_height,
+        };
+        answer.positions.push_back(pos);
+        height_handler.add_rect(HeightRect{
+                best_x, best_y, best_x + best_length - 1, best_y + best_width - 1, best_h + best_height});
+
+        order[best_i].second--;
+        if (order[best_i].second == 0) {
+            order.erase(order.begin() + best_i);
         }
     }
     return answer;

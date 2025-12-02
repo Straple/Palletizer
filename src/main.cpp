@@ -3,7 +3,6 @@
 #include <objects/metrics.hpp>
 #include <solvers/solver.hpp>
 #include <solvers/greedy/greedy_solver.hpp>
-#include <solvers/greedy/greedy_solver2.hpp>
 #include <solvers/lns/lns_solver.hpp>
 #include <solvers/lns/genetic_solver.hpp>
 
@@ -88,10 +87,6 @@ void launch_solvers() {
      Relative volume: 0.0899587avg 0.0752863min 0.130973max
      Time: 38.2145ms
 
-     GreedySolver:
-     Relative volume: 0.619928avg 0.534164min 0.801497max
-     Time: 64.7938s
-
      GreedySolver2:
      Relative volume: 0.729021avg 0.560539min 0.852097max
      Time: 4.32552s
@@ -118,26 +113,11 @@ void launch_solvers() {
     std::cout << "Time: " << timer << '\n';
 }
 
-#include <utils/randomizer.hpp>
-
-#include <map>
-
 int main() {
-    /*Randomizer rnd;
-    std::map<uint32_t, uint32_t> map;
-    uint32_t N = 10000;
-    for(int i = 0; i < N; i++){
-        uint32_t x = rnd.get({1, 1, 10, 1});
-        map[x]++;
-    }
-    for(auto [x, cnt] : map){
-        std::cout << x << ' ' << cnt << ' ' << cnt * 100.0 / N << '\n';
-    }
-    return 0;*/
-    // launch_solvers<LNSSolver>();
-    // return 0;
+    launch_solvers<GreedySolver>();
+    return 0;
 
-    Metrics metrics = launch_one_solver<GeneticSolver>(261);
+    Metrics metrics = launch_one_solver<GreedySolver>(261);
     std::cout << "Height: " << metrics.height << std::endl;
     std::cout << "Relative volume: " << metrics.relative_volume << std::endl;
 }

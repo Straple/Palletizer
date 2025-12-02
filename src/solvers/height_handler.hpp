@@ -1,6 +1,7 @@
 #pragma once
 
-#include <solvers/solver.hpp>
+#include <cstdint>
+#include <vector>
 
 struct HeightRect {
     uint32_t x = 0;
@@ -10,13 +11,14 @@ struct HeightRect {
     uint32_t h = 0;
 };
 
+// Хранит информацию о текущих высотах палеты
+// позволяет быстро получать высоту и итерироваться по интересным нам точкам
 class HeightHandler {
-protected:
     std::vector<HeightRect> height_rects;
 
 public:
 
-    [[nodiscard]] uint32_t get_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const;
+    [[nodiscard]] uint32_t get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const;
 
     void add_rect(HeightRect rect);
 
@@ -26,14 +28,4 @@ public:
             foo(rect);
         }
     }
-};
-
-class GreedySolver2 : public Solver {
-protected:
-
-public:
-
-    explicit GreedySolver2(TestData test_data);
-
-    Answer solve(TimePoint end_time);
 };

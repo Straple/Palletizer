@@ -2,7 +2,7 @@
 
 #include <utils/assert.hpp>
 #include <utils/randomizer.hpp>
-#include <solvers/greedy/greedy_solver2.hpp>
+#include <solvers/height_handler.hpp>
 
 #include <map>
 
@@ -21,7 +21,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
         auto box = test_data.boxes[box_meta.box_id];
 
         auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
-            uint32_t h = height_handler.get_height(x, y, X, Y);
+            uint32_t h = height_handler.get(x, y, X, Y);
             double score = box_meta.h_weight * h; // + box_meta.x_weight * x + box_meta.y_weight * y;
             return score;
         };
@@ -70,7 +70,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
         std::stable_sort(items.begin(), items.end());
         auto [x, y, length, width, height, rotate] = items[box_meta.k % items.size()];
 
-        uint32_t h = height_handler.get_height(x, y, x + length - 1, y + width - 1);
+        uint32_t h = height_handler.get(x, y, x + length - 1, y + width - 1);
 
         Position pos = {
                 box.sku,

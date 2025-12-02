@@ -11,6 +11,6 @@ public:
 
     explicit Solver(TestData test_data);
 
-    // поставим все коробки друг на друга
+    virtual // поставим все коробки друг на друга
     Answer solve(TimePoint end_time);
 };
