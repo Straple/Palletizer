@@ -8,8 +8,8 @@ Metrics calc_metrics(TestData test_data, Answer answer) {
     Metrics metrics;
 
     metrics.boxes = answer.positions.size();
-    metrics.length = test_data.length;
-    metrics.width = test_data.width;
+    metrics.length = test_data.header.length;
+    metrics.width = test_data.header.width;
 
     std::unordered_map<uint32_t, uint32_t> sku_to_index;
     for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
@@ -22,11 +22,11 @@ Metrics calc_metrics(TestData test_data, Answer answer) {
         metrics.boxes_volume += box.length * static_cast<uint64_t>(box.width) * box.height;
         // TODO: validate box coordinates
     }
-    metrics.pallet_volume = test_data.length * static_cast<uint64_t>(test_data.width) * metrics.height;
+    metrics.pallet_volume = metrics.length * static_cast<uint64_t>(metrics.width) * metrics.height;
     metrics.relative_volume = static_cast<double>(metrics.boxes_volume) / metrics.pallet_volume;
 
     // validate collision boxes
-    /*for (uint32_t i = 0; i < answer.positions.size(); i++) {
+    for (uint32_t i = 0; i < answer.positions.size(); i++) {
         for (uint32_t j = i + 1; j < answer.positions.size(); j++) {
             auto pos1 = answer.positions[i];
             auto pos2 = answer.positions[j];
@@ -39,6 +39,6 @@ Metrics calc_metrics(TestData test_data, Answer answer) {
                      is_intersect(pos1.y, pos1.Y, pos2.y, pos2.Y) &&
                      is_intersect(pos1.z, pos1.Z, pos2.z, pos2.Z)), "boxes intersects");
         }
-    }*/
+    }
     return metrics;
 }

@@ -1,15 +1,16 @@
 #include <solvers/lns/lns_solver.hpp>
 
+#include <solvers/tools.hpp>
+#include <solvers/height_handler.hpp>
 #include <utils/assert.hpp>
 #include <utils/randomizer.hpp>
-#include <solvers/height_handler.hpp>
 
 #include <map>
 
 std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const std::vector<BoxMeta> &order) {
     Answer answer;
     HeightHandler height_handler;
-    height_handler.add_rect(HeightRect{0, 0, test_data.length - 1, test_data.width - 1, 0});
+    height_handler.add_rect(HeightRect{0, 0, test_data.header.length - 1, test_data.header.width - 1, 0});
 
     double A = 0;
     double B = 0;
@@ -26,21 +27,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
             return score;
         };
 
-        std::vector<std::tuple<uint32_t, uint32_t, uint32_t, uint32_t>> available_box_sizes;
-        {
-            available_box_sizes.emplace_back(box.length, box.width, box.height, 0);
-            if (test_data.can_swap_length_width) {
-                available_box_sizes.emplace_back(box.width, box.length, box.height, 1);
-            }
-            if (test_data.can_swap_width_height) {
-                available_box_sizes.emplace_back(box.length, box.height, box.width, 2);
-            }
-            if (test_data.can_swap_length_width && test_data.can_swap_width_height) {
-                available_box_sizes.emplace_back(box.width, box.height, box.length, 3);
-                available_box_sizes.emplace_back(box.height, box.length, box.width, 4);
-                available_box_sizes.emplace_back(box.height, box.width, box.length, 5);
-            }
-        }
+        auto available_boxes = get_available_boxes(test_data.header, box);
 
         height_handler.iterate([&](HeightRect rect) {
             std::vector<std::pair<uint32_t, uint32_t>> xys = {
@@ -50,8 +37,8 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
                     {rect.X + 1, rect.Y + 1},
             };
             for (auto [x, y]: xys) {
-                for (auto [box_length, box_width, box_height, box_rotate]: available_box_sizes) {
-                    if (x + box_length <= test_data.length && y + box_width <= test_data.width) {
+                for (auto [box_length, box_width, box_height, box_rotate]: available_boxes) {
+                    if (x + box_length <= test_data.header.length && y + box_width <= test_data.header.width) {
                         double score = get_score(x, y, x + box_length - 1, y + box_width - 1, box_height);
                         if (score + 1e-6 < best_score) {
                             best_score = score;
