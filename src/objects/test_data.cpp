@@ -3,6 +3,25 @@
 #include <utils/assert.hpp>
 #include <utils/tools.hpp>
 
+#include <algorithm>
+
+std::vector<BoxSize> get_available_boxes(const TestDataHeader &header, const Box &box) {
+    std::vector<BoxSize> result;
+    result.push_back({box.length, box.width, box.height, 0});
+    if (header.can_swap_length_width) {
+        result.push_back({box.width, box.length, box.height, 1});
+    }
+    if (header.can_swap_width_height) {
+        result.push_back({box.length, box.height, box.width, 2});
+    }
+    if (header.can_swap_length_width && header.can_swap_width_height) {
+        result.push_back({box.width, box.height, box.length, 3});
+        result.push_back({box.height, box.length, box.width, 4});
+        result.push_back({box.height, box.width, box.length, 5});
+    }
+    return result;
+}
+
 std::istream &operator>>(std::istream &input, TestData &test_data) {
     std::string line;
     ASSERT(std::getline(input, line), "unable to read header");
@@ -25,5 +44,16 @@ std::istream &operator>>(std::istream &input, TestData &test_data) {
         };
         test_data.boxes.emplace_back(box);
     }
+    auto get_area = [&](const Box &box) {
+        auto available_boxes = get_available_boxes(test_data.header, box);
+        uint64_t area = 0;
+        for (auto box: available_boxes) {
+            area = std::max(area, static_cast<uint64_t>(box.length) * box.width);
+        }
+        return area;
+    };
+    std::stable_sort(test_data.boxes.begin(), test_data.boxes.end(), [&](const Box &lhs, const Box &rhs) {
+        return get_area(lhs) > get_area(rhs);
+    });
     return input;
 }

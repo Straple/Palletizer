@@ -1,7 +1,6 @@
 #include <solvers/greedy/greedy_solver.hpp>
 
 #include <solvers/height_handler.hpp>
-#include <solvers/tools.hpp>
 #include <utils/assert.hpp>
 
 #include <tuple>
@@ -12,10 +11,6 @@ GreedySolver::GreedySolver(TestData test_data) : Solver(test_data) {
 
 Answer GreedySolver::solve(TimePoint end_time) {
     Answer answer;
-    std::sort(test_data.boxes.begin(), test_data.boxes.end(), [&](const Box &lhs, const Box &rhs) {
-        // TODO: мы же можем поворачивать коробку
-        return lhs.length * lhs.width > rhs.length * rhs.width;
-    });
 
     HeightHandler height_handler;
     height_handler.add_rect(HeightRect{0, 0, test_data.header.length - 1, test_data.header.width - 1, 0});
@@ -24,6 +19,11 @@ Answer GreedySolver::solve(TimePoint end_time) {
     for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
         order.emplace_back(i, test_data.boxes[i].quantity);
     }
+
+    /*
+     * Relative volume: 0.727815avg 0.554052min 0.830083max
+Time: 9.33926s -> 17.3143s
+     */
 
     while (!order.empty()) {
         double best_score = 1e300;
@@ -40,37 +40,27 @@ Answer GreedySolver::solve(TimePoint end_time) {
 
             auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
                 uint32_t h = height_handler.get(x, y, X, Y);
-                double score = 1000.0 * h + (x + y);
+                double score = 10000.0 * h + x * 100 + y;
                 return score;
             };
 
             auto available_boxes = get_available_boxes(test_data.header, box);
-
-            height_handler.iterate([&](HeightRect rect) {
-                std::vector<std::pair<uint32_t, uint32_t>> xys = {
-                        {rect.x,     rect.y},
-                        {rect.x,     rect.Y + 1},
-                        {rect.X + 1, rect.y},
-                        {rect.X + 1, rect.Y + 1},
-                };
-                for (auto [x, y]: xys) {
-                    for (auto box: available_boxes) {
-                        if (x + box.length <= test_data.header.length && y + box.width <= test_data.header.width) {
-                            double score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
-                            if (score < best_score) {
-                                best_score = score;
-                                best_i = i;
-                                best_x = x;
-                                best_y = y;
-                                best_length = box.length;
-                                best_width = box.width;
-                                best_height = box.height;
-                                best_rotation = box.rotation;
-                            }
-                        }
+            for (const auto &box: available_boxes) {
+                auto dots = height_handler.get_dots(test_data.header, box);
+                for (auto [x, y]: dots) {
+                    double score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
+                    if (score < best_score) {
+                        best_score = score;
+                        best_i = i;
+                        best_x = x;
+                        best_y = y;
+                        best_length = box.length;
+                        best_width = box.width;
+                        best_height = box.height;
+                        best_rotation = box.rotation;
                     }
                 }
-            });
+            }
         }
         ASSERT(best_i != -1, "unable to put box");
         auto box = test_data.boxes[order[best_i].first];

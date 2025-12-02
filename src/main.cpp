@@ -87,9 +87,9 @@ void launch_solvers() {
      Relative volume: 0.0899587avg 0.0752863min 0.130973max
      Time: 38.2145ms
 
-     GreedySolver2:
-     Relative volume: 0.729021avg 0.560539min 0.852097max
-     Time: 4.32552s
+     GreedySolver:
+     Relative volume: 0.727815avg 0.554052min 0.830083max
+     Time: 7.40785s
 
      LNSSolver(1s):
      Relative volume: 0.744476avg 0.672775min 0.825097max

@@ -1,7 +1,6 @@
 #pragma once
 
-#include <cstdint>
-#include <vector>
+#include <objects/test_data.hpp>
 
 struct HeightRect {
     uint32_t x = 0;
@@ -23,9 +22,13 @@ public:
     void add_rect(HeightRect rect);
 
     template<typename foo_t>
-    void iterate(foo_t&& foo){
-        for(auto rect : height_rects){
+    void iterate(foo_t &&foo) {
+        for (auto rect: height_rects) {
             foo(rect);
         }
     }
+
+    // возвращает интересные точки для такой коробки
+    // куда бы мы могли ее поставить
+    [[nodiscard]] std::vector<std::pair<uint32_t, uint32_t>> get_dots(const TestDataHeader& header, const BoxSize &box) const;
 };

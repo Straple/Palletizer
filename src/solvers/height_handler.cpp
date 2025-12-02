@@ -1,5 +1,7 @@
 #include <solvers/height_handler.hpp>
 
+#include <algorithm>
+
 uint32_t HeightHandler::get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
     for (auto rect: height_rects) {
         if (!(X < rect.x || rect.X < x) &&
@@ -13,9 +15,34 @@ uint32_t HeightHandler::get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) cons
 void HeightHandler::add_rect(HeightRect rect) {
     height_rects.push_back(rect);
 
+    // TODO: сортировка здесь излишне
     std::sort(height_rects.begin(), height_rects.end(), [&](const HeightRect &lhs, const HeightRect &rhs) {
         return lhs.h > rhs.h;
     });
 
     // TODO: имеет смысл разделить прямоугольники и убрать лишние, чтобы все прямоугольники не пересекались
+}
+
+std::vector<std::pair<uint32_t, uint32_t>>
+HeightHandler::get_dots(const TestDataHeader &header, const BoxSize &box) const {
+    std::vector<std::pair<uint32_t, uint32_t>> result;
+    for (auto rect: height_rects) {
+        std::vector<std::pair<uint32_t, uint32_t>> dots = {
+                {rect.x,     rect.y},
+                {rect.x,     rect.Y + 1},
+                {rect.X + 1, rect.y},
+                {rect.X + 1, rect.Y + 1},
+                // TODO: добавить точки из углов
+        };
+
+        for (auto &[x, y]: dots) {
+            if (x + box.length <= header.length && y + box.width <= header.width) {
+                result.emplace_back(x, y);
+            }
+        }
+    }
+    // замедляет в 2 раза
+    // std::sort(result.begin(), result.end());
+    // result.erase(std::unique(result.begin(), result.end()), result.end());
+    return result;
 }
