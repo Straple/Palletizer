@@ -100,7 +100,7 @@ void launch_solvers() {
      Time: 70.1654s
 
      LNSSolver(30s):
-     Relative volume: 0.767062avg 0.603211min 0.872398max
+     Relative volume: 0.753264avg 0.60223min 0.843749max
      Time: 420.182s
 
      GeneticSolver(1s):
