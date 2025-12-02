@@ -17,7 +17,7 @@ Metrics launch_one_solver(uint32_t test) {
     TestData test_data;
     input >> test_data;
 
-    Answer answer = SolverType(test_data).solve(get_now() + Milliseconds(5'000));
+    Answer answer = SolverType(test_data).solve(get_now() + Milliseconds(1'000));
 
     std::ofstream output("answers/" + std::to_string(test) + ".csv");
     output << answer;
@@ -88,25 +88,27 @@ void launch_solvers() {
      Time: 38.2145ms
 
      GreedySolver:
-     Relative volume: 0.727815avg 0.554052min 0.830083max
-     Time: 7.40785s
+     Relative volume: 0.729681avg 0.554052min 0.830083max
+     Time: 30.4917s
 
      LNSSolver(1s):
-     Relative volume: 0.744476avg 0.672775min 0.825097max
-     Time: 14.0609s
+     Relative volume: 0.741825avg 0.672775min 0.81803max
+     Time: 14.0583s
 
      LNSSolver(5s):
-     Relative volume: 0.759711avg 0.70389min 0.843749max
-     Time: 70.0614s
-     Relative volume: 0.754483avg 0.695243min 0.835781max
+     Relative volume: 0.753472avg 0.672775min 0.818765max
+     Time: 70.0657s
 
      LNSSolver(30s):
-     Relative volume: 0.771941avg 0.725566min 0.843749max
-     Time: 420.067s
+     Relative volume: 0.763658avg 0.672775min 0.823947max
+     Time: 420.062s
 
      GeneticSolver(1s):
      Relative volume: 0.698772avg 0.60223min 0.825097max
      Time: 74.9252s
+
+     Best:
+     Relative volume: 0.771941avg 0.725566min 0.843749max
      */
     std::cout << "Relative volume: " << sum_relative_volume / (visited.size() - 1) << "avg " << min_relative_volume
               << "min " << max_relative_volume << "max\n";
@@ -114,7 +116,7 @@ void launch_solvers() {
 }
 
 int main() {
-    launch_solvers<GreedySolver>();
+    launch_solvers<LNSSolver>();
     return 0;
 
     Metrics metrics = launch_one_solver<GreedySolver>(261);

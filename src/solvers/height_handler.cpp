@@ -28,11 +28,14 @@ HeightHandler::get_dots(const TestDataHeader &header, const BoxSize &box) const 
     std::vector<std::pair<uint32_t, uint32_t>> result;
     for (auto rect: height_rects) {
         std::vector<std::pair<uint32_t, uint32_t>> dots = {
-                {rect.x,     rect.y},
-                {rect.x,     rect.Y + 1},
-                {rect.X + 1, rect.y},
-                {rect.X + 1, rect.Y + 1},
-                // TODO: добавить точки из углов
+                {rect.x,                  rect.y},
+                {rect.x,                  rect.Y + 1},
+                {rect.X + 1,              rect.y},
+                {rect.X + 1,              rect.Y + 1},
+
+                {rect.X - box.length + 1, rect.y},
+                {rect.x,                  rect.Y - box.width + 1},
+                {rect.X - box.length + 1, rect.Y - box.width + 1},
         };
 
         for (auto &[x, y]: dots) {

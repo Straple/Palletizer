@@ -20,13 +20,8 @@ Answer GreedySolver::solve(TimePoint end_time) {
         order.emplace_back(i, test_data.boxes[i].quantity);
     }
 
-    /*
-     * Relative volume: 0.727815avg 0.554052min 0.830083max
-Time: 9.33926s -> 17.3143s
-     */
-
     while (!order.empty()) {
-        double best_score = 1e300;
+        uint32_t best_score = -1;
         uint32_t best_i = -1;
         uint32_t best_x = -1;
         uint32_t best_y = -1;
@@ -39,17 +34,15 @@ Time: 9.33926s -> 17.3143s
             auto box = test_data.boxes[box_id];
 
             auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
-                uint32_t h = height_handler.get(x, y, X, Y);
-                double score = 10000.0 * h + x * 100 + y;
-                return score;
+                return height_handler.get(x, y, X, Y);
             };
 
             auto available_boxes = get_available_boxes(test_data.header, box);
             for (const auto &box: available_boxes) {
                 auto dots = height_handler.get_dots(test_data.header, box);
                 for (auto [x, y]: dots) {
-                    double score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
-                    if (score < best_score) {
+                    uint32_t score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
+                    if (std::tie(score, x, y) < std::tie(best_score, best_x, best_y)) {
                         best_score = score;
                         best_i = i;
                         best_x = x;
