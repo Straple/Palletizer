@@ -134,10 +134,10 @@ int main() {
         std::cout << x << ' ' << cnt << ' ' << cnt * 100.0 / N << '\n';
     }
     return 0;*/
-    launch_solvers<LNSSolver>();
-    return 0;
+    // launch_solvers<LNSSolver>();
+    // return 0;
 
-    Metrics metrics = launch_one_solver<LNSSolver>(261);
+    Metrics metrics = launch_one_solver<GeneticSolver>(261);
     std::cout << "Height: " << metrics.height << std::endl;
     std::cout << "Relative volume: " << metrics.relative_volume << std::endl;
 }
