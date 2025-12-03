@@ -49,7 +49,7 @@ HeightHandler::get_dots(const TestDataHeader &header, const BoxSize &box) const 
         };
 
         for (auto &[x, y]: dots) {
-            if (x + box.length <= header.length && y + box.width <= header.width) {
+            if (std::max(x, x + box.length) <= header.length && std::max(y, y + box.width) <= header.width) {
                 result.emplace_back(x, y);
             }
         }

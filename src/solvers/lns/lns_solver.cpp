@@ -21,7 +21,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
         auto box = test_data.boxes[box_meta.box_id];
 
         auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
-            return height_handler.get(x, y, X, Y);
+            return height_handler.get(x, y, X, Y) + box_height;
         };
 
         auto available_boxes = get_available_boxes(test_data.header, box);
@@ -239,18 +239,6 @@ Answer LNSSolver::solve(TimePoint end_time) {
 }
 
 /*
-Relative volume: 0.755165avg 0.672775min 0.86141max
-Time: 71.2118s
-*/
-
-/*
-1295->1295->1295->1294->1295->1299->1295->1299->1295->1295->1295->1294->1294->1289->1233->1223->1221->1220->1217->
-85367 0.808141 1217
-1217
-Height: 1217
-Relative volume: 0.808141
-
-
 1594->1466->1466->1400->1369->1368->1368->1300->1298->1295->1300->1300->1292->1281->1277->1264->1244->1243->1227->1226->1224->1222->1221->1217->1205->1185->1180->1178->
 107606 0.834896 1178
 1178
