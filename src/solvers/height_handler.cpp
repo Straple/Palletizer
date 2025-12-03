@@ -36,6 +36,16 @@ HeightHandler::get_dots(const TestDataHeader &header, const BoxSize &box) const 
                 {rect.X - box.length + 1, rect.y},
                 {rect.x,                  rect.Y - box.width + 1},
                 {rect.X - box.length + 1, rect.Y - box.width + 1},
+
+                {rect.x - box.length,     rect.y},
+                {rect.x,                  rect.y - box.width},
+                {rect.x - box.length,     rect.y - box.width},
+
+                {rect.X + 1 - box.length, rect.Y + 1},
+                {rect.X + 1 - box.length, rect.y - box.width},
+
+                // TODO: добавить больше точек, сейчас недостает
+                // идеальным решением все же будет разбивать на непересекающиеся прямоугольники
         };
 
         for (auto &[x, y]: dots) {

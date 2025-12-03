@@ -108,7 +108,8 @@ void launch_solvers() {
      Time: 74.9252s
 
      Best:
-     Relative volume: 0.771941avg 0.725566min 0.843749max
+     Relative volume: 0.771941avg 0.733276min 0.873109max
+     Time: 421.134s
      */
     std::cout << "Relative volume: " << sum_relative_volume / (visited.size() - 1) << "avg " << min_relative_volume
               << "min " << max_relative_volume << "max\n";
