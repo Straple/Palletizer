@@ -17,7 +17,7 @@ Metrics launch_one_solver(uint32_t test) {
     TestData test_data;
     input >> test_data;
 
-    Answer answer = SolverType(test_data).solve(get_now() + Milliseconds(30'000));
+    Answer answer = SolverType(test_data).solve(get_now() + Milliseconds(300'000));
 
     std::ofstream output("answers/" + std::to_string(test) + ".csv");
     output << answer;
@@ -92,16 +92,20 @@ void launch_solvers() {
      Time: 308.218ms
 
      LNSSolver(1s):
-     Relative volume: 0.741682avg 0.670614min 0.80424max
-     Time: 14.1826s
+     Relative volume: 0.769668avg 0.591363min 0.868387max
+     Time: 14.1526s
 
      LNSSolver(5s):
-     Relative volume: 0.777357avg 0.726846min 0.877059max
-     Time: 70.3568s
+     Relative volume: 0.779639avg 0.744882min 0.867815max
+     Time: 70.1712s
 
      LNSSolver(30s):
-     Relative volume: 0.785419avg 0.73776min 0.879401max
-     Time: 420.301s
+     Relative volume: 0.788469avg 0.744882min 0.87502max
+     Time: 420.134s
+
+     LNSSolver(300s):
+     Relative volume: 0.794535avg 0.747369min 0.875311max
+     Time: 4200.1s
 
      GeneticSolver(1s):
      Relative volume: 0.698772avg 0.60223min 0.825097max
@@ -117,7 +121,7 @@ void launch_solvers() {
 }
 
 int main() {
-    launch_solvers<GreedySolver>();
+    launch_solvers<LNSSolver>();
     return 0;
 
     Metrics metrics = launch_one_solver<LNSSolver>(217); // 217
