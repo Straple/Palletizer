@@ -16,60 +16,30 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
     height_handler.add_rect(HeightRect{0, 0, test_data.header.length - 1, test_data.header.width - 1, 0});
 
     for (auto box_meta: order) {
-        uint32_t best_score = -1;
-
-        // (x, y, length, width, height, rotate)
-        std::vector<std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t>> items;
         auto box = test_data.boxes[box_meta.box_id];
+
+        uint32_t best_score = -1;
+        uint32_t best_x = -1;
+        uint32_t best_y = -1;
+        uint32_t best_length = -1;
+        uint32_t best_width = -1;
+        uint32_t best_height = -1;
+        uint32_t best_rotation = -1;
 
         auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
             return height_handler.get(x, y, X, Y) + box_height;
         };
 
-        auto available_boxes = get_available_boxes(test_data.header, box);
-
-        // ~30s
-        for (const auto &box: available_boxes) {
-            if (box_meta.rotation != -1 && box_meta.rotation != box.rotation) {
-                continue;
-            }
-
-            //
-            auto dots = height_handler.get_dots(test_data.header, box); // 10/30s
-            //
-
-            // 20/30s
-            for (auto [x, y]: dots) {
-                Timer timer;
-                uint32_t score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
-                total_time += timer.get_ns();
-                if (score < best_score) {
-                    best_score = score;
-                    items.clear();
-                }
-                if (score == best_score) {
-                    items.emplace_back(x, y, box.length, box.width, box.height, box.rotation);
-                }
-            }
-        }
-
-        ASSERT(!items.empty(), "unable to put box");
-
         auto get_position_dist = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width, uint32_t height) {
-
             auto get_position_dist = [&](uint64_t x, uint64_t y) -> uint64_t {
                 if (box_meta.position == 0) {
-                    return x * x
-                           + y * y;
+                    return x * x + y * y;
                 } else if (box_meta.position == 1) {
-                    return x * x
-                           + (test_data.header.width - y) * (test_data.header.width - y);
+                    return x * x + (test_data.header.width - y) * (test_data.header.width - y);
                 } else if (box_meta.position == 2) {
-                    return (test_data.header.length - x) * (test_data.header.length - x)
-                           + y * y;
+                    return (test_data.header.length - x) * (test_data.header.length - x) + y * y;
                 } else if (box_meta.position == 3) {
-                    return (test_data.header.length - x) * (test_data.header.length - x)
-                           + (test_data.header.width - y) * (test_data.header.width - y);
+                    return (test_data.header.length - x) * (test_data.header.length - x) + (test_data.header.width - y) * (test_data.header.width - y);
                 } else {
                     FAILED_ASSERT("invalid position");
                     return 0;
@@ -80,28 +50,48 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
                                               get_position_dist(x + length - 1, y)),
                                      std::min(get_position_dist(x, y + width - 1),
                                               get_position_dist(x + length - 1, y + width - 1)));
-
-            if (print_debug) {
-                /*std::cout << "dist from (" << x << ',' << y << "): " << dist << '\n';*/
-            }
             return dist;
         };
 
-        // std::stable_sort(items.begin(), items.end());
-        auto best_item = items[0];
-        /*for (auto item: items) {
-            auto [best_x, best_y, best_length, best_width, best_height, best_rotation] = best_item;
-            auto [x, y, length, width, height, rotation] = item;
+        auto available_boxes = get_available_boxes(test_data.header, box);
 
-            if (get_position_dist(x, y, length, width, height) <
-                get_position_dist(best_x, best_y, best_length, best_width, best_height)) {
-                best_item = item;
+        // ~30s
+        for (const auto &box: available_boxes) {
+            if (box_meta.rotation != -1 && box_meta.rotation != box.rotation) {
+                continue;
             }
-        }*/
-        auto [x, y, length, width, height, rotation] = best_item;
-        if (print_debug) {
-            /*std::cout << "best item: " << x << ' ' << y << std::endl;*/
+
+            auto dots = height_handler.get_dots(test_data.header, box);// 10/30s
+
+            // 20/30s
+            for (auto [x, y]: dots) {
+                // Timer timer;
+                uint32_t score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
+                // total_time += timer.get_ns();
+                if (score < best_score) {
+                    best_score = score;
+                    best_x = x;
+                    best_y = y;
+                    best_length = box.length;
+                    best_width = box.width;
+                    best_height = box.height;
+                    best_rotation = box.rotation;
+                } else if (score == best_score) {
+                    if (get_position_dist(x, y, box.length, box.width, box.height) < get_position_dist(best_x, best_y, best_length, best_width, best_height)) {
+                        best_x = x;
+                        best_y = y;
+                        best_length = box.length;
+                        best_width = box.width;
+                        best_height = box.height;
+                        best_rotation = box.rotation;
+                    }
+                }
+            }
         }
+
+        ASSERT(best_score != -1, "unable to put box");
+
+        auto [x, y, length, width, height, rotation] = std::tie(best_x, best_y, best_length, best_width, best_height, best_rotation);
 
         uint32_t h = height_handler.get(x, y, x + length - 1, y + width - 1);
 
@@ -116,25 +106,20 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
         };
         answer.positions.push_back(pos);
 
-        if (print_debug) {
-            /*std::cout << "pos: " << x << ' ' << y << ' ' << x + length << ' ' << y + width << std::endl;*/
-        }
-
         height_handler.add_rect(HeightRect{
                 x, y, x + length - 1, y + width - 1, h + height});
     }
     auto metrics = calc_metrics(test_data, answer);
     double score = metrics.height;
     if (print_debug) {
-        /*std::cout << "score: " << metrics.height << std::endl;*/
-        std::cout << height_handler.size() << std::endl;
+        /*// std::cout << "score: " << metrics.height << std::endl;*/
+        // std::cout << height_handler.size() << std::endl;
         height_handler.print();
     }
     return {answer, metrics, score};
 }
 
 LNSSolver::LNSSolver(TestData test_data) : Solver(test_data) {
-
 }
 
 Answer LNSSolver::solve(TimePoint end_time) {
@@ -146,8 +131,8 @@ Answer LNSSolver::solve(TimePoint end_time) {
     }
 
     auto [best_answer, best_metrics, best_score] = simulate(test_data, order);
-    std::cout << best_score << "->";
-    std::cout.flush();
+    // std::cout << best_score << "->";
+    // std::cout.flush();
 
     // Answer real_answer = best_answer;
     // auto real_score = best_score;
@@ -210,8 +195,8 @@ Answer LNSSolver::solve(TimePoint end_time) {
             if (score < best_score + AVAILABLE_UP) {
                 if (score + 1e-6 < best_score) {
                     last_update.reset();
-                    std::cout << score << "->";
-                    std::cout.flush();
+                    // std::cout << score << "->";
+                    // std::cout.flush();
                 }
                 /*if (score < real_score) {
                     real_score = score;
@@ -229,7 +214,7 @@ Answer LNSSolver::solve(TimePoint end_time) {
         temp *= 0.999;
 
         /*if (last_update.get_ms() > 1'000) {
-            std::cout << "RESET->";
+            // std::cout << "RESET->";
             temp = 1;
             last_update.reset();
             std::shuffle(order.begin(), order.end(), rnd.generator);
@@ -241,15 +226,15 @@ Answer LNSSolver::solve(TimePoint end_time) {
         }*/
     }
     // auto real_metrics = calc_metrics(test_data, real_answer);
-    std::cout << std::endl;
-    // std::cout << cnt << ' ' << real_metrics.relative_volume << ' ' << real_metrics.height << std::endl;
-    std::cout << cnt << ' ' << best_metrics.relative_volume << ' ' << best_metrics.height << std::endl;
-    std::cout << min_score << std::endl;
+    // std::cout << std::endl;
+    // // std::cout << cnt << ' ' << real_metrics.relative_volume << ' ' << real_metrics.height << std::endl;
+    // std::cout << cnt << ' ' << best_metrics.relative_volume << ' ' << best_metrics.height << std::endl;
+    // std::cout << min_score << std::endl;
 
-    print_debug = true;
-    simulate(test_data, order);
+    // print_debug = true;
+    // simulate(test_data, order);
 
-    std::cout << "Time m: " << total_time / 1e9 << "s\n";
+    // std::cout << "Time m: " << total_time / 1e9 << "s\n";
 
     return best_answer;
 }
@@ -282,7 +267,7 @@ Relative volume: 0.759813
 7741
 Height: 7741
 Relative volume: 0.760401
- 
+
 156 0.766341 7681
 7681
 198

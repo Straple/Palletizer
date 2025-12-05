@@ -155,13 +155,6 @@ HeightHandler::get_dots(const TestDataHeader &header, const BoxSize &box) const 
 
 void HeightHandler::add_rect(HeightRect new_rect) {
     if (false) {
-        /*7994->7956->7950->7936->7863->7817->7800->7784->
-        116 0.756201 7784
-        7784
-        466
-        Time m: 14.6143s
-        Height: 7784
-        Relative volume: 0.756201*/
         height_rects.push_back(new_rect);
         std::sort(height_rects.begin(), height_rects.end(),
                   [](const HeightRect &a, const HeightRect &b) {
@@ -169,16 +162,6 @@ void HeightHandler::add_rect(HeightRect new_rect) {
                   });
         return;
     }
-
-    /*
-    7934->7856->7854->7814->7780->7681->
-    221 0.766341 7681
-    7681
-    198
-    Time m: 13.5609s
-    Height: 7681
-    Relative volume: 0.766341
-    */
 
     if (!new_rect.is_valid()) {
         return;

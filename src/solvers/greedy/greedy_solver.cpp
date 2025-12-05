@@ -29,12 +29,14 @@ Answer GreedySolver::solve(TimePoint end_time) {
         uint32_t best_width = -1;
         uint32_t best_height = -1;
         uint32_t best_rotation = -1;
-        for (uint32_t i = 0; i < order.size(); i++) {
+        //for (uint32_t i = 0; i < order.size(); i++)
+        {
+            uint32_t i = 0;
             uint32_t box_id = order[i].first;
             auto box = test_data.boxes[box_id];
 
             auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
-                return height_handler.get(x, y, X, Y);
+                return height_handler.get(x, y, X, Y) + box_height;
             };
 
             auto available_boxes = get_available_boxes(test_data.header, box);
