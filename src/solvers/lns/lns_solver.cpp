@@ -8,6 +8,8 @@
 
 bool print_debug = false;
 
+double total_time = 0;
+
 std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const std::vector<BoxMeta> &order) {
     Answer answer;
     HeightHandler height_handler;
@@ -25,13 +27,22 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
         };
 
         auto available_boxes = get_available_boxes(test_data.header, box);
+
+        // ~30s
         for (const auto &box: available_boxes) {
             if (box_meta.rotation != -1 && box_meta.rotation != box.rotation) {
                 continue;
             }
-            auto dots = height_handler.get_dots(test_data.header, box);
+
+            //
+            auto dots = height_handler.get_dots(test_data.header, box); // 10/30s
+            //
+
+            // 20/30s
             for (auto [x, y]: dots) {
+                Timer timer;
                 uint32_t score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
+                total_time += timer.get_ns();
                 if (score < best_score) {
                     best_score = score;
                     items.clear();
@@ -61,6 +72,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
                            + (test_data.header.width - y) * (test_data.header.width - y);
                 } else {
                     FAILED_ASSERT("invalid position");
+                    return 0;
                 }
             };
 
@@ -70,14 +82,14 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
                                               get_position_dist(x + length - 1, y + width - 1)));
 
             if (print_debug) {
-                //std::cout << "dist from (" << x << ',' << y << "): " << dist << '\n';
+                /*std::cout << "dist from (" << x << ',' << y << "): " << dist << '\n';*/
             }
             return dist;
         };
 
-        std::stable_sort(items.begin(), items.end());
+        // std::stable_sort(items.begin(), items.end());
         auto best_item = items[0];
-        for (auto item: items) {
+        /*for (auto item: items) {
             auto [best_x, best_y, best_length, best_width, best_height, best_rotation] = best_item;
             auto [x, y, length, width, height, rotation] = item;
 
@@ -85,10 +97,10 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
                 get_position_dist(best_x, best_y, best_length, best_width, best_height)) {
                 best_item = item;
             }
-        }
+        }*/
         auto [x, y, length, width, height, rotation] = best_item;
         if (print_debug) {
-            //std::cout << "best item: " << x << ' ' << y << std::endl;
+            /*std::cout << "best item: " << x << ' ' << y << std::endl;*/
         }
 
         uint32_t h = height_handler.get(x, y, x + length - 1, y + width - 1);
@@ -105,7 +117,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
         answer.positions.push_back(pos);
 
         if (print_debug) {
-            //std::cout << "pos: " << x << ' ' << y << ' ' << x + length << ' ' << y + width << std::endl;
+            /*std::cout << "pos: " << x << ' ' << y << ' ' << x + length << ' ' << y + width << std::endl;*/
         }
 
         height_handler.add_rect(HeightRect{
@@ -114,7 +126,9 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
     auto metrics = calc_metrics(test_data, answer);
     double score = metrics.height;
     if (print_debug) {
-        //std::cout << "score: " << metrics.height << std::endl;
+        /*std::cout << "score: " << metrics.height << std::endl;*/
+        std::cout << height_handler.size() << std::endl;
+        height_handler.print();
     }
     return {answer, metrics, score};
 }
@@ -132,8 +146,8 @@ Answer LNSSolver::solve(TimePoint end_time) {
     }
 
     auto [best_answer, best_metrics, best_score] = simulate(test_data, order);
-    //std::cout << best_score << "->";
-    //std::cout.flush();
+    std::cout << best_score << "->";
+    std::cout.flush();
 
     // Answer real_answer = best_answer;
     // auto real_score = best_score;
@@ -196,8 +210,8 @@ Answer LNSSolver::solve(TimePoint end_time) {
             if (score < best_score + AVAILABLE_UP) {
                 if (score + 1e-6 < best_score) {
                     last_update.reset();
-                    //std::cout << score << "->";
-                    //std::cout.flush();
+                    std::cout << score << "->";
+                    std::cout.flush();
                 }
                 /*if (score < real_score) {
                     real_score = score;
@@ -215,7 +229,7 @@ Answer LNSSolver::solve(TimePoint end_time) {
         temp *= 0.999;
 
         /*if (last_update.get_ms() > 1'000) {
-            //std::cout << "RESET->";
+            std::cout << "RESET->";
             temp = 1;
             last_update.reset();
             std::shuffle(order.begin(), order.end(), rnd.generator);
@@ -227,21 +241,49 @@ Answer LNSSolver::solve(TimePoint end_time) {
         }*/
     }
     // auto real_metrics = calc_metrics(test_data, real_answer);
-    //std::cout << std::endl;
-    // //std::cout << cnt << ' ' << real_metrics.relative_volume << ' ' << real_metrics.height << std::endl;
-    //std::cout << cnt << ' ' << best_metrics.relative_volume << ' ' << best_metrics.height << std::endl;
-    //std::cout << min_score << std::endl;
+    std::cout << std::endl;
+    // std::cout << cnt << ' ' << real_metrics.relative_volume << ' ' << real_metrics.height << std::endl;
+    std::cout << cnt << ' ' << best_metrics.relative_volume << ' ' << best_metrics.height << std::endl;
+    std::cout << min_score << std::endl;
 
     print_debug = true;
     simulate(test_data, order);
+
+    std::cout << "Time m: " << total_time / 1e9 << "s\n";
 
     return best_answer;
 }
 
 /*
+test 261
 1594->1466->1466->1400->1369->1368->1368->1300->1298->1295->1300->1300->1292->1281->1277->1264->1244->1243->1227->1226->1224->1222->1221->1217->1205->1185->1180->1178->
 107606 0.834896 1178
 1178
 Height: 1178
 Relative volume: 0.834896
+
+1285->1283->1283->1281->1281->1283->1283->1281->1281->1281->1281->1281->1281->1281->1278->1273->1271->1252->1246->1242->1240->
+82928 0.793151 1240
+1240
+Height: 1240
+Relative volume: 0.793151
+*/
+
+/*
+test 217
+7851->7825->7803->7799->7799->7796->7795->7753->7747->
+296 0.759813 7747
+7747
+Height: 7747
+Relative volume: 0.759813
+
+8061->7978->7960->7948->7926->7920->7792->7777->7775->7780->7767->7750->7753->7752->7745->7747->7756->7754->7741->
+715 0.760401 7741
+7741
+Height: 7741
+Relative volume: 0.760401
+ 
+156 0.766341 7681
+7681
+198
 */
