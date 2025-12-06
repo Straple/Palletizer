@@ -112,9 +112,8 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
     auto metrics = calc_metrics(test_data, answer);
     double score = metrics.height;
     if (print_debug) {
-        /*// std::cout << "score: " << metrics.height << std::endl;*/
-        // std::cout << height_handler.size() << std::endl;
-        height_handler.print();
+        // // std::cout << height_handler.size() << std::endl;
+        // height_handler.print();
     }
     return {answer, metrics, score};
 }
@@ -123,12 +122,15 @@ LNSSolver::LNSSolver(TestData test_data) : Solver(test_data) {
 }
 
 Answer LNSSolver::solve(TimePoint end_time) {
+    Randomizer rnd;
+
     std::vector<BoxMeta> order;
     for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
         for (uint32_t q = 0; q < test_data.boxes[i].quantity; q++) {
-            order.push_back({i});
+            order.push_back({i, (uint32_t) -1 /*rnd.get(-1, test_data.header.available_rotations - 1)*/, 0 /*(uint32_t)rnd.get(0, 3)*/});
         }
     }
+    // std::shuffle(order.begin(), order.end(), rnd.generator);
 
     auto [best_answer, best_metrics, best_score] = simulate(test_data, order);
     // std::cout << best_score << "->";
@@ -137,18 +139,12 @@ Answer LNSSolver::solve(TimePoint end_time) {
     // Answer real_answer = best_answer;
     // auto real_score = best_score;
 
-    Randomizer rnd;
-
-    double AVAILABLE_UP = 0;
-
     Timer last_update;
 
     uint32_t cnt = 0;
     double min_score = 1e300;
     double temp = 1;
     while (get_now() < end_time) {
-        AVAILABLE_UP = 10 * temp;
-
         auto old_order = order;
         // do
         {
@@ -192,7 +188,9 @@ Answer LNSSolver::solve(TimePoint end_time) {
         // check
         {
             auto [answer, metrics, score] = simulate(test_data, order);
-            if (score < best_score + AVAILABLE_UP) {
+            // // std::cout << '\n' << score << ' ' << best_score << ' ' << (best_score - score) << ' ' << (best_score - score) / score << ' ' << 100 * ((best_score - score) / score) / temp << ' ' << exp(((best_score - score) / score) / temp) << std::endl;
+            if (score < best_score || rnd.get_d() <//exp(100 * ((best_score - score) / score) / temp)
+                                              exp((best_score - score) / temp)) {
                 if (score + 1e-6 < best_score) {
                     last_update.reset();
                     // std::cout << score << "->";
@@ -213,17 +211,19 @@ Answer LNSSolver::solve(TimePoint end_time) {
         min_score = std::min(min_score, best_score);
         temp *= 0.999;
 
-        /*if (last_update.get_ms() > 1'000) {
-            // std::cout << "RESET->";
-            temp = 1;
+        if (last_update.get_ms() > 1'000) {
             last_update.reset();
-            std::shuffle(order.begin(), order.end(), rnd.generator);
+            temp = 1;//std::min(1.0, temp + 0.03);
+            // // std::cout << "RESET->";
+            // // std::cout.flush();
+
+            /*std::shuffle(order.begin(), order.end(), rnd.generator);
             for (auto &box_meta: order) {
                 box_meta.position = rnd.get(-1, 3);
                 box_meta.rotation = rnd.get(-1, test_data.header.available_rotations - 1);
             }
-            std::tie(best_answer, best_metrics, best_score) = simulate(test_data, order);
-        }*/
+            std::tie(best_answer, best_metrics, best_score) = simulate(test_data, order);*/
+        }
     }
     // auto real_metrics = calc_metrics(test_data, real_answer);
     // std::cout << std::endl;
@@ -231,8 +231,8 @@ Answer LNSSolver::solve(TimePoint end_time) {
     // std::cout << cnt << ' ' << best_metrics.relative_volume << ' ' << best_metrics.height << std::endl;
     // std::cout << min_score << std::endl;
 
-    // print_debug = true;
-    // simulate(test_data, order);
+    print_debug = true;
+    simulate(test_data, order);
 
     // std::cout << "Time m: " << total_time / 1e9 << "s\n";
 
@@ -252,6 +252,14 @@ Relative volume: 0.834896
 1240
 Height: 1240
 Relative volume: 0.793151
+
+
+1357->1305->1282->1258->1258->1259->1258->1242->1240->1237->1236->1233->1225->1204->1204->1198->1196->
+43588 0.822331 1196
+1196
+Height: 1196
+Relative volume: 0.822331
+
 */
 
 /*

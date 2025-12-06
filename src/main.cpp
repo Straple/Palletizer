@@ -1,15 +1,15 @@
+#include <objects/metrics.hpp>
+#include <solvers/greedy/greedy_solver.hpp>
+#include <solvers/lns/genetic_solver.hpp>
+#include <solvers/lns/lns_solver.hpp>
+#include <solvers/solver.hpp>
 #include <utils/assert.hpp>
 #include <utils/tools.hpp>
-#include <objects/metrics.hpp>
-#include <solvers/solver.hpp>
-#include <solvers/greedy/greedy_solver.hpp>
-#include <solvers/lns/lns_solver.hpp>
-#include <solvers/lns/genetic_solver.hpp>
 
-#include <iostream>
-#include <fstream>
-#include <mutex>
 #include <atomic>
+#include <fstream>
+#include <iostream>
+#include <mutex>
 
 template<typename SolverType>
 Metrics launch_one_solver(uint32_t test) {
@@ -83,37 +83,37 @@ void launch_solvers() {
     }
 
     /*
-     Solver:
-     Relative volume: 0.0899587avg 0.0752863min 0.130973max
-     Time: 38.2145ms
+    Solver:
+    Relative volume: 0.0899587avg 0.0752863min 0.130973max
+    Time: 38.2145ms
 
-     GreedySolver:
-     Relative volume: 0.735621avg 0.590052min 0.852097max
-     Time: 308.218ms
+    GreedySolver:
+    Relative volume: 0.735621avg 0.590052min 0.852097max
+    Time: 308.218ms
 
-     LNSSolver(1s):
-     Relative volume: 0.769668avg 0.591363min 0.868387max
-     Time: 14.1526s
+    LNSSolver(1s):
+    Relative volume: 0.771827avg 0.728568min 0.863867max
+    Time: 14.4416s
 
-     LNSSolver(5s):
-     Relative volume: 0.779639avg 0.744882min 0.867815max
-     Time: 70.1712s
+    LNSSolver(5s):
+    Relative volume: 0.782274avg 0.731147min 0.881534max
+    Time: 70.4132s
 
-     LNSSolver(30s):
-     Relative volume: 0.788469avg 0.744882min 0.87502max
-     Time: 420.134s
+    LNSSolver(30s):
+    Relative volume: 0.789305avg 0.753623min 0.886487max
+    Time: 420.339s
 
-     LNSSolver(300s):
-     Relative volume: 0.794535avg 0.747369min 0.875311max
-     Time: 4200.1s
+    LNSSolver(300s):
+    Relative volume: 0.797138avg 0.760271min 0.903935max
+    Time: 4200.24s
 
-     GeneticSolver(1s):
-     Relative volume: 0.698772avg 0.60223min 0.825097max
-     Time: 74.9252s
+    GeneticSolver(1s):
+    Relative volume: 0.698772avg 0.60223min 0.825097max
+    Time: 74.9252s
 
-     Best:
-     Relative volume: 0.771941avg 0.733276min 0.873109max
-     Time: 421.134s
+    Best:
+    Relative volume: 0.797138avg 0.760271min 0.903935max
+    Time: 4200.24s
      */
     std::cout << "Relative volume: " << sum_relative_volume / (visited.size() - 1) << "avg " << min_relative_volume
               << "min " << max_relative_volume << "max\n";
@@ -124,7 +124,7 @@ int main() {
     launch_solvers<LNSSolver>();
     return 0;
 
-    Metrics metrics = launch_one_solver<LNSSolver>(217); // 217
+    Metrics metrics = launch_one_solver<LNSSolver>(261);
     std::cout << "Height: " << metrics.height << std::endl;
     std::cout << "Relative volume: " << metrics.relative_volume << std::endl;
 }
