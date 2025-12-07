@@ -21,7 +21,7 @@ struct Metrics {
     // объем паллеты
     uint64_t pallet_volume = 0;
 
-    // boxes_volume / pallete_volume
+    // boxes_volume / pallet_volume
     double relative_volume = 0;
 };
 
