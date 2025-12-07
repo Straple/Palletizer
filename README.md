@@ -24,8 +24,3 @@
 | 🔵 LNSSolver | 5s | 78.23% | 73.11% | 88.15% |          70s |
 | 🔵 LNSSolver | 30s | 78.93% | 75.36% | 88.65% |           7m |
 | 🟣 LNSSolver | 300s | **79.71%** | **76.03%** | **90.39%** |          70m |
-
-### Legend
-- **Eval Time** — time allocated per single test case
-- **Total Time** — total time to run all test cases
-- **Volume** — packing efficiency (higher = better)
