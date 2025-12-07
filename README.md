@@ -7,6 +7,7 @@
 * Position: позиция коробки для ответа вида SKU, x, y, z, X, Y, Z. Где (x, y, z) - минимальный угол, а (X, Y, Z) - максимальный
 * Answer: массив Position
 * Metrics: метрики решения, хранит boxes (количество коробок), length (длина палеты), width (ширина палеты), height (высота палеты), boxes_volume (объем коробок), pallet_volume (объем палеты), relative_volume (относительный объем)
+
 ### Алгоритмы
 * HeightHandler: хранит информацию о множество непересекающихся прямоугольников с высотами. Позволяет быстро итерироваться по интересным нам точкам, а также получать значение максимальной высоты в прямоугольнике. Это позволяет удобно работать с высотами, искать место под коробку и ставить ее туда
 <img width="2100" height="1500" alt="height_map" src="https://github.com/user-attachments/assets/644d93dd-f9c2-4186-90c0-5bb01c17a51e" />
@@ -19,9 +20,7 @@
 ```
 python3 src/scripts/visualizer.py answers/261.csv --pallet-length 1200 --pallet-width 800 --out boxes.html --color-by sku --initial-count 100000000 --opacity 0.4 --edges single
 ```
-
 <img width="1773" height="1375" alt="boxes" src="https://github.com/user-attachments/assets/3195a5bc-a7ed-45fe-a58f-ed61cd5896e0" />
-
 
 ### 📊 Benchmark Results
 Тесты лежат в папке tests. Тестируется на 32-х ядерном сервере. Каждый тест в отдельном ядре. Также есть ограничение по времени на один тест
@@ -33,3 +32,7 @@ python3 src/scripts/visualizer.py answers/261.csv --pallet-length 1200 --pallet-
 | 🔵 LNSSolver | 5s | 78.23% | 73.11% | 88.15% |          70s |
 | 🔵 LNSSolver | 30s | 78.93% | 75.36% | 88.65% |           7m |
 | 🟣 LNSSolver | 300s | **79.71%** | **76.03%** | **90.39%** |          70m |
+
+### Формат данных:
+* В папке tests лежат тесты вида x.csv, где x это номер теста. Файл со столбцами SKU, Quantity, Length, Width, Height, Weight, Strength, Aisle, Caustic
+* В папке answers лежат ответы на эти тесты вида x.csv аналогично. Файл содержит столбцы SKU, x, y, z, X, Y, Z.
