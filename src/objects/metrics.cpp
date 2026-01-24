@@ -23,7 +23,7 @@ Metrics calc_metrics(TestData test_data, Answer answer) {
         // TODO: validate box coordinates
     }
     metrics.pallet_volume = metrics.length * static_cast<uint64_t>(metrics.width) * metrics.height;
-    metrics.relative_volume = static_cast<double>(metrics.boxes_volume) / metrics.pallet_volume;
+    metrics.percolation = static_cast<double>(metrics.boxes_volume) / metrics.pallet_volume;
 
     // validate collision boxes
     for (uint32_t i = 0; i < answer.positions.size(); i++) {

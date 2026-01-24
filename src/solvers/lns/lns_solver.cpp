@@ -227,8 +227,8 @@ Answer LNSSolver::solve(TimePoint end_time) {
     }
     // auto real_metrics = calc_metrics(test_data, real_answer);
     // std::cout << std::endl;
-    // // std::cout << cnt << ' ' << real_metrics.relative_volume << ' ' << real_metrics.height << std::endl;
-    // std::cout << cnt << ' ' << best_metrics.relative_volume << ' ' << best_metrics.height << std::endl;
+    // // std::cout << cnt << ' ' << real_metrics.percolation << ' ' << real_metrics.height << std::endl;
+    // std::cout << cnt << ' ' << best_metrics.percolation << ' ' << best_metrics.height << std::endl;
     // std::cout << min_score << std::endl;
 
     print_debug = true;
@@ -245,20 +245,20 @@ test 261
 107606 0.834896 1178
 1178
 Height: 1178
-Relative volume: 0.834896
+Percolation: 0.834896
 
 1285->1283->1283->1281->1281->1283->1283->1281->1281->1281->1281->1281->1281->1281->1278->1273->1271->1252->1246->1242->1240->
 82928 0.793151 1240
 1240
 Height: 1240
-Relative volume: 0.793151
+Percolation: 0.793151
 
 
 1357->1305->1282->1258->1258->1259->1258->1242->1240->1237->1236->1233->1225->1204->1204->1198->1196->
 43588 0.822331 1196
 1196
 Height: 1196
-Relative volume: 0.822331
+Percolation: 0.822331
 
 */
 
@@ -268,13 +268,13 @@ test 217
 296 0.759813 7747
 7747
 Height: 7747
-Relative volume: 0.759813
+Percolation: 0.759813
 
 8061->7978->7960->7948->7926->7920->7792->7777->7775->7780->7767->7750->7753->7752->7745->7747->7756->7754->7741->
 715 0.760401 7741
 7741
 Height: 7741
-Relative volume: 0.760401
+Percolation: 0.760401
 
 156 0.766341 7681
 7681

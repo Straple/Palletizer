@@ -21,8 +21,8 @@ struct Metrics {
     // объем паллеты
     uint64_t pallet_volume = 0;
 
-    // boxes_volume / pallet_volume
-    double relative_volume = 0;
+    // относительный объем = boxes_volume / pallet_volume
+    double percolation = 0;
 };
 
 Metrics calc_metrics(TestData test_data, Answer answer);
