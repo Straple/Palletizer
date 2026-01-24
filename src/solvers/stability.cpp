@@ -180,6 +180,14 @@ StabilityMetrics calc_stability(const TestData& test_data, const Answer& answer)
     HeightHandler height_handler;
     height_handler.add_rect(HeightRect{0, 0, test_data.header.length - 1, test_data.header.width - 1, 0});
     
+    constexpr double UNSTABLE_THRESHOLD = 0.7;  // Порог: коробка нестабильна если опора < 70%
+    constexpr uint32_t STEP_X = 10;  // Шаг по X (мм) для ускорения расчёта
+    constexpr uint32_t STEP_Y = 10;  // Шаг по Y (мм) для ускорения расчёта
+    
+    // Для расчёта stability_area_sq
+    double sum_supported_sq = 0;
+    double sum_area_sq = 0;
+    
     for (const auto& pos : answer.positions) {
         uint32_t width = pos.X - pos.x;
         uint32_t length = pos.Y - pos.y;
@@ -187,28 +195,65 @@ StabilityMetrics calc_stability(const TestData& test_data, const Answer& answer)
         
         metrics.total_area += area;
         
-        // Проверяем опору для каждой единичной ячейки площади
-        uint64_t supported = 0;
+        // Проверяем опору для прямоугольных ячеек (вместо единичных точек)
+        uint64_t supported_cells = 0;
+        uint64_t total_cells = 0;
         
-        // Проходим по всей площади основания коробки
-        for (uint32_t x = pos.x; x < pos.X; x++) {
-            for (uint32_t y = pos.y; y < pos.Y; y++) {
-                // Проверяем, опирается ли эта точка на что-то
-                if (height_handler.get(x, y, x + 1, y + 1) == pos.z) {
-                    supported++;
+        // Проходим по площади с шагом STEP_X, STEP_Y
+        for (uint32_t x = pos.x; x < pos.X; x += STEP_X) {
+            for (uint32_t y = pos.y; y < pos.Y; y += STEP_Y) {
+                // Размер текущей ячейки (может быть меньше на границе)
+                uint32_t cell_x_end = std::min(x + STEP_X, pos.X);
+                uint32_t cell_y_end = std::min(y + STEP_Y, pos.Y);
+                uint64_t cell_area = static_cast<uint64_t>(cell_x_end - x) * (cell_y_end - y);
+                
+                total_cells += cell_area;
+                
+                // Проверяем, опирается ли эта ячейка на что-то
+                if (height_handler.get(x, y, cell_x_end, cell_y_end) == pos.z) {
+                    supported_cells += cell_area;
                 }
             }
         }
         
-        metrics.supported_area += supported;
-        metrics.hanging_area += (area - supported);
+        metrics.supported_area += supported_cells;
+        metrics.hanging_area += (area - supported_cells);
+        
+        // Добавляем в квадратичную метрику
+        double area_d = static_cast<double>(area);
+        double supported_d = static_cast<double>(supported_cells);
+        sum_area_sq += area_d * area_d;
+        sum_supported_sq += supported_d * supported_d;
+        
+        // Расчёт метрик для отдельных коробок (только для коробок не на полу)
+        if (pos.z > 0) {
+            metrics.total_boxes_above_floor++;
+            
+            double box_support_ratio = (area > 0) ? static_cast<double>(supported_cells) / area : 0.0;
+            
+            // Обновляем минимальный коэффициент опоры
+            metrics.min_support_ratio = std::min(metrics.min_support_ratio, box_support_ratio);
+            
+            // Считаем нестабильные коробки (опора < 70%)
+            if (box_support_ratio < UNSTABLE_THRESHOLD) {
+                metrics.unstable_boxes_count++;
+            }
+        }
         
         // Добавляем коробку в HeightHandler для следующих итераций
         height_handler.add_rect({pos.x, pos.y, pos.X, pos.Y, pos.Z});
     }
-    if (metrics.total_area) {
+    
+    if (metrics.total_area > 0) {
         metrics.stability_area = metrics.supported_area / metrics.total_area;
     }
+    
+    // Квадратичная метрика: sum(supported²) / sum(area²)
+    if (sum_area_sq > 0) {
+        metrics.stability_area_sq = sum_supported_sq / sum_area_sq;
+    }
+    
+    // Если нет коробок выше пола, min_support_ratio остаётся 1.0
     
     return metrics;
 }

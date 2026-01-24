@@ -90,20 +90,24 @@ void launch_solvers() {
 
     std::ofstream metrics_output("answers/metrics.csv");
     metrics_output << "test,boxes_num,length,width,height,boxes_volume,pallet_volume,percolation,"
-                   << "stability,stability_area,interlocking_ratio,"
-                   << "l_sum_per,l_sum,interlocking,"
+                   << "stability,stability_area,stability_area_sq,min_support_ratio,unstable_boxes_count,total_boxes_above_floor,"
+                   << "interlocking_ratio,l_sum_per,l_sum,interlocking,"
                    << "supported_area,hanging_area,total_area,"
                    << "center_of_mass_x,center_of_mass_y,center_of_mass_z,total_weight,"
                    << "center_of_mass_z_relative" << std::endl;
     for (uint32_t test = 1; test < tests_metrics.size(); test++) {
         auto& fm = tests_metrics[test];
         double com_z_relative = fm.stability.center_of_mass.z / fm.metrics.height;
-         
+        
         metrics_output << test << ',' << fm.metrics.boxes << ',' << fm.metrics.length << ',' << fm.metrics.width
                        << ',' << fm.metrics.height << ',' << fm.metrics.boxes_volume << ',' << fm.metrics.pallet_volume
                        << ',' << fm.metrics.percolation
                        << ',' << fm.stability.stability
                        << ',' << fm.stability.stability_area
+                       << ',' << fm.stability.stability_area_sq
+                       << ',' << fm.stability.min_support_ratio
+                       << ',' << fm.stability.unstable_boxes_count
+                       << ',' << fm.stability.total_boxes_above_floor
                        << ',' << fm.stability.interlocking_ratio
                        << ',' << fm.stability.l_sum_per
                        << ',' << fm.stability.l_sum

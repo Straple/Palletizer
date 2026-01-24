@@ -27,13 +27,19 @@ struct StabilityMetrics {
     double hanging_area = 0;    // Площадь, которая "висит" в воздухе
     double total_area = 0;      // Суммарная площадь оснований всех коробок
     
+    // Метрики для отдельных коробок
+    double min_support_ratio = 1.0;  // Минимальный % опоры среди всех коробок (0-1)
+    uint32_t unstable_boxes_count = 0;  // Количество коробок с опорой < 70%
+    uint32_t total_boxes_above_floor = 0;  // Всего коробок не на полу
+    
     // Центр тяжести
     CenterOfMass center_of_mass;
     
     // Нормализованные метрики (0-1)
     double interlocking_ratio = 0;    // l_sum / l_sum_per (чем меньше, тем лучше)
     double stability = 0;             // 1 - interlocking_ratio
-    double stability_area = 0;        // supported_area / total_area (версия 2)
+    double stability_area = 0;        // supported_area / total_area
+    double stability_area_sq = 0;     // sum(supported²) / sum(area²) — более строгая метрика
 };
 
 // Структура для хранения ребра (для расчёта совпадающих рёбер)
