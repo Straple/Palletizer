@@ -3,6 +3,7 @@
 #include <solvers/lns/genetic_solver.hpp>
 #include <solvers/lns/lns_solver.hpp>
 #include <solvers/solver.hpp>
+#include <solvers/stability.hpp>
 #include <utils/assert.hpp>
 #include <utils/tools.hpp>
 
@@ -11,8 +12,13 @@
 #include <iostream>
 #include <mutex>
 
+struct FullMetrics {
+    Metrics metrics;
+    StabilityMetrics stability;
+};
+
 template<typename SolverType>
-Metrics launch_one_solver(uint32_t test) {
+FullMetrics launch_one_solver(uint32_t test) {
     std::ifstream input("tests/" + std::to_string(test) + ".csv");
     TestData test_data;
     input >> test_data;
@@ -22,8 +28,10 @@ Metrics launch_one_solver(uint32_t test) {
     std::ofstream output("answers/" + std::to_string(test) + ".csv");
     output << answer;
 
-    Metrics metrics = calc_metrics(test_data, answer);
-    return metrics;
+    FullMetrics result;
+    result.metrics = calc_metrics(test_data, answer);
+    result.stability = calc_stability(test_data, answer);
+    return result;
 }
 
 template<typename SolverType>
@@ -32,6 +40,10 @@ void launch_solvers() {
     double sum_relative_volume = 0;
     double max_relative_volume = 0;
     double min_relative_volume = 1;
+    
+    // Метрики устойчивости
+    double sum_stability_score = 0;
+    double sum_interlocking_ratio = 0;
 
     std::vector<int> tests;
     {
@@ -47,7 +59,7 @@ void launch_solvers() {
     std::vector<std::atomic<bool>> visited(tests.size() + 1);
     std::mutex mutex;
 
-    std::vector<Metrics> tests_metrics(tests.size() + 1);
+    std::vector<FullMetrics> tests_metrics(tests.size() + 1);
 
     launch_threads(THREADS_NUM, [&](uint32_t thr) {
         for (uint32_t test = 1; test < visited.size(); test++) {
@@ -57,29 +69,37 @@ void launch_solvers() {
                 continue;
             }
 
-            Metrics metrics = launch_one_solver<SolverType>(test);
+            FullMetrics full_metrics = launch_one_solver<SolverType>(test);
 
-            tests_metrics[test] = metrics;
+            tests_metrics[test] = full_metrics;
 
             {
                 std::unique_lock locker(mutex);
 
-                std::cout << test << ' ' << metrics.relative_volume << std::endl;
+                std::cout << test << ' ' << full_metrics.metrics.relative_volume 
+                          << " stability:" << full_metrics.stability.stability_score << std::endl;
 
-                sum_relative_volume += metrics.relative_volume;
-                max_relative_volume = std::max(max_relative_volume, metrics.relative_volume);
-                min_relative_volume = std::min(min_relative_volume, metrics.relative_volume);
+                sum_relative_volume += full_metrics.metrics.relative_volume;
+                max_relative_volume = std::max(max_relative_volume, full_metrics.metrics.relative_volume);
+                min_relative_volume = std::min(min_relative_volume, full_metrics.metrics.relative_volume);
+                
+                sum_stability_score += full_metrics.stability.stability_score;
+                sum_interlocking_ratio += full_metrics.stability.interlocking_ratio;
             }
         }
     });
 
     std::ofstream metrics_output("answers/metrics.csv");
-    metrics_output << "test,boxes_num,length,width,height,boxes_volume,pallet_volume,relative_volume" << std::endl;
+    metrics_output << "test,boxes_num,length,width,height,boxes_volume,pallet_volume,relative_volume,"
+                   << "stability_score,interlocking_ratio,center_of_mass_z" << std::endl;
     for (uint32_t test = 1; test < tests_metrics.size(); test++) {
-        auto metrics = tests_metrics[test];
-        metrics_output << test << ',' << metrics.boxes << ',' << metrics.length << ',' << metrics.width
-                       << ',' << metrics.height << ',' << metrics.boxes_volume << ',' << metrics.pallet_volume
-                       << ',' << metrics.relative_volume << '\n';
+        auto& fm = tests_metrics[test];
+        metrics_output << test << ',' << fm.metrics.boxes << ',' << fm.metrics.length << ',' << fm.metrics.width
+                       << ',' << fm.metrics.height << ',' << fm.metrics.boxes_volume << ',' << fm.metrics.pallet_volume
+                       << ',' << fm.metrics.relative_volume
+                       << ',' << fm.stability.stability_score
+                       << ',' << fm.stability.interlocking_ratio
+                       << ',' << fm.stability.center_of_mass_z << '\n';
     }
 
     /*
@@ -124,7 +144,10 @@ int main() {
     launch_solvers<LNSSolver>();
     return 0;
 
-    Metrics metrics = launch_one_solver<LNSSolver>(261);
-    std::cout << "Height: " << metrics.height << std::endl;
-    std::cout << "Relative volume: " << metrics.relative_volume << std::endl;
+    FullMetrics fm = launch_one_solver<LNSSolver>(261);
+    std::cout << "Height: " << fm.metrics.height << std::endl;
+    std::cout << "Relative volume: " << fm.metrics.relative_volume << std::endl;
+    std::cout << "Stability score: " << fm.stability.stability_score << std::endl;
+    std::cout << "Interlocking ratio: " << fm.stability.interlocking_ratio << std::endl;
+    std::cout << "Center of mass Z: " << fm.stability.center_of_mass_z << std::endl;
 }
