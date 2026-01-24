@@ -6,23 +6,34 @@
 #include <cstdint>
 #include <vector>
 
+// Центр масс паллеты
+struct CenterOfMass {
+    double x = 0;  // Координата X центра масс (мм)
+    double y = 0;  // Координата Y центра масс (мм)
+    double z = 0;  // Координата Z центра масс (мм) - высота
+    double total_weight = 0;  // Суммарный вес всех коробок
+};
+
 // Метрики устойчивости паллеты
 struct StabilityMetrics {
-    // Перевязка слоёв (Interlocking)
+    // Перевязка слоёв (Interlocking) — версия 1: совпадение рёбер
     // G = K_int × (L_SumPer − L_Sum)
     double l_sum_per = 0;     // Суммарный периметр оснований всех коробок
     double l_sum = 0;         // Суммарная длина совпадающих кусков периметров
     double interlocking = 0;  // Коэффициент перевязки (чем больше, тем лучше)
     
+    // Опора площади — версия 2 (с HeightHandler)
+    double supported_area = 0;  // Площадь, которая опирается на что-то
+    double hanging_area = 0;    // Площадь, которая "висит" в воздухе
+    double total_area = 0;      // Суммарная площадь оснований всех коробок
+    
     // Центр тяжести
-    double center_of_mass_x = 0;
-    double center_of_mass_y = 0;
-    double center_of_mass_z = 0;  // Высота центра масс
-    double total_weight = 0;
+    CenterOfMass center_of_mass;
     
     // Нормализованные метрики (0-1)
-    double interlocking_ratio = 0;  // l_sum / l_sum_per (чем меньше, тем лучше перевязка)
-    double stability_score = 0;     // Общий коэффициент устойчивости
+    double interlocking_ratio = 0;    // l_sum / l_sum_per (чем меньше, тем лучше)
+    double stability = 0;             // 1 - interlocking_ratio
+    double stability_area = 0;        // supported_area / total_area (версия 2)
 };
 
 // Структура для хранения ребра (для расчёта совпадающих рёбер)
@@ -43,6 +54,9 @@ struct Edge {
 
 // Рассчитать метрики устойчивости для заданной укладки
 StabilityMetrics calc_stability(const TestData& test_data, const Answer& answer);
+
+// Рассчитать центр масс паллеты
+CenterOfMass calc_center_of_mass(const TestData& test_data, const Answer& answer);
 
 // Рассчитать длину совпадающих рёбер между двумя коробками
 // (коробки должны быть на разных уровнях по Z)

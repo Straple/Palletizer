@@ -42,7 +42,7 @@ void launch_solvers() {
     double min_percolation = 1;
     
     // Метрики устойчивости
-    double sum_stability_score = 0;
+    double sum_stability = 0;
     double sum_interlocking_ratio = 0;
 
     std::vector<int> tests;
@@ -77,12 +77,12 @@ void launch_solvers() {
                 std::unique_lock locker(mutex);
 
                 std::cout << test << ' ' << full_metrics.metrics.percolation 
-                          << " stability:" << full_metrics.stability.stability_score << std::endl;
+                          << " stability:" << full_metrics.stability.stability << std::endl;
 
                 sum_percolation += full_metrics.metrics.percolation;
                 max_percolation = std::max(max_percolation, full_metrics.metrics.percolation);
                 min_percolation = std::min(min_percolation, full_metrics.metrics.percolation);
-                sum_stability_score += full_metrics.stability.stability_score;
+                sum_stability += full_metrics.stability.stability;
                 sum_interlocking_ratio += full_metrics.stability.interlocking_ratio;
             }
         }
@@ -90,15 +90,32 @@ void launch_solvers() {
 
     std::ofstream metrics_output("answers/metrics.csv");
     metrics_output << "test,boxes_num,length,width,height,boxes_volume,pallet_volume,percolation,"
-                   << "stability_score,interlocking_ratio,center_of_mass_z" << std::endl;
+                   << "stability,stability_area,interlocking_ratio,"
+                   << "l_sum_per,l_sum,interlocking,"
+                   << "supported_area,hanging_area,total_area,"
+                   << "center_of_mass_x,center_of_mass_y,center_of_mass_z,total_weight,"
+                   << "center_of_mass_z_relative" << std::endl;
     for (uint32_t test = 1; test < tests_metrics.size(); test++) {
         auto& fm = tests_metrics[test];
+        double com_z_relative = fm.stability.center_of_mass.z / fm.metrics.height;
+         
         metrics_output << test << ',' << fm.metrics.boxes << ',' << fm.metrics.length << ',' << fm.metrics.width
                        << ',' << fm.metrics.height << ',' << fm.metrics.boxes_volume << ',' << fm.metrics.pallet_volume
                        << ',' << fm.metrics.percolation
-                       << ',' << fm.stability.stability_score
+                       << ',' << fm.stability.stability
+                       << ',' << fm.stability.stability_area
                        << ',' << fm.stability.interlocking_ratio
-                       << ',' << fm.stability.center_of_mass_z << '\n';
+                       << ',' << fm.stability.l_sum_per
+                       << ',' << fm.stability.l_sum
+                       << ',' << fm.stability.interlocking
+                       << ',' << fm.stability.supported_area
+                       << ',' << fm.stability.hanging_area
+                       << ',' << fm.stability.total_area
+                       << ',' << fm.stability.center_of_mass.x
+                       << ',' << fm.stability.center_of_mass.y
+                       << ',' << fm.stability.center_of_mass.z
+                       << ',' << fm.stability.center_of_mass.total_weight
+                       << ',' << com_z_relative << '\n';
     }
 
     /*
@@ -146,7 +163,7 @@ int main() {
     FullMetrics fm = launch_one_solver<LNSSolver>(261);
     std::cout << "Height: " << fm.metrics.height << std::endl;
     std::cout << "Percolation: " << fm.metrics.percolation << std::endl;
-    std::cout << "Stability score: " << fm.stability.stability_score << std::endl;
+    std::cout << "Stability: " << fm.stability.stability << std::endl;
     std::cout << "Interlocking ratio: " << fm.stability.interlocking_ratio << std::endl;
-    std::cout << "Center of mass Z: " << fm.stability.center_of_mass_z << std::endl;
+    std::cout << "Center of mass Z: " << fm.stability.center_of_mass.z << std::endl;
 }

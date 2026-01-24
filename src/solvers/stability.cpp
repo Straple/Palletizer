@@ -1,4 +1,7 @@
 #include <solvers/stability.hpp>
+#include <solvers/height_handler.hpp>
+
+#include <utils/assert.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -78,6 +81,48 @@ uint32_t calc_overlapping_edges(const Position& box1, const Position& box2) {
     return total_overlap;
 }
 
+CenterOfMass calc_center_of_mass(const TestData& test_data, const Answer& answer) {
+    CenterOfMass result;
+    
+    if (answer.positions.empty()) {
+        return result;
+    }
+    
+    // Создаём map SKU -> Box для быстрого поиска веса
+    std::map<uint32_t, const Box*> sku_to_box;
+    for (const auto& box : test_data.boxes) {
+        sku_to_box[box.sku] = &box;
+    }
+    
+    double weighted_x = 0, weighted_y = 0, weighted_z = 0;
+    double total_weight = 0;
+    
+    for (const auto& pos : answer.positions) {
+        auto it = sku_to_box.find(pos.sku);
+        ASSERT(it != sku_to_box.end(), "invalid SKU");
+        double weight = static_cast<double>(it->second->weight);
+        
+        // Центр коробки
+        double center_x = (pos.x + pos.X) / 2.0;
+        double center_y = (pos.y + pos.Y) / 2.0;
+        double center_z = (pos.z + pos.Z) / 2.0;
+        
+        weighted_x += center_x * weight;
+        weighted_y += center_y * weight;
+        weighted_z += center_z * weight;
+        total_weight += weight;
+    }
+    
+    if (total_weight > 0) {
+        result.x = weighted_x / total_weight;
+        result.y = weighted_y / total_weight;
+        result.z = weighted_z / total_weight;
+        result.total_weight = total_weight;
+    }
+    
+    return result;
+}
+
 StabilityMetrics calc_stability(const TestData& test_data, const Answer& answer) {
     StabilityMetrics metrics;
     
@@ -123,40 +168,47 @@ StabilityMetrics calc_stability(const TestData& test_data, const Answer& answer)
         metrics.interlocking = metrics.l_sum_per - metrics.l_sum;
     }
     
-    // 4. Рассчитываем центр тяжести
-    double weighted_x = 0, weighted_y = 0, weighted_z = 0;
-    double total_weight = 0;
-    
-    for (const auto& pos : answer.positions) {
-        // Находим вес коробки по SKU
-        double weight = 1.0;  // По умолчанию вес = 1, если не найден
-        auto it = sku_to_box.find(pos.sku);
-        if (it != sku_to_box.end()) {
-            weight = static_cast<double>(it->second->weight);
-            if (weight <= 0) weight = 1.0;  // Защита от нулевого веса
-        }
-        
-        // Центр коробки
-        double center_x = (pos.x + pos.X) / 2.0;
-        double center_y = (pos.y + pos.Y) / 2.0;
-        double center_z = (pos.z + pos.Z) / 2.0;
-        
-        weighted_x += center_x * weight;
-        weighted_y += center_y * weight;
-        weighted_z += center_z * weight;
-        total_weight += weight;
-    }
-    
-    if (total_weight > 0) {
-        metrics.center_of_mass_x = weighted_x / total_weight;
-        metrics.center_of_mass_y = weighted_y / total_weight;
-        metrics.center_of_mass_z = weighted_z / total_weight;
-        metrics.total_weight = total_weight;
-    }
+    // 4. Рассчитываем центр тяжести (используем отдельную функцию)
+    metrics.center_of_mass = calc_center_of_mass(test_data, answer);
     
     // 5. Рассчитываем общий коэффициент устойчивости
-    // stability_score = (1 - interlocking_ratio) — чем ближе к 1, тем лучше
-    metrics.stability_score = 1.0 - metrics.interlocking_ratio;
+    // stability = (1 - interlocking_ratio) — чем ближе к 1, тем лучше
+    metrics.stability = 1.0 - metrics.interlocking_ratio;
+    
+    // 6. Рассчитываем stability_area с помощью HeightHandler
+    // Для каждой коробки проверяем, какая часть площади основания опирается на что-то
+    HeightHandler height_handler;
+    height_handler.add_rect(HeightRect{0, 0, test_data.header.length - 1, test_data.header.width - 1, 0});
+    
+    for (const auto& pos : answer.positions) {
+        uint32_t width = pos.X - pos.x;
+        uint32_t length = pos.Y - pos.y;
+        uint64_t area = static_cast<uint64_t>(width) * length;
+        
+        metrics.total_area += area;
+        
+        // Проверяем опору для каждой единичной ячейки площади
+        uint64_t supported = 0;
+        
+        // Проходим по всей площади основания коробки
+        for (uint32_t x = pos.x; x < pos.X; x++) {
+            for (uint32_t y = pos.y; y < pos.Y; y++) {
+                // Проверяем, опирается ли эта точка на что-то
+                if (height_handler.get(x, y, x + 1, y + 1) == pos.z) {
+                    supported++;
+                }
+            }
+        }
+        
+        metrics.supported_area += supported;
+        metrics.hanging_area += (area - supported);
+        
+        // Добавляем коробку в HeightHandler для следующих итераций
+        height_handler.add_rect({pos.x, pos.y, pos.X, pos.Y, pos.Z});
+    }
+    if (metrics.total_area) {
+        metrics.stability_area = metrics.supported_area / metrics.total_area;
+    }
     
     return metrics;
 }
