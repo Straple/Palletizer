@@ -1,6 +1,7 @@
 #include <solvers/lns/lns_solver.hpp>
 
 #include <solvers/height_handler.hpp>
+#include <solvers/stability.hpp>
 #include <utils/assert.hpp>
 #include <utils/randomizer.hpp>
 
@@ -110,11 +111,15 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
                 x, y, x + length - 1, y + width - 1, h + height});
     }
     auto metrics = calc_metrics(test_data, answer);
-    double score = metrics.height;
+    // double score = metrics.height;
     if (print_debug) {
         // // std::cout << height_handler.size() << std::endl;
         // height_handler.print();
     }
+
+    auto stability_metrics = calc_stability(test_data, answer);
+    double score = -metrics.percolation - stability_metrics.min_support_ratio;//100 - metrics.percolation - stability_metrics.min_support_ratio * 5 + 10 * stability_metrics.unstable_boxes_count * 1.0 / metrics.boxes;
+
     return {answer, metrics, score};
 }
 
@@ -189,8 +194,9 @@ Answer LNSSolver::solve(TimePoint end_time) {
         {
             auto [answer, metrics, score] = simulate(test_data, order);
             // // std::cout << '\n' << score << ' ' << best_score << ' ' << (best_score - score) << ' ' << (best_score - score) / score << ' ' << 100 * ((best_score - score) / score) / temp << ' ' << exp(((best_score - score) / score) / temp) << std::endl;
-            if (score < best_score || rnd.get_d() <//exp(100 * ((best_score - score) / score) / temp)
-                                              exp((best_score - score) / temp)) {
+            if (score < best_score//|| rnd.get_d() <//exp(100 * ((best_score - score) / score) / temp)
+                                  // exp((best_score - score) / temp)
+            ) {
                 if (score + 1e-6 < best_score) {
                     last_update.reset();
                     // std::cout << score << "->";
@@ -211,25 +217,19 @@ Answer LNSSolver::solve(TimePoint end_time) {
         min_score = std::min(min_score, best_score);
         temp *= 0.999;
 
-        if (last_update.get_ms() > 1'000) {
+        /*if (last_update.get_ms() > 1'000) {
             last_update.reset();
             temp = 1;//std::min(1.0, temp + 0.03);
             // // std::cout << "RESET->";
             // // std::cout.flush();
-
-            /*std::shuffle(order.begin(), order.end(), rnd.generator);
-            for (auto &box_meta: order) {
-                box_meta.position = rnd.get(-1, 3);
-                box_meta.rotation = rnd.get(-1, test_data.header.available_rotations - 1);
-            }
-            std::tie(best_answer, best_metrics, best_score) = simulate(test_data, order);*/
-        }
+        }*/
     }
     // auto real_metrics = calc_metrics(test_data, real_answer);
     // std::cout << std::endl;
     // // std::cout << cnt << ' ' << real_metrics.percolation << ' ' << real_metrics.height << std::endl;
     // std::cout << cnt << ' ' << best_metrics.percolation << ' ' << best_metrics.height << std::endl;
     // std::cout << min_score << std::endl;
+    // std::cout << "cnt: " << cnt << std::endl;
 
     print_debug = true;
     simulate(test_data, order);

@@ -23,7 +23,7 @@ FullMetrics launch_one_solver(uint32_t test) {
     TestData test_data;
     input >> test_data;
 
-    Answer answer = SolverType(test_data).solve(get_now() + Milliseconds(300'000));
+    Answer answer = SolverType(test_data).solve(get_now() + Milliseconds(5'000));
 
     std::ofstream output("answers/" + std::to_string(test) + ".csv");
     output << answer;
@@ -164,10 +164,11 @@ int main() {
     launch_solvers<LNSSolver>();
     return 0;
 
-    FullMetrics fm = launch_one_solver<LNSSolver>(261);
+    FullMetrics fm = launch_one_solver<LNSSolver>(228);
     std::cout << "Height: " << fm.metrics.height << std::endl;
     std::cout << "Percolation: " << fm.metrics.percolation << std::endl;
     std::cout << "Stability: " << fm.stability.stability << std::endl;
     std::cout << "Interlocking ratio: " << fm.stability.interlocking_ratio << std::endl;
     std::cout << "Center of mass Z: " << fm.stability.center_of_mass.z << std::endl;
+    std::cout << "min_support_ratio: " << fm.stability.min_support_ratio << std::endl;
 }
