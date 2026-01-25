@@ -31,6 +31,33 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
             return height_handler.get(x, y, X, Y) + box_height;
         };
 
+        // Функция проверки опоры коробки (возвращает долю площади с опорой)
+        auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
+            uint32_t h = height_handler.get(x, y, x + length - 1, y + width - 1);
+            if (h == 0) {
+                return 1.0;  // На полу - полная опора
+            }
+            
+            constexpr uint32_t STEP = 10;  // Шаг для ускорения
+            uint64_t supported = 0;
+            uint64_t total = 0;
+            
+            for (uint32_t cx = x; cx < x + length; cx += STEP) {
+                for (uint32_t cy = y; cy < y + width; cy += STEP) {
+                    uint32_t cell_x_end = std::min(cx + STEP, x + length);
+                    uint32_t cell_y_end = std::min(cy + STEP, y + width);
+                    uint64_t cell_area = static_cast<uint64_t>(cell_x_end - cx) * (cell_y_end - cy);
+                    
+                    total += cell_area;
+                    if (height_handler.get(cx, cy, cell_x_end - 1, cell_y_end - 1) == h) {
+                        supported += cell_area;
+                    }
+                }
+            }
+            
+            return total > 0 ? static_cast<double>(supported) / total : 0.0;
+        };
+
         auto get_position_dist = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width, uint32_t height) {
             auto get_position_dist = [&](uint64_t x, uint64_t y) -> uint64_t {
                 if (box_meta.position == 0) {
@@ -66,6 +93,14 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
 
             // 20/30s
             for (auto [x, y]: dots) {
+                // Проверяем опору если включена проверка устойчивости
+                if (test_data.header.use_stability) {
+                    double support = calc_support_ratio(x, y, box.length, box.width);
+                    if (support < test_data.header.min_support_threshold) {
+                        continue;  // Пропускаем позицию с недостаточной опорой
+                    }
+                }
+                
                 // Timer timer;
                 uint32_t score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
                 // total_time += timer.get_ns();
