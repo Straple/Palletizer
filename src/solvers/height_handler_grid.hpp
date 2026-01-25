@@ -135,30 +135,37 @@ uint64_t HeightHandlerGridT<CELL_SIZE_X, CELL_SIZE_Y>::get_area_at_max_height(ui
     // Ограничиваем индексы
     cx2 = std::min(cx2, grid_width - 1);
     cy2 = std::min(cy2, grid_height - 1);
-    
-    // Сначала находим максимальную высоту
-    uint32_t max_h = get(x, y, X, Y);
-    
-    // Считаем площадь на этой высоте
+
+    uint32_t max_h = 0;
     uint64_t area = 0;
+    
     for (uint32_t cy = cy1; cy <= cy2; ++cy) {
         for (uint32_t cx = cx1; cx <= cx2; ++cx) {
-            if (cell_at(cx, cy) == max_h) {
-                // Вычисляем реальную площадь ячейки с учётом границ запроса
-                uint32_t cell_x1 = cx * CELL_SIZE_X;
-                uint32_t cell_y1 = cy * CELL_SIZE_Y;
-                uint32_t cell_x2 = cell_x1 + CELL_SIZE_X - 1;
-                uint32_t cell_y2 = cell_y1 + CELL_SIZE_Y - 1;
-                
-                // Пересечение с запросом
-                uint32_t ix1 = std::max(x, cell_x1);
-                uint32_t iy1 = std::max(y, cell_y1);
-                uint32_t ix2 = std::min(X, cell_x2);
-                uint32_t iy2 = std::min(Y, cell_y2);
-                
-                if (ix1 <= ix2 && iy1 <= iy2) {
-                    area += static_cast<uint64_t>(ix2 - ix1 + 1) * (iy2 - iy1 + 1);
-                }
+            uint32_t h = cell_at(cx, cy);
+            
+            // Вычисляем площадь пересечения ячейки с запросом
+            uint32_t cell_x1 = cx * CELL_SIZE_X;
+            uint32_t cell_y1 = cy * CELL_SIZE_Y;
+            uint32_t cell_x2 = cell_x1 + CELL_SIZE_X - 1;
+            uint32_t cell_y2 = cell_y1 + CELL_SIZE_Y - 1;
+            
+            uint32_t ix1 = std::max(x, cell_x1);
+            uint32_t iy1 = std::max(y, cell_y1);
+            uint32_t ix2 = std::min(X, cell_x2);
+            uint32_t iy2 = std::min(Y, cell_y2);
+            
+            uint64_t cell_area = 0;
+            if (ix1 <= ix2 && iy1 <= iy2) {
+                cell_area = static_cast<uint64_t>(ix2 - ix1 + 1) * (iy2 - iy1 + 1);
+            }
+            
+            if (h > max_h) {
+                // Новый максимум — сбрасываем площадь
+                max_h = h;
+                area = cell_area;
+            } else if (h == max_h) {
+                // Та же высота — добавляем площадь
+                area += cell_area;
             }
         }
     }
