@@ -210,7 +210,8 @@ StabilityMetrics calc_stability(const TestData& test_data, const Answer& answer)
                 total_cells += cell_area;
                 
                 // Проверяем, опирается ли эта ячейка на что-то
-                if (height_handler.get(x, y, cell_x_end, cell_y_end) == pos.z) {
+                // HeightHandler использует включительные координаты, поэтому -1
+                if (height_handler.get(x, y, cell_x_end - 1, cell_y_end - 1) == pos.z) {
                     supported_cells += cell_area;
                 }
             }
@@ -241,7 +242,8 @@ StabilityMetrics calc_stability(const TestData& test_data, const Answer& answer)
         }
         
         // Добавляем коробку в HeightHandler для следующих итераций
-        height_handler.add_rect({pos.x, pos.y, pos.X, pos.Y, pos.Z});
+        // HeightHandler использует включительные координаты, поэтому -1
+        height_handler.add_rect({pos.x, pos.y, pos.X - 1, pos.Y - 1, pos.Z});
     }
     
     if (metrics.total_area > 0) {
