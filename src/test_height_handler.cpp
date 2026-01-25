@@ -1,26 +1,21 @@
-// Тесты и бенчмарки для HeightHandler реализаций
-// Компиляция: cmake && make test_height_handler
-// Запуск: ./bin/test_height_handler
-
 #include <solvers/height_handler_rects.hpp>
+#include <solvers/height_handler_rects_window.hpp>
 #include <solvers/height_handler_grid.hpp>
 #include <solvers/height_handler_segtree.hpp>
-#include <solvers/height_handler_segtree_lazy.hpp>
 #include <solvers/height_handler_quadtree.hpp>
 #include <objects/test_data.hpp>
 #include <utils/tools.hpp>
 #include <utils/randomizer.hpp>
 #include <utils/time.hpp>
+#include <settings.hpp>
 
 #include <iostream>
 #include <fstream>
-#include <vector>
 #include <algorithm>
 #include <iomanip>
-#include <memory>
-#include <functional>
-#include <cassert>
-
+#include <atomic>
+#include <mutex>
+#include <thread>
 // ======================= ЮНИТ ТЕСТЫ =======================
 
 // Тест одной реализации с известными значениями
@@ -142,9 +137,9 @@ void run_unit_tests_all() {
     bool all_passed = true;
     
     all_passed &= run_unit_tests<HeightHandlerRects>("HeightHandlerRects");
+    all_passed &= run_unit_tests<HeightHandlerRectsWindow>("HeightHandlerRectsWindow");
     all_passed &= run_unit_tests<HeightHandlerGridT<1, 1>>("HeightHandlerGrid<1,1>");
     all_passed &= run_unit_tests<HeightHandlerSegTreeT<1, 1>>("HeightHandlerSegTree<1,1>");
-    all_passed &= run_unit_tests<HeightHandlerSegTreeLazyT<1, 1>>("HeightHandlerSegTreeLazy<1,1>");
     all_passed &= run_unit_tests<HeightHandlerQuadtreeT<1>>("HeightHandlerQuadtree<1>");
     
     std::cout << "\n";
@@ -182,21 +177,16 @@ bool test_correctness(const std::string& name1, const std::string& name2,
                       uint32_t length, uint32_t width, 
                       const std::vector<RectOperation>& ops) {
     
-    // Создаём Handler1 — требует конструктор (length, width)
-    std::unique_ptr<HeightHandler> h1, h2;
-    
-    // Все реализации теперь имеют одинаковый конструктор (length, width)
-    h1 = std::make_unique<Handler1>(length, width);
-    h2 = std::make_unique<Handler2>(length, width);
+    Handler1 h1(length, width);
+    Handler2 h2(length, width);
     
     bool passed = true;
     
     for (size_t i = 0; i < ops.size(); ++i) {
         const auto& op = ops[i];
         
-        // Проверяем get перед добавлением
-        uint32_t val1 = h1->get(op.x, op.y, op.X, op.Y);
-        uint32_t val2 = h2->get(op.x, op.y, op.X, op.Y);
+        uint32_t val1 = h1.get(op.x, op.y, op.X, op.Y);
+        uint32_t val2 = h2.get(op.x, op.y, op.X, op.Y);
         
         if (val1 != val2) {
             std::cerr << "FAIL: get() mismatch at op " << i << ": "
@@ -205,9 +195,8 @@ bool test_correctness(const std::string& name1, const std::string& name2,
             passed = false;
         }
         
-        // Проверяем get_area_at_max_height
-        uint64_t area1 = h1->get_area_at_max_height(op.x, op.y, op.X, op.Y);
-        uint64_t area2 = h2->get_area_at_max_height(op.x, op.y, op.X, op.Y);
+        uint64_t area1 = h1.get_area_at_max_height(op.x, op.y, op.X, op.Y);
+        uint64_t area2 = h2.get_area_at_max_height(op.x, op.y, op.X, op.Y);
         
         if (area1 != area2) {
             std::cerr << "FAIL: get_area_at_max_height() mismatch at op " << i << ": "
@@ -215,9 +204,8 @@ bool test_correctness(const std::string& name1, const std::string& name2,
             passed = false;
         }
         
-        // Добавляем прямоугольник
-        h1->add_rect(op.x, op.y, op.X, op.Y, op.h);
-        h2->add_rect(op.x, op.y, op.X, op.Y, op.h);
+        h1.add_rect(op.x, op.y, op.X, op.Y, op.h);
+        h2.add_rect(op.x, op.y, op.X, op.Y, op.h);
     }
     
     return passed;
@@ -244,18 +232,18 @@ void run_correctness_tests() {
         all_passed = false;
     }
     
-    std::cout << "Testing HeightHandlerSegTree<1,1> vs HeightHandlerRects... ";
-    if (test_correctness<HeightHandlerSegTreeT<1, 1>, HeightHandlerRects>(
-            "SegTree<1,1>", "Rects", length, width, ops)) {
+    std::cout << "Testing HeightHandlerRectsWindow vs HeightHandlerRects... ";
+    if (test_correctness<HeightHandlerRectsWindow, HeightHandlerRects>(
+            "RectsWindow", "Rects", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
         all_passed = false;
     }
     
-    std::cout << "Testing HeightHandlerSegTreeLazy<1,1> vs HeightHandlerRects... ";
-    if (test_correctness<HeightHandlerSegTreeLazyT<1, 1>, HeightHandlerRects>(
-            "SegTreeLazy<1,1>", "Rects", length, width, ops)) {
+    std::cout << "Testing HeightHandlerSegTree<1,1> vs HeightHandlerRects... ";
+    if (test_correctness<HeightHandlerSegTreeT<1, 1>, HeightHandlerRects>(
+            "SegTree<1,1>", "Rects", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
@@ -360,11 +348,9 @@ std::vector<BenchmarkStep> precompute_benchmark_steps(
 }
 
 // Честный бенчмарк — использует одинаковые точки для всех реализаций
-template<typename HandlerFactory>
 BenchmarkResult benchmark_handler(const std::string& name,
-                                   const TestData& test_data, 
-                                   const std::vector<BenchmarkStep>& steps,
-                                   HandlerFactory factory) {
+                                   HeightHandler& handler, 
+                                   const std::vector<BenchmarkStep>& steps) {
     BenchmarkResult result;
     result.name = name;
     
@@ -373,20 +359,18 @@ BenchmarkResult benchmark_handler(const std::string& name,
     
     uint64_t add_rect_ns = 0, get_ns = 0, get_area_ns = 0;
     
-    auto height_handler = factory(test_data.header.length, test_data.header.width);
-    
     for (const auto& step : steps) {
         // Проходим по всем предвычисленным точкам
         for (auto [x, y] : step.dots) {
             // get
             op_timer.reset();
-            [[maybe_unused]] uint32_t h = height_handler->get(
+            [[maybe_unused]] uint32_t h = handler.get(
                 x, y, x + step.box.length - 1, y + step.box.width - 1);
             get_ns += op_timer.get_ns();
             
             // get_area_at_max_height
             op_timer.reset();
-            [[maybe_unused]] uint64_t area = height_handler->get_area_at_max_height(
+            [[maybe_unused]] uint64_t area = handler.get_area_at_max_height(
                 x, y, x + step.box.length - 1, y + step.box.width - 1);
             get_area_ns += op_timer.get_ns();
             
@@ -395,7 +379,7 @@ BenchmarkResult benchmark_handler(const std::string& name,
         
         // add_rect с предвычисленной позицией
         op_timer.reset();
-        height_handler->add_rect(step.best_x, step.best_y,
+        handler.add_rect(step.best_x, step.best_y,
             step.best_x + step.box.length - 1, step.best_y + step.box.width - 1,
             step.final_height);
         add_rect_ns += op_timer.get_ns();
@@ -405,7 +389,7 @@ BenchmarkResult benchmark_handler(const std::string& name,
     result.add_rect_time_ms = add_rect_ns / 1'000'000.0;
     result.get_time_ms = get_ns / 1'000'000.0;
     result.get_area_time_ms = get_area_ns / 1'000'000.0;
-    result.get_dots_time_ms = 0;  // Не измеряем get_dots в честном бенчмарке
+    result.get_dots_time_ms = 0;
     result.total_time_ms = total_timer.get_ms();
     
     return result;
@@ -462,75 +446,182 @@ void print_speedup_table(const std::vector<BenchmarkResult>& results) {
     }
 }
 
+// ======================= МНОГОПОТОЧНЫЙ БЕНЧМАРК НА ВСЕХ ТЕСТАХ =======================
+
+struct AggregatedResult {
+    std::string name;
+    double total_ms = 0;
+    double add_rect_ms = 0;
+    double get_ms = 0;
+    double get_area_ms = 0;
+    uint64_t operations = 0;
+};
+
 void run_benchmarks() {
-    std::cout << "=== BENCHMARKS ===\n\n";
+    std::cout << "=== BENCHMARKS (Multithreaded, All Tests) ===\n\n";
     
-    Randomizer rnd;
+    Timer total_timer;
     
-    // Тесты для бенчмарка
-    std::vector<int> test_nums = {1, 10, 100, 200};
+    // Собираем все тесты
+    std::vector<int> tests;
+    for (int test = 1; ; test++) {
+        std::ifstream input("tests/" + std::to_string(test) + ".csv");
+        if (!input) break;
+        tests.push_back(test);
+    }
     
-    for (int test_num : test_nums) {
-        TestData test_data = load_test(test_num);
-        if (test_data.boxes.empty()) {
-            std::cout << "Test " << test_num << ": not found\n\n";
-            continue;
-        }
-        
-        // Создаём порядок коробок
-        std::vector<uint32_t> box_order;
-        for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
-            for (uint32_t q = 0; q < test_data.boxes[i].quantity; q++) {
-                box_order.push_back(i);
+    uint32_t num_threads = std::thread::hardware_concurrency();
+    if (num_threads == 0) num_threads = 4;
+    
+    std::cout << "Found " << tests.size() << " tests, using " << num_threads << " threads\n\n";
+    
+    // Результаты для каждого теста и каждого алгоритма
+    std::vector<std::vector<BenchmarkResult>> all_results(tests.size());
+    std::vector<std::atomic<bool>> visited(tests.size());
+    std::mutex print_mutex;
+    std::atomic<int> completed{0};
+    
+    // Многопоточный запуск
+    launch_threads(num_threads, [&](uint32_t thr) {
+        for (size_t i = 0; i < tests.size(); i++) {
+            bool expected = false;
+            if (!visited[i].compare_exchange_strong(expected, true)) {
+                continue;
+            }
+            
+            int test_num = tests[i];
+            TestData test_data = load_test(test_num);
+            
+            if (test_data.boxes.empty()) continue;
+            
+            // Создаём порядок коробок
+            std::vector<uint32_t> box_order;
+            for (uint32_t j = 0; j < test_data.boxes.size(); j++) {
+                for (uint32_t q = 0; q < test_data.boxes[j].quantity; q++) {
+                    box_order.push_back(j);
+                }
+            }
+            
+            // Предвычисляем шаги
+            auto steps = precompute_benchmark_steps(test_data, box_order);
+            
+            std::vector<BenchmarkResult> results;
+            uint32_t len = test_data.header.length;
+            uint32_t wid = test_data.header.width;
+            
+            // Все алгоритмы
+            {
+                HeightHandlerRects h(len, wid);
+                results.push_back(benchmark_handler("Rects", h, steps));
+            }
+            {
+                HeightHandlerRectsWindow h(len, wid);
+                results.push_back(benchmark_handler("RectsWindow", h, steps));
+            }
+            {
+                HeightHandlerGrid h(len, wid);
+                results.push_back(benchmark_handler("Grid", h, steps));
+            }
+            {
+                HeightHandlerSegTree h(len, wid);
+                results.push_back(benchmark_handler("SegTree", h, steps));
+            }
+            {
+                HeightHandlerQuadtree h(len, wid);
+                results.push_back(benchmark_handler("Quadtree", h, steps));
+            }
+            
+            all_results[i] = results;
+            
+            int done = ++completed;
+            
+            {
+                std::lock_guard lock(print_mutex);
+                std::cout << "Test " << std::setw(3) << test_num 
+                          << " (" << std::setw(3) << box_order.size() << " boxes, " 
+                          << std::setw(5) << results[0].operations << " ops): ";
+                for (const auto& r : results) {
+                    std::cout << r.name << "=" << std::fixed << std::setprecision(1) 
+                              << r.total_time_ms << "ms ";
+                }
+                std::cout << "[" << done << "/" << tests.size() << "]\n";
             }
         }
-        
-        // Перемешиваем
-        std::shuffle(box_order.begin(), box_order.end(), rnd.generator);
-        
-        // Предвычисляем шаги для честного сравнения
-        auto steps = precompute_benchmark_steps(test_data, box_order);
-        
-        std::cout << "Test " << test_num << " (" << box_order.size() << " boxes, " << steps.size() << " placed):\n";
-        std::cout << std::string(60, '=') << "\n";
-        
-        std::vector<BenchmarkResult> results;
-        
-        // HeightHandlerRects
-        results.push_back(benchmark_handler("HeightHandlerRects", test_data, steps,
-            [](uint32_t length, uint32_t width) {
-                return std::make_unique<HeightHandlerRects>(length, width);
-            }));
-        
-        // HeightHandlerGrid
-        results.push_back(benchmark_handler("HeightHandlerGrid", test_data, steps,
-            [](uint32_t length, uint32_t width) {
-                return std::make_unique<HeightHandlerGrid>(length, width);
-            }));
-        
-        // HeightHandlerSegTree
-        results.push_back(benchmark_handler("HeightHandlerSegTree", test_data, steps,
-            [](uint32_t length, uint32_t width) {
-                return std::make_unique<HeightHandlerSegTree>(length, width);
-            }));
-        
-        // HeightHandlerSegTreeLazy
-        results.push_back(benchmark_handler("HeightHandlerSegTreeLazy", test_data, steps,
-            [](uint32_t length, uint32_t width) {
-                return std::make_unique<HeightHandlerSegTreeLazy>(length, width);
-            }));
-        
-        // HeightHandlerQuadtree
-        results.push_back(benchmark_handler("HeightHandlerQuadtree", test_data, steps,
-            [](uint32_t length, uint32_t width) {
-                return std::make_unique<HeightHandlerQuadtree>(length, width);
-            }));
-        
-        print_results_table(results);
-        print_speedup_table(results);
-        
-        std::cout << "\n\n";
+    });
+    
+    // Агрегируем результаты
+    std::vector<AggregatedResult> aggregated(5);  // 5 алгоритмов
+    aggregated[0].name = "Rects";
+    aggregated[1].name = "RectsWindow";
+    aggregated[2].name = "Grid";
+    aggregated[3].name = "SegTree";
+    aggregated[4].name = "Quadtree";
+    
+    for (const auto& test_results : all_results) {
+        for (size_t j = 0; j < test_results.size() && j < aggregated.size(); ++j) {
+            aggregated[j].total_ms += test_results[j].total_time_ms;
+            aggregated[j].add_rect_ms += test_results[j].add_rect_time_ms;
+            aggregated[j].get_ms += test_results[j].get_time_ms;
+            aggregated[j].get_area_ms += test_results[j].get_area_time_ms;
+            aggregated[j].operations += test_results[j].operations;
+        }
     }
+    
+    // Выводим SUMMARY
+    std::cout << "\n";
+    std::cout << "=============================================================================\n";
+    std::cout << "                              SUMMARY\n";
+    std::cout << "=============================================================================\n";
+    std::cout << "Tests: " << tests.size() << ", Wall time: " << std::fixed << std::setprecision(1) 
+              << total_timer.get_ms() << "ms, Threads: " << num_threads << "\n\n";
+    
+    // Таблица результатов
+    std::cout << std::left << std::setw(15) << "Algorithm"
+              << std::right << std::setw(12) << "Total(ms)"
+              << std::setw(12) << "add_rect"
+              << std::setw(12) << "get"
+              << std::setw(12) << "get_area"
+              << std::setw(12) << "Ops"
+              << std::setw(10) << "Speedup"
+              << "\n";
+    std::cout << std::string(85, '-') << "\n";
+    
+    double baseline_total = aggregated[0].total_ms;
+    
+    for (const auto& r : aggregated) {
+        double speedup = baseline_total / std::max(r.total_ms, 0.001);
+        std::cout << std::fixed << std::setprecision(1);
+        std::cout << std::left << std::setw(15) << r.name
+                  << std::right << std::setw(12) << r.total_ms
+                  << std::setw(12) << r.add_rect_ms
+                  << std::setw(12) << r.get_ms
+                  << std::setw(12) << r.get_area_ms
+                  << std::setw(12) << r.operations
+                  << std::setw(8) << std::setprecision(2) << speedup << "x"
+                  << "\n";
+    }
+    
+    // Детальные speedup по операциям
+    std::cout << "\nSpeedup vs Rects (by operation):\n";
+    std::cout << std::string(60, '-') << "\n";
+    std::cout << std::left << std::setw(15) << "Algorithm"
+              << std::right << std::setw(12) << "add_rect"
+              << std::setw(12) << "get"
+              << std::setw(12) << "get_area"
+              << "\n";
+    std::cout << std::string(60, '-') << "\n";
+    
+    for (const auto& r : aggregated) {
+        std::cout << std::fixed << std::setprecision(2);
+        std::cout << std::left << std::setw(15) << r.name
+                  << std::right 
+                  << std::setw(10) << (aggregated[0].add_rect_ms / std::max(r.add_rect_ms, 0.001)) << "x"
+                  << std::setw(10) << (aggregated[0].get_ms / std::max(r.get_ms, 0.001)) << "x"
+                  << std::setw(10) << (aggregated[0].get_area_ms / std::max(r.get_area_ms, 0.001)) << "x"
+                  << "\n";
+    }
+    
+    std::cout << "\n";
 }
 
 int main() {
@@ -545,7 +636,7 @@ int main() {
     
     std::cout << "\n";
     
-    // Бенчмарки
+    // Многопоточный бенчмарк на всех тестах
     run_benchmarks();
     
     return 0;
