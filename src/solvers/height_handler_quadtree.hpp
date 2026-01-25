@@ -123,23 +123,32 @@ void HeightHandlerQuadtreeT<MIN_SIZE>::update_node(Node* node, uint32_t x1, uint
         return;
     }
     
-    // Обновляем максимум в любом случае
-    node->max_height = std::max(node->max_height, h);
-    
-    // Если лист и маленький, не разбиваем
-    if (node->is_leaf() && (node->width() <= MIN_SIZE || node->height() <= MIN_SIZE)) {
-        return;
+    // Узел полностью внутри области обновления
+    if (qt_contains(node->x, node->y, node->X, node->Y, x1, y1, x2, y2)) {
+        node->max_height = std::max(node->max_height, h);
+        return;  // Не нужно спускаться глубже
     }
     
-    // Если лист и достаточно большой, разбиваем
+    // Частичное пересечение - нужно разбить и спуститься к детям
     if (node->is_leaf()) {
+        // Если слишком маленький, просто обновляем
+        if (node->width() <= MIN_SIZE || node->height() <= MIN_SIZE) {
+            node->max_height = std::max(node->max_height, h);
+            return;
+        }
         subdivide(node);
     }
     
     // Рекурсивно обновляем детей
-    if (!node->is_leaf()) {
-        for (int i = 0; i < 4; ++i) {
-            update_node(node->children[i].get(), x1, y1, x2, y2, h);
+    for (int i = 0; i < 4; ++i) {
+        update_node(node->children[i].get(), x1, y1, x2, y2, h);
+    }
+    
+    // Пересчитываем max_height родителя
+    node->max_height = 0;
+    for (int i = 0; i < 4; ++i) {
+        if (node->children[i]) {
+            node->max_height = std::max(node->max_height, node->children[i]->max_height);
         }
     }
 }

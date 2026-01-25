@@ -312,9 +312,9 @@ BenchmarkResult benchmark_handler(const std::string& name,
     result.name = name;
     
     Timer total_timer;
-    Timer add_rect_timer, get_timer, get_area_timer, get_dots_timer;
+    Timer op_timer;
     
-    double add_rect_time = 0, get_time = 0, get_area_time = 0, get_dots_time = 0;
+    uint64_t add_rect_ns = 0, get_ns = 0, get_area_ns = 0, get_dots_ns = 0;
     
     auto height_handler = factory(test_data.header.length, test_data.header.width);
     
@@ -324,24 +324,24 @@ BenchmarkResult benchmark_handler(const std::string& name,
         
         for (const auto& rotated_box : available_boxes) {
             // get_dots
-            get_dots_timer.reset();
+            op_timer.reset();
             auto dots = height_handler->get_dots(test_data.header, rotated_box);
-            get_dots_time += get_dots_timer.get_ms();
+            get_dots_ns += op_timer.get_ns();
             
             uint32_t best_score = -1;
             uint32_t best_x = 0, best_y = 0;
             
             for (auto [x, y] : dots) {
                 // get
-                get_timer.reset();
+                op_timer.reset();
                 uint32_t h = height_handler->get(x, y, x + rotated_box.length - 1, y + rotated_box.width - 1);
-                get_time += get_timer.get_ms();
+                get_ns += op_timer.get_ns();
                 
                 // get_area_at_max_height
-                get_area_timer.reset();
+                op_timer.reset();
                 [[maybe_unused]] uint64_t area = height_handler->get_area_at_max_height(
                     x, y, x + rotated_box.length - 1, y + rotated_box.width - 1);
-                get_area_time += get_area_timer.get_ms();
+                get_area_ns += op_timer.get_ns();
                 
                 uint32_t score = h + rotated_box.height;
                 if (score < best_score) {
@@ -357,20 +357,21 @@ BenchmarkResult benchmark_handler(const std::string& name,
                     best_x + rotated_box.length - 1, best_y + rotated_box.width - 1);
                 
                 // add_rect
-                add_rect_timer.reset();
+                op_timer.reset();
                 height_handler->add_rect(best_x, best_y, 
                     best_x + rotated_box.length - 1, best_y + rotated_box.width - 1, h + rotated_box.height);
-                add_rect_time += add_rect_timer.get_ms();
+                add_rect_ns += op_timer.get_ns();
                 
                 break;
             }
         }
     }
     
-    result.add_rect_time_ms = add_rect_time;
-    result.get_time_ms = get_time;
-    result.get_area_time_ms = get_area_time;
-    result.get_dots_time_ms = get_dots_time;
+    // Конвертируем наносекунды в миллисекунды
+    result.add_rect_time_ms = add_rect_ns / 1'000'000.0;
+    result.get_time_ms = get_ns / 1'000'000.0;
+    result.get_area_time_ms = get_area_ns / 1'000'000.0;
+    result.get_dots_time_ms = get_dots_ns / 1'000'000.0;
     result.total_time_ms = total_timer.get_ms();
     
     return result;
