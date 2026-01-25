@@ -99,27 +99,27 @@ void run_correctness_tests() {
     // Сравниваем все реализации с эталонной (HeightHandlerRects)
     bool all_passed = true;
     
-    std::cout << "Testing HeightHandlerGrid vs HeightHandlerRects... ";
-    if (test_correctness<HeightHandlerGrid, HeightHandlerRects>(
-            "Grid", "Rects", length, width, ops)) {
+    std::cout << "Testing HeightHandlerGrid<1,1> vs HeightHandlerRects... ";
+    if (test_correctness<HeightHandlerGridT<1, 1>, HeightHandlerRects>(
+            "Grid<1,1>", "Rects", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
         all_passed = false;
     }
     
-    std::cout << "Testing HeightHandlerSegTree vs HeightHandlerRects... ";
-    if (test_correctness<HeightHandlerSegTree, HeightHandlerRects>(
-            "SegTree", "Rects", length, width, ops)) {
+    std::cout << "Testing HeightHandlerSegTree<1,1> vs HeightHandlerRects... ";
+    if (test_correctness<HeightHandlerSegTreeT<1, 1>, HeightHandlerRects>(
+            "SegTree<1,1>", "Rects", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
         all_passed = false;
     }
     
-    std::cout << "Testing HeightHandlerQuadtree vs HeightHandlerRects... ";
-    if (test_correctness<HeightHandlerQuadtree, HeightHandlerRects>(
-            "Quadtree", "Rects", length, width, ops)) {
+    std::cout << "Testing HeightHandlerQuadtree<1> vs HeightHandlerRects... ";
+    if (test_correctness<HeightHandlerQuadtreeT<1>, HeightHandlerRects>(
+            "Quadtree<1>", "Rects", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
