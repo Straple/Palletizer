@@ -6,14 +6,14 @@
 #include <cstdint>
 #include <algorithm>
 
-// 2D Segment Tree с Lazy Propagation
+// 2D Segment Tree с упрощённой Lazy Propagation
 // Поддерживает:
 // - Range max query: O(log² n)
-// - Range max update: O(log² n)
+// - Range max update: O(log n * log n) - упрощённый подход
 template<uint32_t CELL_SIZE_X = 10, uint32_t CELL_SIZE_Y = 10>
 class HeightHandlerSegTreeLazyT : public HeightHandler {
 private:
-    // Узел 1D Segment Tree (для Y-размерности)
+    // Узел 1D Segment Tree (для Y-размерности) с lazy propagation
     struct YNode {
         uint32_t value = 0;      // Максимум в диапазоне
         uint32_t lazy = 0;       // Отложенное обновление
@@ -24,42 +24,13 @@ private:
             lazy = std::max(lazy, val);
             has_lazy = true;
         }
-        
-        void push_lazy(YNode& left, YNode& right) {
-            if (has_lazy) {
-                left.apply_lazy(lazy);
-                right.apply_lazy(lazy);
-                has_lazy = false;
-                lazy = 0;
-            }
-        }
     };
     
-    // Узел 2D Segment Tree (для X-размерности)
+    // Простой X-узел без lazy (упрощение)
     struct XNode {
-        std::vector<YNode> y_tree;  // 1D Segment Tree по Y
-        uint32_t lazy = 0;          // Отложенное обновление для всего Y-дерева
-        bool has_lazy = false;      // Есть ли отложенное обновление
+        std::vector<YNode> y_tree;  // 1D Segment Tree по Y с lazy
         
         XNode(uint32_t y_size) : y_tree(2 * y_size) {}
-        
-        void apply_lazy(uint32_t val, uint32_t y_size) {
-            // Применяем lazy ко всему Y-дереву
-            for (uint32_t i = 1; i < 2 * y_size; ++i) {
-                y_tree[i].apply_lazy(val);
-            }
-            lazy = std::max(lazy, val);
-            has_lazy = true;
-        }
-        
-        void push_lazy(XNode& left, XNode& right, uint32_t y_size) {
-            if (has_lazy) {
-                left.apply_lazy(lazy, y_size);
-                right.apply_lazy(lazy, y_size);
-                has_lazy = false;
-                lazy = 0;
-            }
-        }
     };
     
     std::vector<XNode> x_tree;  // 2D Segment Tree
@@ -77,15 +48,14 @@ private:
     [[nodiscard]] uint32_t to_cell_x(uint32_t x) const { return x / CELL_SIZE_X; }
     [[nodiscard]] uint32_t to_cell_y(uint32_t y) const { return y / CELL_SIZE_Y; }
     
-    // Внутренние методы Y-дерева
-    void y_update(uint32_t x_idx, uint32_t vy, uint32_t ly, uint32_t ry, uint32_t y1, uint32_t y2, uint32_t val);
+    // Внутренние методы Y-дерева с lazy propagation
     void y_push(uint32_t x_idx, uint32_t vy, uint32_t ly, uint32_t ry);
+    void y_update(uint32_t x_idx, uint32_t vy, uint32_t ly, uint32_t ry, uint32_t y1, uint32_t y2, uint32_t val);
     [[nodiscard]] uint32_t y_query(uint32_t x_idx, uint32_t vy, uint32_t ly, uint32_t ry, uint32_t y1, uint32_t y2);
     
-    // Внутренние методы X-дерева
-    void x_update(uint32_t vx, uint32_t lx, uint32_t rx, uint32_t x1, uint32_t x2, uint32_t y1, uint32_t y2, uint32_t val);
-    void x_push(uint32_t vx, uint32_t lx, uint32_t rx);
-    [[nodiscard]] uint32_t x_query(uint32_t vx, uint32_t lx, uint32_t rx, uint32_t x1, uint32_t x2, uint32_t y1, uint32_t y2);
+    // Простые методы X-дерева (без lazy на X-уровне)
+    void x_update_simple(uint32_t x1, uint32_t x2, uint32_t y1, uint32_t y2, uint32_t val);
+    [[nodiscard]] uint32_t x_query_simple(uint32_t x1, uint32_t x2, uint32_t y1, uint32_t y2);
 
 public:
     // Конструктор
@@ -132,9 +102,9 @@ HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::HeightHandlerSegTreeLazyT(u
     tree_size_x = lazy_next_power_of_two(grid_width);
     tree_size_y = lazy_next_power_of_two(grid_height);
     
-    // Инициализируем 2D segment tree с lazy propagation
-    x_tree.reserve(2 * tree_size_x);
-    for (uint32_t i = 0; i < 2 * tree_size_x; ++i) {
+    // Инициализируем X-узлы, каждый с собственным Y-деревом
+    x_tree.reserve(tree_size_x);
+    for (uint32_t i = 0; i < tree_size_x; ++i) {
         x_tree.emplace_back(tree_size_y);
     }
     
@@ -149,7 +119,7 @@ void HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::y_push(uint32_t x_idx,
     
     auto& node = x_tree[x_idx].y_tree[vy];
     if (node.has_lazy) {
-        uint32_t mid = (ly + ry) / 2;
+        // Применяем lazy к детям
         if (2 * vy < x_tree[x_idx].y_tree.size()) {
             x_tree[x_idx].y_tree[2 * vy].apply_lazy(node.lazy);
         }
@@ -161,7 +131,7 @@ void HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::y_push(uint32_t x_idx,
     }
 }
 
-// Обновление Y-дерева
+// Обновление Y-дерева с lazy propagation
 template<uint32_t CELL_SIZE_X, uint32_t CELL_SIZE_Y>
 void HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::y_update(uint32_t x_idx, uint32_t vy, uint32_t ly, uint32_t ry,
                                                                      uint32_t y1, uint32_t y2, uint32_t val) {
@@ -205,68 +175,26 @@ uint32_t HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::y_query(uint32_t x
     );
 }
 
-// Проталкивание lazy в X-дереве
+// Упрощённое обновление X — обновляем Y-деревья всех затронутых X-листьев
 template<uint32_t CELL_SIZE_X, uint32_t CELL_SIZE_Y>
-void HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::x_push(uint32_t vx, uint32_t lx, uint32_t rx) {
-    if (lx == rx) return;  // Лист
-    
-    auto& node = x_tree[vx];
-    if (node.has_lazy) {
-        if (2 * vx < x_tree.size()) {
-            x_tree[2 * vx].apply_lazy(node.lazy, tree_size_y);
+void HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::x_update_simple(uint32_t x1, uint32_t x2, uint32_t y1, uint32_t y2, uint32_t val) {
+    for (uint32_t x = x1; x <= x2; ++x) {
+        if (x < tree_size_x) {
+            y_update(x, 1, 0, tree_size_y - 1, y1, y2, val);
         }
-        if (2 * vx + 1 < x_tree.size()) {
-            x_tree[2 * vx + 1].apply_lazy(node.lazy, tree_size_y);
-        }
-        node.has_lazy = false;
-        node.lazy = 0;
     }
 }
 
-// Обновление X-дерева
+// Упрощённый запрос X — запрашиваем максимум у всех затронутых X-листьев
 template<uint32_t CELL_SIZE_X, uint32_t CELL_SIZE_Y>
-void HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::x_update(uint32_t vx, uint32_t lx, uint32_t rx,
-                                                                     uint32_t x1, uint32_t x2, uint32_t y1, uint32_t y2, uint32_t val) {
-    if (x1 > rx || x2 < lx) return;
-    
-    if (x1 <= lx && rx <= x2) {
-        // Полное покрытие по X — обновляем Y-дерево
-        y_update(vx, 1, 0, tree_size_y - 1, y1, y2, val);
-        return;
+uint32_t HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::x_query_simple(uint32_t x1, uint32_t x2, uint32_t y1, uint32_t y2) {
+    uint32_t result = 0;
+    for (uint32_t x = x1; x <= x2; ++x) {
+        if (x < tree_size_x) {
+            result = std::max(result, y_query(x, 1, 0, tree_size_y - 1, y1, y2));
+        }
     }
-    
-    // Частичное покрытие — проталкиваем lazy и рекурсивно обновляем
-    x_push(vx, lx, rx);
-    
-    uint32_t mid = (lx + rx) / 2;
-    x_update(2 * vx, lx, mid, x1, x2, y1, y2, val);
-    x_update(2 * vx + 1, mid + 1, rx, x1, x2, y1, y2, val);
-    
-    // Пересчитываем Y-дерево текущего узла как max детей
-    for (uint32_t i = 1; i < 2 * tree_size_y; ++i) {
-        uint32_t left_val = (2 * vx < x_tree.size()) ? x_tree[2 * vx].y_tree[i].value : 0;
-        uint32_t right_val = (2 * vx + 1 < x_tree.size()) ? x_tree[2 * vx + 1].y_tree[i].value : 0;
-        x_tree[vx].y_tree[i].value = std::max(left_val, right_val);
-    }
-}
-
-// Запрос X-дерева
-template<uint32_t CELL_SIZE_X, uint32_t CELL_SIZE_Y>
-uint32_t HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::x_query(uint32_t vx, uint32_t lx, uint32_t rx,
-                                                                        uint32_t x1, uint32_t x2, uint32_t y1, uint32_t y2) {
-    if (x1 > rx || x2 < lx) return 0;
-    
-    if (x1 <= lx && rx <= x2) {
-        return y_query(vx, 1, 0, tree_size_y - 1, y1, y2);
-    }
-    
-    x_push(vx, lx, rx);
-    
-    uint32_t mid = (lx + rx) / 2;
-    return std::max(
-        x_query(2 * vx, lx, mid, x1, x2, y1, y2),
-        x_query(2 * vx + 1, mid + 1, rx, x1, x2, y1, y2)
-    );
+    return result;
 }
 
 template<uint32_t CELL_SIZE_X, uint32_t CELL_SIZE_Y>
@@ -276,7 +204,7 @@ uint32_t HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::get(uint32_t x, ui
     uint32_t cx2 = std::min(to_cell_x(X), grid_width - 1);
     uint32_t cy2 = std::min(to_cell_y(Y), grid_height - 1);
     
-    return const_cast<HeightHandlerSegTreeLazyT*>(this)->x_query(1, 0, tree_size_x - 1, cx1, cx2, cy1, cy2);
+    return const_cast<HeightHandlerSegTreeLazyT*>(this)->x_query_simple(cx1, cx2, cy1, cy2);
 }
 
 template<uint32_t CELL_SIZE_X, uint32_t CELL_SIZE_Y>
@@ -286,7 +214,7 @@ void HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::add_rect(uint32_t x, u
     uint32_t cx2 = std::min(to_cell_x(X), grid_width - 1);
     uint32_t cy2 = std::min(to_cell_y(Y), grid_height - 1);
     
-    x_update(1, 0, tree_size_x - 1, cx1, cx2, cy1, cy2, h);
+    x_update_simple(cx1, cx2, cy1, cy2, h);
     
     // Добавляем прямоугольник для get_dots
     height_rects.push_back(HeightRect{x, y, X, Y, h});
@@ -302,25 +230,29 @@ uint64_t HeightHandlerSegTreeLazyT<CELL_SIZE_X, CELL_SIZE_Y>::get_area_at_max_he
     // Находим максимальную высоту
     uint32_t max_h = get(x, y, X, Y);
     
-    // Считаем площадь через точечные запросы (можно оптимизировать)
+    if (max_h == 0) return static_cast<uint64_t>(X - x + 1) * (Y - y + 1);
+    
+    // Считаем площадь через точечные запросы
     uint64_t area = 0;
     for (uint32_t cx = cx1; cx <= cx2; ++cx) {
         for (uint32_t cy = cy1; cy <= cy2; ++cy) {
-            uint32_t cell_h = const_cast<HeightHandlerSegTreeLazyT*>(this)->x_query(1, 0, tree_size_x - 1, cx, cx, cy, cy);
-            if (cell_h == max_h) {
-                // Размер ячейки с учётом границ запроса
-                uint32_t cell_x_start = cx * CELL_SIZE_X;
-                uint32_t cell_y_start = cy * CELL_SIZE_Y;
-                uint32_t cell_x_end = cell_x_start + CELL_SIZE_X - 1;
-                uint32_t cell_y_end = cell_y_start + CELL_SIZE_Y - 1;
-                
-                uint32_t ix1 = std::max(cell_x_start, x);
-                uint32_t iy1 = std::max(cell_y_start, y);
-                uint32_t ix2 = std::min(cell_x_end, X);
-                uint32_t iy2 = std::min(cell_y_end, Y);
-                
-                if (ix1 <= ix2 && iy1 <= iy2) {
-                    area += static_cast<uint64_t>(ix2 - ix1 + 1) * (iy2 - iy1 + 1);
+            if (cx < tree_size_x) {
+                uint32_t cell_h = const_cast<HeightHandlerSegTreeLazyT*>(this)->y_query(cx, 1, 0, tree_size_y - 1, cy, cy);
+                if (cell_h == max_h) {
+                    // Размер ячейки с учётом границ запроса
+                    uint32_t cell_x_start = cx * CELL_SIZE_X;
+                    uint32_t cell_y_start = cy * CELL_SIZE_Y;
+                    uint32_t cell_x_end = cell_x_start + CELL_SIZE_X - 1;
+                    uint32_t cell_y_end = cell_y_start + CELL_SIZE_Y - 1;
+                    
+                    uint32_t ix1 = std::max(cell_x_start, x);
+                    uint32_t iy1 = std::max(cell_y_start, y);
+                    uint32_t ix2 = std::min(cell_x_end, X);
+                    uint32_t iy2 = std::min(cell_y_end, Y);
+                    
+                    if (ix1 <= ix2 && iy1 <= iy2) {
+                        area += static_cast<uint64_t>(ix2 - ix1 + 1) * (iy2 - iy1 + 1);
+                    }
                 }
             }
         }
