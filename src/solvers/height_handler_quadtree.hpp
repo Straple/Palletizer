@@ -134,15 +134,25 @@ void HeightHandlerQuadtreeT<MIN_SIZE>::update_node(Node* node, uint32_t x1, uint
     
     // Узел полностью внутри области обновления
     if (qt_contains(node->x, node->y, node->X, node->Y, x1, y1, x2, y2)) {
-        node->max_height = std::max(node->max_height, h);
-        if (node->is_uniform && node->is_leaf()) {
-            // Можем не разбивать — всё одинаково
+        uint32_t new_height = std::max(node->max_height, h);
+        
+        // Если высота не изменилась и узел uniform, ничего не делаем
+        if (new_height == node->max_height && node->is_uniform) {
             return;
         }
-        // Если не лист, обновляем детей
+        
+        node->max_height = new_height;
+        
+        // При полном покрытии узел становится uniform
+        node->is_uniform = true;
+        
+        // Если есть дети, обновляем их тоже для согласованности
         if (!node->is_leaf()) {
             for (int i = 0; i < 4; ++i) {
-                update_node(node->children[i].get(), x1, y1, x2, y2, h);
+                if (node->children[i]) {
+                    node->children[i]->max_height = new_height;
+                    node->children[i]->is_uniform = true;
+                }
             }
         }
         return;
@@ -165,13 +175,29 @@ void HeightHandlerQuadtreeT<MIN_SIZE>::update_node(Node* node, uint32_t x1, uint
         update_node(node->children[i].get(), x1, y1, x2, y2, h);
     }
     
-    // Пересчитываем max_height узла
+    // Пересчитываем max_height и is_uniform узла
     node->max_height = 0;
+    bool all_same_height = true;
+    uint32_t first_child_height = 0;
+    bool found_first = false;
+    
     for (int i = 0; i < 4; ++i) {
         if (node->children[i]) {
             node->max_height = std::max(node->max_height, node->children[i]->max_height);
+            
+            // Проверяем uniform: все дети должны иметь одинаковую высоту и быть uniform
+            if (!found_first) {
+                first_child_height = node->children[i]->max_height;
+                found_first = true;
+            }
+            
+            if (node->children[i]->max_height != first_child_height || !node->children[i]->is_uniform) {
+                all_same_height = false;
+            }
         }
     }
+    
+    node->is_uniform = all_same_height;
 }
 
 template<uint32_t MIN_SIZE>
