@@ -37,3 +37,6 @@ file(GLOB SOURCES
 
 add_executable(main src/main.cpp ${SOURCES})
 target_link_libraries(main Threads::Threads)
+
+add_executable(test_height_handler src/test_height_handler.cpp ${SOURCES})
+target_link_libraries(test_height_handler Threads::Threads)

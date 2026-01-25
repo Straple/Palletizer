@@ -1,6 +1,6 @@
 #include <solvers/lns/genetic_solver.hpp>
 
-#include <solvers/height_handler.hpp>
+#include <solvers/height_handler_rects.hpp>
 #include <solvers/tools.hpp>
 #include <utils/randomizer.hpp>
 
@@ -18,8 +18,14 @@ Answer GeneticSolver::solve(TimePoint end_time) {
     struct State {
         double score = 0;
         std::vector<uint32_t> order;
-        HeightHandler height_handler;
+        HeightHandlerRects height_handler;
         Answer answer;
+        
+        State(uint32_t length, uint32_t width) : height_handler(length, width) {}
+        State(const State& other) = default;
+        State(State&& other) = default;
+        State& operator=(const State& other) = default;
+        State& operator=(State&& other) = default;
     };
 
     std::vector<uint32_t> order;
@@ -31,9 +37,10 @@ Answer GeneticSolver::solve(TimePoint end_time) {
 
     std::vector<State> states;
     {
-        HeightHandler height_handler;
-        height_handler.add_rect(HeightRect{0, 0, test_data.header.length - 1, test_data.header.width - 1, 0});
-        states.push_back({0, order, height_handler});
+        State initial(test_data.header.length, test_data.header.width);
+        initial.score = 0;
+        initial.order = order;
+        states.push_back(std::move(initial));
     }
 
     while (true) {

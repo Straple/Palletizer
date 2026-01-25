@@ -1,4 +1,4 @@
-#include <solvers/height_handler.hpp>
+#include <solvers/height_handler_rects.hpp>
 
 #include <utils/assert.hpp>
 
@@ -7,7 +7,11 @@
 #include <map>
 #include <numeric>
 
-uint32_t HeightHandler::get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
+HeightHandlerRects::HeightHandlerRects(uint32_t length, uint32_t width) {
+    height_rects.push_back(HeightRect{0, 0, length - 1, width - 1, 0});
+}
+
+uint32_t HeightHandlerRects::get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
     for (auto rect: height_rects) {
         if (rect.x <= X && x <= rect.X && rect.y <= Y && y <= rect.Y) {
             return rect.h;
@@ -16,7 +20,7 @@ uint32_t HeightHandler::get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) cons
     return -1;
 }
 
-uint64_t HeightHandler::get_area_at_max_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
+uint64_t HeightHandlerRects::get_area_at_max_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
     uint64_t area = 0;
     uint32_t max_height = 0;
     bool found_max = false;
@@ -48,19 +52,8 @@ uint64_t HeightHandler::get_area_at_max_height(uint32_t x, uint32_t y, uint32_t 
     return area;
 }
 
-/*void HeightHandler::add_rect(HeightRect rect) {
-    height_rects.push_back(rect);
-
-    // TODO: сортировка здесь излишне
-    std::sort(height_rects.begin(), height_rects.end(), [&](const HeightRect &lhs, const HeightRect &rhs) {
-        return lhs.h > rhs.h;
-    });
-
-    // TODO: имеет смысл разделить прямоугольники и убрать лишние, чтобы все прямоугольники не пересекались
-}*/
-
 std::vector<std::pair<uint32_t, uint32_t>>
-HeightHandler::get_dots(const TestDataHeader &header, const BoxSize &box) const {
+HeightHandlerRects::get_dots(const TestDataHeader &header, const BoxSize &box) const {
     std::vector<std::pair<uint32_t, uint32_t>> result;
     for (auto rect: height_rects) {
         std::vector<std::pair<uint32_t, uint32_t>> dots = {
@@ -185,16 +178,9 @@ HeightHandler::get_dots(const TestDataHeader &header, const BoxSize &box) const 
     return result;
 }
 
-void HeightHandler::add_rect(HeightRect new_rect) {
-    if (false) {
-        height_rects.push_back(new_rect);
-        std::sort(height_rects.begin(), height_rects.end(),
-                  [](const HeightRect &a, const HeightRect &b) {
-                      return a.h > b.h;
-                  });
-        return;
-    }
-
+void HeightHandlerRects::add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) {
+    HeightRect new_rect{x, y, X, Y, h};
+    
     if (!new_rect.is_valid()) {
         return;
     }
@@ -262,8 +248,8 @@ void HeightHandler::add_rect(HeightRect new_rect) {
     }
 }
 
-void HeightHandler::print() {
-    std::cout << "HeightHandler\n";
+void HeightHandlerRects::print() {
+    std::cout << "HeightHandlerRects\n";
     for (const auto &rect: height_rects) {
         std::cout << rect.h << ' ' << rect.x << ' ' << rect.y << ' ' << rect.X << ' ' << rect.Y << '\n';
     }

@@ -1,6 +1,6 @@
 #include <solvers/lns/lns_solver.hpp>
 
-#include <solvers/height_handler.hpp>
+#include <solvers/height_handler_rects.hpp>
 #include <solvers/stability.hpp>
 #include <utils/assert.hpp>
 #include <utils/randomizer.hpp>
@@ -13,8 +13,7 @@ double total_time = 0;
 
 std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const std::vector<BoxMeta> &order) {
     Answer answer;
-    HeightHandler height_handler;
-    height_handler.add_rect(HeightRect{0, 0, test_data.header.length - 1, test_data.header.width - 1, 0});
+    HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
 
     for (auto box_meta: order) {
         auto box = test_data.boxes[box_meta.box_id];

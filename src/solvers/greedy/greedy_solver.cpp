@@ -1,6 +1,6 @@
 #include <solvers/greedy/greedy_solver.hpp>
 
-#include <solvers/height_handler.hpp>
+#include <solvers/height_handler_rects.hpp>
 #include <utils/assert.hpp>
 
 #include <tuple>
@@ -12,8 +12,7 @@ GreedySolver::GreedySolver(TestData test_data) : Solver(test_data) {
 Answer GreedySolver::solve(TimePoint end_time) {
     Answer answer;
 
-    HeightHandler height_handler;
-    height_handler.add_rect(HeightRect{0, 0, test_data.header.length - 1, test_data.header.width - 1, 0});
+    HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
 
     std::vector<std::pair<uint32_t, uint32_t>> order;
     for (uint32_t i = 0; i < test_data.boxes.size(); i++) {

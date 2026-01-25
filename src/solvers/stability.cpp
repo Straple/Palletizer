@@ -1,5 +1,5 @@
 #include <solvers/stability.hpp>
-#include <solvers/height_handler.hpp>
+#include <solvers/height_handler_rects.hpp>
 
 #include <utils/assert.hpp>
 
@@ -177,8 +177,7 @@ StabilityMetrics calc_stability(const TestData& test_data, const Answer& answer)
     
     // 6. Рассчитываем stability_area с помощью HeightHandler
     // Для каждой коробки проверяем, какая часть площади основания опирается на что-то
-    HeightHandler height_handler;
-    height_handler.add_rect(HeightRect{0, 0, test_data.header.length - 1, test_data.header.width - 1, 0});
+    HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
     
     constexpr double UNSTABLE_THRESHOLD = 0.7;  // Порог: коробка нестабильна если опора < 70%
     constexpr uint32_t STEP_X = 10;  // Шаг по X (мм) для ускорения расчёта
