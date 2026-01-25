@@ -195,27 +195,7 @@ StabilityMetrics calc_stability(const TestData& test_data, const Answer& answer)
         
         metrics.total_area += area;
         
-        // Проверяем опору для прямоугольных ячеек (вместо единичных точек)
-        uint64_t supported_cells = 0;
-        uint64_t total_cells = 0;
-        
-        // Проходим по площади с шагом STEP_X, STEP_Y
-        for (uint32_t x = pos.x; x < pos.X; x += STEP_X) {
-            for (uint32_t y = pos.y; y < pos.Y; y += STEP_Y) {
-                // Размер текущей ячейки (может быть меньше на границе)
-                uint32_t cell_x_end = std::min(x + STEP_X, pos.X);
-                uint32_t cell_y_end = std::min(y + STEP_Y, pos.Y);
-                uint64_t cell_area = static_cast<uint64_t>(cell_x_end - x) * (cell_y_end - y);
-                
-                total_cells += cell_area;
-                
-                // Проверяем, опирается ли эта ячейка на что-то
-                // HeightHandler использует включительные координаты, поэтому -1
-                if (height_handler.get(x, y, cell_x_end - 1, cell_y_end - 1) == pos.z) {
-                    supported_cells += cell_area;
-                }
-            }
-        }
+        uint64_t supported_cells = height_handler.get_area_at_max_height(pos.x, pos.y, pos.X - 1, pos.Y - 1);
         
         metrics.supported_area += supported_cells;
         metrics.hanging_area += (area - supported_cells);

@@ -25,6 +25,8 @@ class HeightHandler {
 
 public:
     [[nodiscard]] uint32_t get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const;
+    
+    [[nodiscard]] uint64_t get_area_at_max_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const;
 
     void add_rect(HeightRect rect);
 

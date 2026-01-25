@@ -38,22 +38,8 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
                 return 1.0;  // На полу - полная опора
             }
             
-            constexpr uint32_t STEP = 10;  // Шаг для ускорения
-            uint64_t supported = 0;
-            uint64_t total = 0;
-            
-            for (uint32_t cx = x; cx < x + length; cx += STEP) {
-                for (uint32_t cy = y; cy < y + width; cy += STEP) {
-                    uint32_t cell_x_end = std::min(cx + STEP, x + length);
-                    uint32_t cell_y_end = std::min(cy + STEP, y + width);
-                    uint64_t cell_area = static_cast<uint64_t>(cell_x_end - cx) * (cell_y_end - cy);
-                    
-                    total += cell_area;
-                    if (height_handler.get(cx, cy, cell_x_end - 1, cell_y_end - 1) == h) {
-                        supported += cell_area;
-                    }
-                }
-            }
+            uint64_t supported = height_handler.get_area_at_max_height(x, y, x + length - 1, y + width - 1);
+            uint64_t total = static_cast<uint64_t>(length) * width;
             
             return total > 0 ? static_cast<double>(supported) / total : 0.0;
         };

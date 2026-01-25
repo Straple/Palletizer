@@ -16,6 +16,38 @@ uint32_t HeightHandler::get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) cons
     return -1;
 }
 
+uint64_t HeightHandler::get_area_at_max_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
+    uint64_t area = 0;
+    uint32_t max_height = 0;
+    bool found_max = false;
+    
+    for (const auto& rect : height_rects) {
+        // Проверяем пересечение
+        if (rect.x <= X && x <= rect.X && rect.y <= Y && y <= rect.Y) {
+            if (!found_max) {
+                // Первый пересекающийся — это максимальная высота
+                max_height = rect.h;
+                found_max = true;
+            }
+            
+            if (rect.h == max_height) {
+                // Вычисляем пересечение и добавляем площадь
+                uint32_t ix = std::max(x, rect.x);
+                uint32_t iX = std::min(X, rect.X);
+                uint32_t iy = std::max(y, rect.y);
+                uint32_t iY = std::min(Y, rect.Y);
+                
+                area += static_cast<uint64_t>(iX - ix + 1) * (iY - iy + 1);
+            } else {
+                // Высота стала меньше максимальной - выходим
+                break;
+            }
+        }
+    }
+    
+    return area;
+}
+
 /*void HeightHandler::add_rect(HeightRect rect) {
     height_rects.push_back(rect);
 
