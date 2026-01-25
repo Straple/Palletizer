@@ -5,6 +5,7 @@
 #include <solvers/height_handler_rects.hpp>
 #include <solvers/height_handler_grid.hpp>
 #include <solvers/height_handler_segtree.hpp>
+#include <solvers/height_handler_segtree_lazy.hpp>
 #include <solvers/height_handler_quadtree.hpp>
 #include <objects/test_data.hpp>
 #include <utils/tools.hpp>
@@ -20,7 +21,142 @@
 #include <functional>
 #include <cassert>
 
-// ======================= ТЕСТЫ КОРРЕКТНОСТИ =======================
+// ======================= ЮНИТ ТЕСТЫ =======================
+
+// Тест одной реализации с известными значениями
+template<typename Handler>
+bool run_unit_tests(const std::string& name) {
+    bool passed = true;
+    
+    std::cout << "  " << name << ": ";
+    
+    // Тест 1: пустой handler
+    {
+        Handler h(100, 100);
+        if (h.get(0, 0, 99, 99) != 0) {
+            std::cerr << "\n    FAIL: empty handler should return 0\n";
+            passed = false;
+        }
+        if (h.get_area_at_max_height(0, 0, 99, 99) != 100*100) {
+            std::cerr << "\n    FAIL: empty handler area should be full\n";
+            passed = false;
+        }
+    }
+    
+    // Тест 2: один прямоугольник
+    {
+        Handler h(100, 100);
+        h.add_rect(10, 10, 29, 29, 50);  // 20x20 с высотой 50
+        
+        // Внутри прямоугольника
+        if (h.get(10, 10, 29, 29) != 50) {
+            std::cerr << "\n    FAIL: get inside rect should be 50, got " << h.get(10, 10, 29, 29) << "\n";
+            passed = false;
+        }
+        
+        // Снаружи прямоугольника
+        if (h.get(0, 0, 9, 9) != 0) {
+            std::cerr << "\n    FAIL: get outside rect should be 0\n";
+            passed = false;
+        }
+        
+        // Пересечение
+        if (h.get(0, 0, 15, 15) != 50) {
+            std::cerr << "\n    FAIL: get intersecting should be 50\n";
+            passed = false;
+        }
+    }
+    
+    // Тест 3: два непересекающихся прямоугольника
+    {
+        Handler h(100, 100);
+        h.add_rect(0, 0, 9, 9, 30);    // Первый: 10x10 с высотой 30
+        h.add_rect(50, 50, 59, 59, 70); // Второй: 10x10 с высотой 70
+        
+        if (h.get(0, 0, 9, 9) != 30) {
+            std::cerr << "\n    FAIL: first rect should be 30\n";
+            passed = false;
+        }
+        
+        if (h.get(50, 50, 59, 59) != 70) {
+            std::cerr << "\n    FAIL: second rect should be 70\n";
+            passed = false;
+        }
+        
+        // Запрос охватывающий оба
+        if (h.get(0, 0, 59, 59) != 70) {
+            std::cerr << "\n    FAIL: query covering both should be max=70\n";
+            passed = false;
+        }
+    }
+    
+    // Тест 4: перекрывающиеся прямоугольники (max операция)
+    {
+        Handler h(100, 100);
+        h.add_rect(0, 0, 49, 49, 100);  // Первый
+        h.add_rect(25, 25, 74, 74, 80); // Второй перекрывается
+        
+        // В области только первого
+        if (h.get(0, 0, 24, 24) != 100) {
+            std::cerr << "\n    FAIL: first only area should be 100\n";
+            passed = false;
+        }
+        
+        // В области перекрытия — max(100, 80) = 100
+        if (h.get(25, 25, 49, 49) != 100) {
+            std::cerr << "\n    FAIL: overlap area should be max=100\n";
+            passed = false;
+        }
+        
+        // В области только второго
+        if (h.get(50, 50, 74, 74) != 80) {
+            std::cerr << "\n    FAIL: second only area should be 80\n";
+            passed = false;
+        }
+    }
+    
+    // Тест 5: get_area_at_max_height
+    {
+        Handler h(100, 100);
+        h.add_rect(0, 0, 49, 49, 100);   // 50x50 с высотой 100
+        h.add_rect(50, 0, 99, 49, 50);   // 50x50 с высотой 50
+        
+        // В запросе [0,0]-[99,49] максимум 100, площадь на этой высоте = 50*50 = 2500
+        uint64_t area = h.get_area_at_max_height(0, 0, 99, 49);
+        if (area != 2500) {
+            std::cerr << "\n    FAIL: area at max height should be 2500, got " << area << "\n";
+            passed = false;
+        }
+    }
+    
+    if (passed) {
+        std::cout << "PASSED\n";
+    }
+    
+    return passed;
+}
+
+void run_unit_tests_all() {
+    std::cout << "=== UNIT TESTS ===\n\n";
+    
+    bool all_passed = true;
+    
+    all_passed &= run_unit_tests<HeightHandlerRects>("HeightHandlerRects");
+    all_passed &= run_unit_tests<HeightHandlerGridT<1, 1>>("HeightHandlerGrid<1,1>");
+    all_passed &= run_unit_tests<HeightHandlerSegTreeT<1, 1>>("HeightHandlerSegTree<1,1>");
+    all_passed &= run_unit_tests<HeightHandlerSegTreeLazyT<1, 1>>("HeightHandlerSegTreeLazy<1,1>");
+    all_passed &= run_unit_tests<HeightHandlerQuadtreeT<1>>("HeightHandlerQuadtree<1>");
+    
+    std::cout << "\n";
+    if (all_passed) {
+        std::cout << "All unit tests PASSED!\n";
+    } else {
+        std::cout << "Some unit tests FAILED!\n";
+    }
+    std::cout << "\n";
+}
+
+// ======================= ТЕСТЫ КОРРЕКТНОСТИ (СЛУЧАЙНЫЕ) =======================
 
 // Генератор случайных прямоугольников
 struct RectOperation {
@@ -111,6 +247,15 @@ void run_correctness_tests() {
     std::cout << "Testing HeightHandlerSegTree<1,1> vs HeightHandlerRects... ";
     if (test_correctness<HeightHandlerSegTreeT<1, 1>, HeightHandlerRects>(
             "SegTree<1,1>", "Rects", length, width, ops)) {
+        std::cout << "PASSED\n";
+    } else {
+        std::cout << "FAILED\n";
+        all_passed = false;
+    }
+    
+    std::cout << "Testing HeightHandlerSegTreeLazy<1,1> vs HeightHandlerRects... ";
+    if (test_correctness<HeightHandlerSegTreeLazyT<1, 1>, HeightHandlerRects>(
+            "SegTreeLazy<1,1>", "Rects", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
@@ -331,6 +476,12 @@ void run_benchmarks() {
                 return std::make_unique<HeightHandlerSegTree>(length, width);
             }));
         
+        // HeightHandlerSegTreeLazy
+        results.push_back(benchmark_handler("HeightHandlerSegTreeLazy", test_data, box_order,
+            [](uint32_t length, uint32_t width) {
+                return std::make_unique<HeightHandlerSegTreeLazy>(length, width);
+            }));
+        
         // HeightHandlerQuadtree
         results.push_back(benchmark_handler("HeightHandlerQuadtree", test_data, box_order,
             [](uint32_t length, uint32_t width) {
@@ -348,7 +499,10 @@ int main() {
     std::cout << "HeightHandler Test Suite\n";
     std::cout << "========================\n\n";
     
-    // Тесты корректности
+    // Юнит тесты
+    run_unit_tests_all();
+    
+    // Тесты корректности (случайные)
     run_correctness_tests();
     
     std::cout << "\n";
