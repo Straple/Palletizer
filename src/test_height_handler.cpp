@@ -302,11 +302,68 @@ TestData load_test(int test_num) {
     return test_data;
 }
 
-// Универсальный бенчмарк
+// Структура для хранения предварительно вычисленных операций
+struct BenchmarkStep {
+    BoxSize box;
+    std::vector<std::pair<uint32_t, uint32_t>> dots;  // Точки для проверки
+    uint32_t best_x, best_y;                           // Лучшая позиция
+    uint32_t final_height;                             // Высота для add_rect
+};
+
+// Предварительно вычисляем все операции используя HeightHandlerRects
+std::vector<BenchmarkStep> precompute_benchmark_steps(
+    const TestData& test_data,
+    const std::vector<uint32_t>& box_order) {
+    
+    std::vector<BenchmarkStep> steps;
+    HeightHandlerRects reference(test_data.header.length, test_data.header.width);
+    
+    for (uint32_t box_idx : box_order) {
+        const auto& box = test_data.boxes[box_idx];
+        auto available_boxes = get_available_boxes(test_data.header, box);
+        
+        for (const auto& rotated_box : available_boxes) {
+            BenchmarkStep step;
+            step.box = rotated_box;
+            step.dots = reference.get_dots(test_data.header, rotated_box);
+            
+            uint32_t best_score = -1;
+            step.best_x = 0;
+            step.best_y = 0;
+            
+            for (auto [x, y] : step.dots) {
+                uint32_t h = reference.get(x, y, x + rotated_box.length - 1, y + rotated_box.width - 1);
+                uint32_t score = h + rotated_box.height;
+                if (score < best_score) {
+                    best_score = score;
+                    step.best_x = x;
+                    step.best_y = y;
+                }
+            }
+            
+            if (best_score != (uint32_t)-1) {
+                uint32_t h = reference.get(step.best_x, step.best_y,
+                    step.best_x + rotated_box.length - 1, step.best_y + rotated_box.width - 1);
+                step.final_height = h + rotated_box.height;
+                
+                reference.add_rect(step.best_x, step.best_y,
+                    step.best_x + rotated_box.length - 1, step.best_y + rotated_box.width - 1,
+                    step.final_height);
+                
+                steps.push_back(step);
+                break;
+            }
+        }
+    }
+    
+    return steps;
+}
+
+// Честный бенчмарк — использует одинаковые точки для всех реализаций
 template<typename HandlerFactory>
 BenchmarkResult benchmark_handler(const std::string& name,
                                    const TestData& test_data, 
-                                   const std::vector<uint32_t>& box_order,
+                                   const std::vector<BenchmarkStep>& steps,
                                    HandlerFactory factory) {
     BenchmarkResult result;
     result.name = name;
@@ -314,64 +371,41 @@ BenchmarkResult benchmark_handler(const std::string& name,
     Timer total_timer;
     Timer op_timer;
     
-    uint64_t add_rect_ns = 0, get_ns = 0, get_area_ns = 0, get_dots_ns = 0;
+    uint64_t add_rect_ns = 0, get_ns = 0, get_area_ns = 0;
     
     auto height_handler = factory(test_data.header.length, test_data.header.width);
     
-    for (uint32_t box_idx : box_order) {
-        const auto& box = test_data.boxes[box_idx];
-        auto available_boxes = get_available_boxes(test_data.header, box);
-        
-        for (const auto& rotated_box : available_boxes) {
-            // get_dots
+    for (const auto& step : steps) {
+        // Проходим по всем предвычисленным точкам
+        for (auto [x, y] : step.dots) {
+            // get
             op_timer.reset();
-            auto dots = height_handler->get_dots(test_data.header, rotated_box);
-            get_dots_ns += op_timer.get_ns();
+            [[maybe_unused]] uint32_t h = height_handler->get(
+                x, y, x + step.box.length - 1, y + step.box.width - 1);
+            get_ns += op_timer.get_ns();
             
-            uint32_t best_score = -1;
-            uint32_t best_x = 0, best_y = 0;
+            // get_area_at_max_height
+            op_timer.reset();
+            [[maybe_unused]] uint64_t area = height_handler->get_area_at_max_height(
+                x, y, x + step.box.length - 1, y + step.box.width - 1);
+            get_area_ns += op_timer.get_ns();
             
-            for (auto [x, y] : dots) {
-                // get
-                op_timer.reset();
-                uint32_t h = height_handler->get(x, y, x + rotated_box.length - 1, y + rotated_box.width - 1);
-                get_ns += op_timer.get_ns();
-                
-                // get_area_at_max_height
-                op_timer.reset();
-                [[maybe_unused]] uint64_t area = height_handler->get_area_at_max_height(
-                    x, y, x + rotated_box.length - 1, y + rotated_box.width - 1);
-                get_area_ns += op_timer.get_ns();
-                
-                uint32_t score = h + rotated_box.height;
-                if (score < best_score) {
-                    best_score = score;
-                    best_x = x;
-                    best_y = y;
-                }
-                result.operations++;
-            }
-            
-            if (best_score != (uint32_t)-1) {
-                uint32_t h = height_handler->get(best_x, best_y, 
-                    best_x + rotated_box.length - 1, best_y + rotated_box.width - 1);
-                
-                // add_rect
-                op_timer.reset();
-                height_handler->add_rect(best_x, best_y, 
-                    best_x + rotated_box.length - 1, best_y + rotated_box.width - 1, h + rotated_box.height);
-                add_rect_ns += op_timer.get_ns();
-                
-                break;
-            }
+            result.operations++;
         }
+        
+        // add_rect с предвычисленной позицией
+        op_timer.reset();
+        height_handler->add_rect(step.best_x, step.best_y,
+            step.best_x + step.box.length - 1, step.best_y + step.box.width - 1,
+            step.final_height);
+        add_rect_ns += op_timer.get_ns();
     }
     
     // Конвертируем наносекунды в миллисекунды
     result.add_rect_time_ms = add_rect_ns / 1'000'000.0;
     result.get_time_ms = get_ns / 1'000'000.0;
     result.get_area_time_ms = get_area_ns / 1'000'000.0;
-    result.get_dots_time_ms = get_dots_ns / 1'000'000.0;
+    result.get_dots_time_ms = 0;  // Не измеряем get_dots в честном бенчмарке
     result.total_time_ms = total_timer.get_ms();
     
     return result;
@@ -454,37 +488,40 @@ void run_benchmarks() {
         // Перемешиваем
         std::shuffle(box_order.begin(), box_order.end(), rnd.generator);
         
-        std::cout << "Test " << test_num << " (" << box_order.size() << " boxes):\n";
+        // Предвычисляем шаги для честного сравнения
+        auto steps = precompute_benchmark_steps(test_data, box_order);
+        
+        std::cout << "Test " << test_num << " (" << box_order.size() << " boxes, " << steps.size() << " placed):\n";
         std::cout << std::string(60, '=') << "\n";
         
         std::vector<BenchmarkResult> results;
         
         // HeightHandlerRects
-        results.push_back(benchmark_handler("HeightHandlerRects", test_data, box_order,
+        results.push_back(benchmark_handler("HeightHandlerRects", test_data, steps,
             [](uint32_t length, uint32_t width) {
                 return std::make_unique<HeightHandlerRects>(length, width);
             }));
         
         // HeightHandlerGrid
-        results.push_back(benchmark_handler("HeightHandlerGrid", test_data, box_order,
+        results.push_back(benchmark_handler("HeightHandlerGrid", test_data, steps,
             [](uint32_t length, uint32_t width) {
                 return std::make_unique<HeightHandlerGrid>(length, width);
             }));
         
         // HeightHandlerSegTree
-        results.push_back(benchmark_handler("HeightHandlerSegTree", test_data, box_order,
+        results.push_back(benchmark_handler("HeightHandlerSegTree", test_data, steps,
             [](uint32_t length, uint32_t width) {
                 return std::make_unique<HeightHandlerSegTree>(length, width);
             }));
         
         // HeightHandlerSegTreeLazy
-        results.push_back(benchmark_handler("HeightHandlerSegTreeLazy", test_data, box_order,
+        results.push_back(benchmark_handler("HeightHandlerSegTreeLazy", test_data, steps,
             [](uint32_t length, uint32_t width) {
                 return std::make_unique<HeightHandlerSegTreeLazy>(length, width);
             }));
         
         // HeightHandlerQuadtree
-        results.push_back(benchmark_handler("HeightHandlerQuadtree", test_data, box_order,
+        results.push_back(benchmark_handler("HeightHandlerQuadtree", test_data, steps,
             [](uint32_t length, uint32_t width) {
                 return std::make_unique<HeightHandlerQuadtree>(length, width);
             }));
