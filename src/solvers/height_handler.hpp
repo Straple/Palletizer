@@ -32,7 +32,9 @@ class HeightHandler {
 
 public:
     HeightHandler(uint32_t length, uint32_t width) 
-        : pallet_length(length), pallet_width(width) {}
+        : pallet_length(length), pallet_width(width) {
+        height_rects.push_back(HeightRect{0, 0, length - 1, width - 1, 0});
+    }
     
     // Получить максимальную высоту в прямоугольнике [x, X] × [y, Y]
     // Просто перебираем все прямоугольники
