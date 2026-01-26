@@ -9,7 +9,7 @@
 
 // Quadtree реализация HeightHandler (упрощённая корректная версия)
 template<uint32_t MIN_SIZE = 10>
-class HeightHandlerQuadtreeT : public HeightHandler {
+class HeightHandlerQuadtreeT  {
 private:
     // Узел quadtree (упрощённый)
     struct Node {
@@ -45,20 +45,20 @@ public:
     HeightHandlerQuadtreeT(uint32_t length, uint32_t width);
     
     // Получить максимальную высоту в прямоугольнике
-    [[nodiscard]] uint32_t get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
+    [[nodiscard]] uint32_t get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const;
     
     // Добавить прямоугольник с заданной высотой
-    void add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) override;
+    void add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h);
     
     // Получить площадь на максимальной высоте (используем Rects подход)
-    [[nodiscard]] uint64_t get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
+    [[nodiscard]] uint64_t get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const;
     
     // Получить интересные точки для размещения коробки
     [[nodiscard]] std::vector<std::pair<uint32_t, uint32_t>> get_dots(
-        const TestDataHeader& header, const BoxSize& box) const override;
+        const TestDataHeader& header, const BoxSize& box) const;
     
     // Количество прямоугольников
-    [[nodiscard]] uint32_t size() const override { return height_rects.size(); }
+    [[nodiscard]] uint32_t size() const { return height_rects.size(); }
 };
 
 // Алиас для стандартного использования

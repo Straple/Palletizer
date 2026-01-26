@@ -11,7 +11,7 @@
 // - Range max query: O(log² n)
 // - Range max update: O(log n * log n)
 template<uint32_t CELL_SIZE_X = 10, uint32_t CELL_SIZE_Y = 10>
-class HeightHandlerSegTreeT : public HeightHandler {
+class HeightHandlerSegTreeT  {
 private:
     // Узел 1D Segment Tree (для Y-размерности) с lazy propagation
     struct YNode {
@@ -62,20 +62,20 @@ public:
     HeightHandlerSegTreeT(uint32_t length, uint32_t width);
     
     // Получить максимальную высоту в прямоугольнике
-    [[nodiscard]] uint32_t get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
+    [[nodiscard]] uint32_t get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const;
     
     // Добавить прямоугольник с заданной высотой
-    void add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) override;
+    void add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h);
     
     // Получить площадь на максимальной высоте
-    [[nodiscard]] uint64_t get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
+    [[nodiscard]] uint64_t get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const;
     
     // Получить интересные точки для размещения коробки
     [[nodiscard]] std::vector<std::pair<uint32_t, uint32_t>> get_dots(
-        const TestDataHeader& header, const BoxSize& box) const override;
+        const TestDataHeader& header, const BoxSize& box) const;
     
     // Количество прямоугольников
-    [[nodiscard]] uint32_t size() const override { return height_rects.size(); }
+    [[nodiscard]] uint32_t size() const { return height_rects.size(); }
 };
 
 // Алиас для стандартного использования

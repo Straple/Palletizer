@@ -10,7 +10,7 @@
 // В каждой ячейке хранится максимальная высота
 // Также хранит список прямоугольников для get_dots (как в HeightHandlerRects)
 template<uint32_t CELL_SIZE_X = 10, uint32_t CELL_SIZE_Y = 10>
-class HeightHandlerGridT : public HeightHandler {
+class HeightHandlerGridT  {
 private:
     std::vector<uint32_t> grid;  // heights[cy * grid_width + cx]
     uint32_t grid_width;         // Количество ячеек по X
@@ -43,20 +43,20 @@ public:
     HeightHandlerGridT(uint32_t length, uint32_t width);
     
     // Получить максимальную высоту в прямоугольнике [x, X] × [y, Y] (включительно)
-    [[nodiscard]] uint32_t get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
+    [[nodiscard]] uint32_t get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const;
     
     // Добавить прямоугольник с заданной высотой
-    void add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) override;
+    void add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h);
     
     // Получить площадь (в мм²), которая находится на максимальной высоте в прямоугольнике
-    [[nodiscard]] uint64_t get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
+    [[nodiscard]] uint64_t get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const;
     
     // Получить интересные точки для размещения коробки
     [[nodiscard]] std::vector<std::pair<uint32_t, uint32_t>> get_dots(
-        const TestDataHeader& header, const BoxSize& box) const override;
+        const TestDataHeader& header, const BoxSize& box) const;
     
     // Количество прямоугольников
-    [[nodiscard]] uint32_t size() const override { return height_rects.size(); }
+    [[nodiscard]] uint32_t size() const { return height_rects.size(); }
 };
 
 // Алиас для стандартного использования

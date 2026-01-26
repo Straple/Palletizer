@@ -137,6 +137,7 @@ void run_unit_tests_all() {
     
     bool all_passed = true;
     
+    all_passed &= run_unit_tests<HeightHandler>("HeightHandler (baseline)");
     all_passed &= run_unit_tests<HeightHandlerRects>("HeightHandlerRects");
     all_passed &= run_unit_tests<HeightHandlerRectsAVX>("HeightHandlerRectsAVX");
     all_passed &= run_unit_tests<HeightHandlerGridT<1, 1>>("HeightHandlerGrid<1,1>");
@@ -224,36 +225,45 @@ void run_correctness_tests() {
     // Сравниваем все реализации с эталонной (HeightHandlerRects)
     bool all_passed = true;
     
-    std::cout << "Testing HeightHandlerGrid<1,1> vs HeightHandlerRects... ";
-    if (test_correctness<HeightHandlerGridT<1, 1>, HeightHandlerRects>(
-            "Grid<1,1>", "Rects", length, width, ops)) {
+    std::cout << "Testing HeightHandlerRects vs HeightHandler... ";
+    if (test_correctness<HeightHandlerRects, HeightHandler>(
+            "Rects", "Baseline", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
         all_passed = false;
     }
     
-    std::cout << "Testing HeightHandlerRectsAVX vs HeightHandlerRects... ";
-    if (test_correctness<HeightHandlerRectsAVX, HeightHandlerRects>(
-            "RectsAVX", "Rects", length, width, ops)) {
+    std::cout << "Testing HeightHandlerGrid<1,1> vs HeightHandler... ";
+    if (test_correctness<HeightHandlerGridT<1, 1>, HeightHandler>(
+            "Grid<1,1>", "Baseline", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
         all_passed = false;
     }
     
-    std::cout << "Testing HeightHandlerSegTree<1,1> vs HeightHandlerRects... ";
-    if (test_correctness<HeightHandlerSegTreeT<1, 1>, HeightHandlerRects>(
-            "SegTree<1,1>", "Rects", length, width, ops)) {
+    std::cout << "Testing HeightHandlerRectsAVX vs HeightHandler... ";
+    if (test_correctness<HeightHandlerRectsAVX, HeightHandler>(
+            "RectsAVX", "Baseline", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
         all_passed = false;
     }
     
-    std::cout << "Testing HeightHandlerQuadtree<1> vs HeightHandlerRects... ";
-    if (test_correctness<HeightHandlerQuadtreeT<1>, HeightHandlerRects>(
-            "Quadtree<1>", "Rects", length, width, ops)) {
+    std::cout << "Testing HeightHandlerSegTree<1,1> vs HeightHandler... ";
+    if (test_correctness<HeightHandlerSegTreeT<1, 1>, HeightHandler>(
+            "SegTree<1,1>", "Baseline", length, width, ops)) {
+        std::cout << "PASSED\n";
+    } else {
+        std::cout << "FAILED\n";
+        all_passed = false;
+    }
+    
+    std::cout << "Testing HeightHandlerQuadtree<1> vs HeightHandler... ";
+    if (test_correctness<HeightHandlerQuadtreeT<1>, HeightHandler>(
+            "Quadtree<1>", "Baseline", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
@@ -299,13 +309,13 @@ struct BenchmarkStep {
     uint32_t final_height;                             // Высота для add_rect
 };
 
-// Предварительно вычисляем все операции используя HeightHandlerRects
+// Предварительно вычисляем все операции используя HeightHandler (baseline)
 std::vector<BenchmarkStep> precompute_benchmark_steps(
     const TestData& test_data,
     const std::vector<uint32_t>& box_order) {
     
     std::vector<BenchmarkStep> steps;
-    HeightHandlerRects reference(test_data.header.length, test_data.header.width);
+    HeightHandler reference(test_data.header.length, test_data.header.width);
     
     for (uint32_t box_idx : box_order) {
         const auto& box = test_data.boxes[box_idx];
@@ -349,8 +359,9 @@ std::vector<BenchmarkStep> precompute_benchmark_steps(
 }
 
 // Честный бенчмарк — использует одинаковые точки для всех реализаций
+template<typename Handler>
 BenchmarkResult benchmark_handler(const std::string& name,
-                                   HeightHandler& handler, 
+                                   Handler& handler, 
                                    const std::vector<BenchmarkStep>& steps) {
     BenchmarkResult result;
     result.name = name;
@@ -512,6 +523,10 @@ void run_benchmarks() {
             
             // Все алгоритмы
             {
+                HeightHandler h(len, wid);
+                results.push_back(benchmark_handler("Baseline", h, steps));
+            }
+            {
                 HeightHandlerRects h(len, wid);
                 results.push_back(benchmark_handler("Rects", h, steps));
             }
@@ -551,12 +566,13 @@ void run_benchmarks() {
     });
     
     // Агрегируем результаты
-    std::vector<AggregatedResult> aggregated(5);  // 5 алгоритмов
-    aggregated[0].name = "Rects";
-    aggregated[1].name = "RectsAVX";
-    aggregated[2].name = "Grid";
-    aggregated[3].name = "SegTree";
-    aggregated[4].name = "Quadtree";
+    std::vector<AggregatedResult> aggregated(6);  // 6 алгоритмов
+    aggregated[0].name = "Baseline";
+    aggregated[1].name = "Rects";
+    aggregated[2].name = "RectsAVX";
+    aggregated[3].name = "Grid";
+    aggregated[4].name = "SegTree";
+    aggregated[5].name = "Quadtree";
     
     for (const auto& test_results : all_results) {
         for (size_t j = 0; j < test_results.size() && j < aggregated.size(); ++j) {

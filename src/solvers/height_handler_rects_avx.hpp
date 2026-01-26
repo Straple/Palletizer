@@ -13,7 +13,7 @@
 // HeightHandlerRectsAVX — версия HeightHandlerRects с SIMD оптимизациями
 // Хранит прямоугольники в SoA формате для эффективной векторизации
 // Использует AVX2 для проверки 8 прямоугольников за раз
-class HeightHandlerRectsAVX : public HeightHandler {
+class HeightHandlerRectsAVX {
     // SoA (Structure of Arrays) для SIMD-friendly доступа
     // Выровнены по 32 байта для AVX2
     alignas(32) std::vector<uint32_t> rect_x;  // левая граница
@@ -32,7 +32,7 @@ public:
         height_rects.push_back(floor);
     }
     
-    [[nodiscard]] uint32_t get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override {
+    [[nodiscard]] uint32_t get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
 // #ifdef __AVX2__
         return get_avx(x, y, X, Y);
 // #else
@@ -40,7 +40,7 @@ public:
 // #endif
     }
     
-    [[nodiscard]] uint64_t get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override {
+    [[nodiscard]] uint64_t get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
         uint64_t area = 0;
         uint32_t max_height = 0;
         bool found_max = false;
@@ -71,7 +71,7 @@ public:
         return area;
     }
 
-    void add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) override {
+    void add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) {
         HeightRect new_rect{x, y, X, Y, h};
         
         if (!new_rect.is_valid()) {
@@ -125,7 +125,7 @@ public:
     }
 
     [[nodiscard]] std::vector<std::pair<uint32_t, uint32_t>> get_dots(
-        const TestDataHeader& header, const BoxSize& box) const override {
+        const TestDataHeader& header, const BoxSize& box) const {
         
         std::vector<std::pair<uint32_t, uint32_t>> result;
         for (const auto& rect : height_rects) {
@@ -157,7 +157,7 @@ public:
         return result;
     }
 
-    [[nodiscard]] uint32_t size() const override { return height_rects.size(); }
+    [[nodiscard]] uint32_t size() const { return height_rects.size(); }
 
 private:
     void add_to_soa(const HeightRect& rect) {
