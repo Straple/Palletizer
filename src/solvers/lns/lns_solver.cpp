@@ -144,8 +144,8 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
         // height_handler.print();
     }
 
-    auto stability_metrics = calc_stability(test_data, answer);
-    double score = -metrics.percolation - stability_metrics.min_support_ratio * 100;// + unable_to_put_boxes_num * 10;// - stability_metrics.min_support_ratio;//100 - metrics.percolation - stability_metrics.min_support_ratio * 5 + 10 * stability_metrics.unstable_boxes_count * 1.0 / metrics.boxes;
+    //auto stability_metrics = calc_stability(test_data, answer);
+    double score = -metrics.percolation;// - stability_metrics.min_support_ratio * 100;// + unable_to_put_boxes_num * 10;// - stability_metrics.min_support_ratio;//100 - metrics.percolation - stability_metrics.min_support_ratio * 5 + 10 * stability_metrics.unstable_boxes_count * 1.0 / metrics.boxes;
 
     return {answer, metrics, score};
 }
