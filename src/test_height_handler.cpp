@@ -283,11 +283,11 @@ void run_correctness_tests() {
 
 struct BenchmarkResult {
     std::string name;
-    double add_rect_us = 0;
-    double get_h_us = 0;
-    double get_area_us = 0;
-    double get_dots_us = 0;
-    double total_us = 0;
+    double add_rect_ms = 0;
+    double get_h_ms = 0;
+    double get_area_ms = 0;
+    double get_dots_ms = 0;
+    double total_ms = 0;
     uint64_t operations = 0;
 };
 
@@ -375,7 +375,7 @@ double benchmark_total(Handler handler, const std::vector<BenchmarkStep>& steps)
     }
     (void)sum_h;
     (void)sum_area;
-    return timer.get_us();
+    return timer.get_ns() / 1'000'000.0;
 }
 
 constexpr uint32_t REPEAT = 1;
@@ -419,10 +419,10 @@ BenchmarkResult benchmark_handler(const std::string& name,
             step.final_height);
         add_rect_ns += op_timer.get_ns();
     }
-    result.add_rect_us = add_rect_ns / 1'000.0;
-    result.get_h_us = get_h_ns / 1'000.0;
-    result.get_area_us = get_area_ns / 1'000.0;
-    result.get_dots_us = 0;
+    result.add_rect_ms = add_rect_ns / 1'000'000.0;
+    result.get_h_ms = get_h_ns / 1'000'000.0;
+    result.get_area_ms = get_area_ns / 1'000'000.0;
+    result.get_dots_ms = 0;
 
     (void)sum_h;
     (void)sum_area;
@@ -436,14 +436,14 @@ BenchmarkResult benchmark_handler_full(const std::string& name,
                                         uint32_t length, uint32_t width,
                                         const std::vector<BenchmarkStep>& steps) {
     BenchmarkResult result = benchmark_handler(name, Handler(length, width), steps);
-    result.total_us = benchmark_total(Handler(length, width), steps);
+    result.total_ms = benchmark_total(Handler(length, width), steps);
     return result;
 }
 
 void print_results_table(const std::vector<BenchmarkResult>& results) {
     // Заголовок
     std::cout << std::left << std::setw(20) << "Implementation"
-              << std::right << std::setw(12) << "Total(us)"
+              << std::right << std::setw(12) << "Total(ms)"
               << std::setw(12) << "add_rect"
               << std::setw(12) << "get_h"
               << std::setw(12) << "get_area"
@@ -455,11 +455,11 @@ void print_results_table(const std::vector<BenchmarkResult>& results) {
     for (const auto& r : results) {
         std::cout << std::fixed << std::setprecision(2);
         std::cout << std::left << std::setw(20) << r.name
-                  << std::right << std::setw(12) << r.total_us
-                  << std::setw(12) << r.add_rect_us
-                  << std::setw(12) << r.get_h_us
-                  << std::setw(12) << r.get_area_us
-                  << std::setw(12) << r.get_dots_us
+                  << std::right << std::setw(12) << r.total_ms
+                  << std::setw(12) << r.add_rect_ms
+                  << std::setw(12) << r.get_h_ms
+                  << std::setw(12) << r.get_area_ms
+                  << std::setw(12) << r.get_dots_ms
                   << std::setw(12) << r.operations
                   << "\n";
     }
@@ -483,10 +483,10 @@ void print_speedup_table(const std::vector<BenchmarkResult>& results) {
         std::cout << std::fixed << std::setprecision(2);
         std::cout << std::left << std::setw(20) << r.name
                   << std::right 
-                  << std::setw(10) << (baseline.total_us / std::max(r.total_us, 0.001)) << "x"
-                  << std::setw(10) << (baseline.add_rect_us / std::max(r.add_rect_us, 0.001)) << "x"
-                  << std::setw(10) << (baseline.get_h_us / std::max(r.get_h_us, 0.001)) << "x"
-                  << std::setw(10) << (baseline.get_area_us / std::max(r.get_area_us, 0.001)) << "x"
+                  << std::setw(10) << (baseline.total_ms / std::max(r.total_ms, 0.001)) << "x"
+                  << std::setw(10) << (baseline.add_rect_ms / std::max(r.add_rect_ms, 0.001)) << "x"
+                  << std::setw(10) << (baseline.get_h_ms / std::max(r.get_h_ms, 0.001)) << "x"
+                  << std::setw(10) << (baseline.get_area_ms / std::max(r.get_area_ms, 0.001)) << "x"
                   << "\n";
     }
 }
@@ -495,10 +495,10 @@ void print_speedup_table(const std::vector<BenchmarkResult>& results) {
 
 struct AggregatedResult {
     std::string name;
-    double total_us = 0;
-    double add_rect_us = 0;
-    double get_h_us = 0;
-    double get_area_us = 0;
+    double total_ms = 0;
+    double add_rect_ms = 0;
+    double get_h_ms = 0;
+    double get_area_ms = 0;
     uint64_t operations = 0;
 };
 
@@ -573,7 +573,7 @@ void run_benchmarks() {
                           << std::setw(5) << results[0].operations << " ops): ";
                 for (const auto& r : results) {
                     std::cout << r.name << "=" << std::fixed << std::setprecision(1) 
-                              << r.total_us << "us ";
+                              << r.total_ms << "ms ";
                 }
                 std::cout << "[" << done << "/" << tests.size() << "]\n";
             }
@@ -591,10 +591,10 @@ void run_benchmarks() {
     
     for (const auto& test_results : all_results) {
         for (size_t j = 0; j < test_results.size() && j < aggregated.size(); ++j) {
-            aggregated[j].total_us += test_results[j].total_us;
-            aggregated[j].add_rect_us += test_results[j].add_rect_us;
-            aggregated[j].get_h_us += test_results[j].get_h_us;
-            aggregated[j].get_area_us += test_results[j].get_area_us;
+            aggregated[j].total_ms += test_results[j].total_ms;
+            aggregated[j].add_rect_ms += test_results[j].add_rect_ms;
+            aggregated[j].get_h_ms += test_results[j].get_h_ms;
+            aggregated[j].get_area_ms += test_results[j].get_area_ms;
             aggregated[j].operations += test_results[j].operations;
         }
     }
@@ -605,7 +605,7 @@ void run_benchmarks() {
     std::cout << "                              SUMMARY\n";
     std::cout << "=============================================================================\n";
     std::cout << "Tests: " << tests.size() << ", Wall time: " << std::fixed << std::setprecision(1) 
-              << total_timer.get_us() << "us, Threads: " << num_threads << "\n\n";
+              << total_timer.get_ms() << "ms, Threads: " << num_threads << "\n\n";
     
     // Таблица результатов
     std::cout << std::left << std::setw(15) << "Algorithm"
@@ -618,16 +618,16 @@ void run_benchmarks() {
               << "\n";
     std::cout << std::string(87, '-') << "\n";
     
-    double baseline_total = aggregated[0].total_us;
+    double baseline_total = aggregated[0].total_ms;
     
     for (const auto& r : aggregated) {
-        double speedup = baseline_total / std::max(r.total_us, 0.001);
+        double speedup = baseline_total / std::max(r.total_ms, 0.001);
         std::cout << std::fixed << std::setprecision(1);
         std::cout << std::left << std::setw(15) << r.name
-                  << std::right << std::setw(14) << r.total_us
-                  << std::setw(12) << r.add_rect_us
-                  << std::setw(12) << r.get_h_us
-                  << std::setw(12) << r.get_area_us
+                  << std::right << std::setw(14) << r.total_ms
+                  << std::setw(12) << r.add_rect_ms
+                  << std::setw(12) << r.get_h_ms
+                  << std::setw(12) << r.get_area_ms
                   << std::setw(12) << r.operations
                   << std::setw(8) << std::setprecision(2) << speedup << "x"
                   << "\n";
@@ -657,10 +657,10 @@ void run_benchmarks() {
         
         std::cout << std::left << std::setw(15) << r.name
                   << std::right 
-                  << std::setw(12) << format_speedup(aggregated[0].total_us, r.total_us)
-                  << std::setw(12) << format_speedup(aggregated[0].add_rect_us, r.add_rect_us)
-                  << std::setw(12) << format_speedup(aggregated[0].get_h_us, r.get_h_us)
-                  << std::setw(12) << format_speedup(aggregated[0].get_area_us, r.get_area_us)
+                  << std::setw(12) << format_speedup(aggregated[0].total_ms, r.total_ms)
+                  << std::setw(12) << format_speedup(aggregated[0].add_rect_ms, r.add_rect_ms)
+                  << std::setw(12) << format_speedup(aggregated[0].get_h_ms, r.get_h_ms)
+                  << std::setw(12) << format_speedup(aggregated[0].get_area_ms, r.get_area_ms)
                   << "\n";
     }
     
