@@ -284,10 +284,11 @@ void run_correctness_tests() {
 struct BenchmarkResult {
     std::string name;
     double add_rect_time_ms = 0;
-    double get_time_ms = 0;
+    double get_h_time_ms = 0;
     double get_area_time_ms = 0;
     double get_dots_time_ms = 0;
     double total_time_ms = 0;
+    double total_ms = 0;  // Чистое время без накладных расходов таймеров
     uint64_t operations = 0;
 };
 
@@ -358,10 +359,26 @@ std::vector<BenchmarkStep> precompute_benchmark_steps(
     return steps;
 }
 
-// Честный бенчмарк — использует одинаковые точки для всех реализаций
+template<typename Handler>
+double benchmark_total(Handler handler, const std::vector<BenchmarkStep>& steps) {
+    Timer timer;
+    for (const auto& step : steps) {
+        for (auto [x, y] : step.dots) {
+            [[maybe_unused]] uint32_t h = handler.get_h(
+                x, y, x + step.box.length - 1, y + step.box.width - 1);
+            [[maybe_unused]] uint64_t area = handler.get_area(
+                x, y, x + step.box.length - 1, y + step.box.width - 1);
+        }
+        handler.add_rect(step.best_x, step.best_y,
+            step.best_x + step.box.length - 1, step.best_y + step.box.width - 1,
+            step.final_height);
+    }
+    return timer.get_ns() / 1'000'000;
+}
+
 template<typename Handler>
 BenchmarkResult benchmark_handler(const std::string& name,
-                                   Handler& handler, 
+                                   Handler handler, 
                                    const std::vector<BenchmarkStep>& steps) {
     BenchmarkResult result;
     result.name = name;
@@ -369,18 +386,15 @@ BenchmarkResult benchmark_handler(const std::string& name,
     Timer total_timer;
     Timer op_timer;
     
-    uint64_t add_rect_ns = 0, get_ns = 0, get_area_ns = 0;
+    uint64_t add_rect_ns = 0, get_h_ns = 0, get_area_ns = 0;
     
     for (const auto& step : steps) {
         // Проходим по всем предвычисленным точкам
         for (auto [x, y] : step.dots) {
-            // get
             op_timer.reset();
             [[maybe_unused]] uint32_t h = handler.get_h(
                 x, y, x + step.box.length - 1, y + step.box.width - 1);
-            get_ns += op_timer.get_ns();
-            
-            // get_area
+            get_h_ns += op_timer.get_ns();
             op_timer.reset();
             [[maybe_unused]] uint64_t area = handler.get_area(
                 x, y, x + step.box.length - 1, y + step.box.width - 1);
@@ -396,14 +410,22 @@ BenchmarkResult benchmark_handler(const std::string& name,
             step.final_height);
         add_rect_ns += op_timer.get_ns();
     }
-    
-    // Конвертируем наносекунды в миллисекунды
     result.add_rect_time_ms = add_rect_ns / 1'000'000.0;
-    result.get_time_ms = get_ns / 1'000'000.0;
+    result.get_h_time_ms = get_h_ns / 1'000'000.0;
     result.get_area_time_ms = get_area_ns / 1'000'000.0;
     result.get_dots_time_ms = 0;
     result.total_time_ms = total_timer.get_ms();
     
+    return result;
+}
+
+// Полный бенчмарк с чистым временем
+template<typename Handler>
+BenchmarkResult benchmark_handler_full(const std::string& name,
+                                        uint32_t length, uint32_t width,
+                                        const std::vector<BenchmarkStep>& steps) {
+    BenchmarkResult result = benchmark_handler(name, Handler(length, width), steps);
+    result.total_ms = benchmark_total(Handler(length, width), steps);
     return result;
 }
 
@@ -424,7 +446,7 @@ void print_results_table(const std::vector<BenchmarkResult>& results) {
         std::cout << std::left << std::setw(20) << r.name
                   << std::right << std::setw(12) << r.total_time_ms
                   << std::setw(12) << r.add_rect_time_ms
-                  << std::setw(12) << r.get_time_ms
+                  << std::setw(12) << r.get_h_time_ms
                   << std::setw(12) << r.get_area_time_ms
                   << std::setw(12) << r.get_dots_time_ms
                   << std::setw(12) << r.operations
@@ -452,7 +474,7 @@ void print_speedup_table(const std::vector<BenchmarkResult>& results) {
                   << std::right 
                   << std::setw(10) << (baseline.total_time_ms / std::max(r.total_time_ms, 0.001)) << "x"
                   << std::setw(10) << (baseline.add_rect_time_ms / std::max(r.add_rect_time_ms, 0.001)) << "x"
-                  << std::setw(10) << (baseline.get_time_ms / std::max(r.get_time_ms, 0.001)) << "x"
+                  << std::setw(10) << (baseline.get_h_time_ms / std::max(r.get_h_time_ms, 0.001)) << "x"
                   << std::setw(10) << (baseline.get_area_time_ms / std::max(r.get_area_time_ms, 0.001)) << "x"
                   << "\n";
     }
@@ -464,7 +486,7 @@ struct AggregatedResult {
     std::string name;
     double total_ms = 0;
     double add_rect_ms = 0;
-    double get_ms = 0;
+    double get_h_ms = 0;
     double get_area_ms = 0;
     uint64_t operations = 0;
 };
@@ -521,31 +543,13 @@ void run_benchmarks() {
             uint32_t len = test_data.header.length;
             uint32_t wid = test_data.header.width;
             
-            // Все алгоритмы
-            {
-                HeightHandler h(len, wid);
-                results.push_back(benchmark_handler("Baseline", h, steps));
-            }
-            {
-                HeightHandlerRects h(len, wid);
-                results.push_back(benchmark_handler("Rects", h, steps));
-            }
-            {
-                HeightHandlerRectsAVX h(len, wid);
-                results.push_back(benchmark_handler("RectsAVX", h, steps));
-            }
-            {
-                HeightHandlerGrid h(len, wid);
-                results.push_back(benchmark_handler("Grid", h, steps));
-            }
-            {
-                HeightHandlerSegTree h(len, wid);
-                results.push_back(benchmark_handler("SegTree", h, steps));
-            }
-            {
-                HeightHandlerQuadtree h(len, wid);
-                results.push_back(benchmark_handler("Quadtree", h, steps));
-            }
+            // Все алгоритмы с полным бенчмарком
+            results.push_back(benchmark_handler_full<HeightHandler>("Baseline", len, wid, steps));
+            results.push_back(benchmark_handler_full<HeightHandlerRects>("Rects", len, wid, steps));
+            results.push_back(benchmark_handler_full<HeightHandlerRectsAVX>("RectsAVX", len, wid, steps));
+            results.push_back(benchmark_handler_full<HeightHandlerGrid>("Grid", len, wid, steps));
+            results.push_back(benchmark_handler_full<HeightHandlerSegTree>("SegTree", len, wid, steps));
+            results.push_back(benchmark_handler_full<HeightHandlerQuadtree>("Quadtree", len, wid, steps));
             
             all_results[i] = results;
             
@@ -576,9 +580,9 @@ void run_benchmarks() {
     
     for (const auto& test_results : all_results) {
         for (size_t j = 0; j < test_results.size() && j < aggregated.size(); ++j) {
-            aggregated[j].total_ms += test_results[j].total_time_ms;
+            aggregated[j].total_ms += test_results[j].total_ms;
             aggregated[j].add_rect_ms += test_results[j].add_rect_time_ms;
-            aggregated[j].get_ms += test_results[j].get_time_ms;
+            aggregated[j].get_h_ms += test_results[j].get_h_time_ms;
             aggregated[j].get_area_ms += test_results[j].get_area_time_ms;
             aggregated[j].operations += test_results[j].operations;
         }
@@ -594,14 +598,14 @@ void run_benchmarks() {
     
     // Таблица результатов
     std::cout << std::left << std::setw(15) << "Algorithm"
-              << std::right << std::setw(12) << "Total(ms)"
+              << std::right << std::setw(14) << "Total"
               << std::setw(12) << "add_rect"
               << std::setw(12) << "get_h"
               << std::setw(12) << "get_area"
               << std::setw(12) << "Ops"
               << std::setw(10) << "Speedup"
               << "\n";
-    std::cout << std::string(85, '-') << "\n";
+    std::cout << std::string(87, '-') << "\n";
     
     double baseline_total = aggregated[0].total_ms;
     
@@ -609,9 +613,9 @@ void run_benchmarks() {
         double speedup = baseline_total / std::max(r.total_ms, 0.001);
         std::cout << std::fixed << std::setprecision(1);
         std::cout << std::left << std::setw(15) << r.name
-                  << std::right << std::setw(12) << r.total_ms
+                  << std::right << std::setw(14) << r.total_ms
                   << std::setw(12) << r.add_rect_ms
-                  << std::setw(12) << r.get_ms
+                  << std::setw(12) << r.get_h_ms
                   << std::setw(12) << r.get_area_ms
                   << std::setw(12) << r.operations
                   << std::setw(8) << std::setprecision(2) << speedup << "x"
@@ -619,15 +623,15 @@ void run_benchmarks() {
     }
     
     // Детальные speedup по операциям
-    std::cout << "\nSpeedup vs Rects (by operation):\n";
-    std::cout << std::string(63, '-') << "\n";
+    std::cout << "\nSpeedup vs Baseline:\n";
+    std::cout << std::string(75, '-') << "\n";
     std::cout << std::left << std::setw(15) << "Algorithm"
               << std::right << std::setw(12) << "Total"
               << std::setw(12) << "add_rect"
               << std::setw(12) << "get_h"
               << std::setw(12) << "get_area"
               << "\n";
-    std::cout << std::string(63, '-') << "\n";
+    std::cout << std::string(75, '-') << "\n";
     
     // Форматируем speedup как строку с "x"
     auto format_speedup = [](double base, double val) -> std::string {
@@ -644,7 +648,7 @@ void run_benchmarks() {
                   << std::right 
                   << std::setw(12) << format_speedup(aggregated[0].total_ms, r.total_ms)
                   << std::setw(12) << format_speedup(aggregated[0].add_rect_ms, r.add_rect_ms)
-                  << std::setw(12) << format_speedup(aggregated[0].get_ms, r.get_ms)
+                  << std::setw(12) << format_speedup(aggregated[0].get_h_ms, r.get_h_ms)
                   << std::setw(12) << format_speedup(aggregated[0].get_area_ms, r.get_area_ms)
                   << "\n";
     }

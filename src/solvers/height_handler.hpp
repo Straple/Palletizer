@@ -67,14 +67,10 @@ public:
         return area;
     }
 
-    // Добавляем прямоугольник и сортируем по убыванию высоты
     void add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) {
         HeightRect rect{x, y, X, Y, h};
         if (rect.is_valid()) {
             height_rects.push_back(rect);
-            // Сортируем по убыванию высоты
-            std::sort(height_rects.begin(), height_rects.end(),
-                      [](const HeightRect& a, const HeightRect& b) { return a.h > b.h; });
         }
     }
     
