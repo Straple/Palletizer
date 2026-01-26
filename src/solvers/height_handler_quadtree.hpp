@@ -199,7 +199,7 @@ void HeightHandlerQuadtreeT<MIN_SIZE>::add_rect(uint32_t x, uint32_t y, uint32_t
 template<uint32_t MIN_SIZE>
 uint64_t HeightHandlerQuadtreeT<MIN_SIZE>::get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
     // Упрощённый подход: используем алгоритм из HeightHandlerRects
-    uint32_t max_h = get(x, y, X, Y);
+    uint32_t max_h = get_h(x, y, X, Y);
     
     uint64_t area = 0;
     

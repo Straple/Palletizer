@@ -35,7 +35,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
                 return 1.0;  // На полу - полная опора
             }
 
-            uint64_t supported = height_handler.get_area_at_max_height(x, y, x + length - 1, y + width - 1);
+            uint64_t supported = height_handler.get_area(x, y, x + length - 1, y + width - 1);
             uint64_t total = static_cast<uint64_t>(length) * width;
 
             return total > 0 ? static_cast<double>(supported) / total : 0.0;

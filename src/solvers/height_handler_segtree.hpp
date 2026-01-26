@@ -228,7 +228,7 @@ uint64_t HeightHandlerSegTreeT<CELL_SIZE_X, CELL_SIZE_Y>::get_area(uint32_t x, u
     uint32_t cy2 = std::min(to_cell_y(Y), grid_height - 1);
     
     // Находим максимальную высоту
-    uint32_t max_h = get(x, y, X, Y);
+    uint32_t max_h = get_h(x, y, X, Y);
     
     if (max_h == 0) return static_cast<uint64_t>(X - x + 1) * (Y - y + 1);
     

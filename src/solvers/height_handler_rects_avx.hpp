@@ -6,9 +6,9 @@
 #include <algorithm>
 #include <cstdint>
 
-#ifdef __AVX2__
+// #ifdef __AVX2__
 #include <immintrin.h>
-#endif
+// #endif
 
 // HeightHandlerRectsAVX — версия HeightHandlerRects с SIMD оптимизациями
 // Хранит прямоугольники в SoA формате для эффективной векторизации
