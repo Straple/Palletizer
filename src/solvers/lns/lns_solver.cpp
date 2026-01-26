@@ -42,8 +42,8 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
         };
 
         auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
-            double support = test_data.header.use_stability ? calc_support_ratio(x, y, box.length, box.width) : 0;
-            return height_handler.get_h(x, y, X, Y) + box_height - support * 20000;
+            // double support = test_data.header.use_stability ? calc_support_ratio(x, y, box.length, box.width) : 0;
+            return height_handler.get_h(x, y, X, Y) + box_height;// - support * 20000;
         };
 
         auto get_position_dist = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width, uint32_t height) {
@@ -145,7 +145,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
     }
 
     auto stability_metrics = calc_stability(test_data, answer);
-    double score = -metrics.percolation - stability_metrics.min_support_ratio * 100 + unable_to_put_boxes_num * 10;// - stability_metrics.min_support_ratio;//100 - metrics.percolation - stability_metrics.min_support_ratio * 5 + 10 * stability_metrics.unstable_boxes_count * 1.0 / metrics.boxes;
+    double score = -metrics.percolation - stability_metrics.min_support_ratio * 100;// + unable_to_put_boxes_num * 10;// - stability_metrics.min_support_ratio;//100 - metrics.percolation - stability_metrics.min_support_ratio * 5 + 10 * stability_metrics.unstable_boxes_count * 1.0 / metrics.boxes;
 
     return {answer, metrics, score};
 }

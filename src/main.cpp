@@ -226,4 +226,32 @@ void launch_solvers() {
 int main() {
     launch_solvers<LNSSolver>();
     return 0;
+
+    FullMetrics fm = launch_one_solver<LNSSolver>(228);
+    std::cout << "Height: " << fm.metrics.height << std::endl;
+    std::cout << "Percolation: " << fm.metrics.percolation << std::endl;
+    std::cout << "Stability: " << fm.stability.stability << std::endl;
+    std::cout << "Interlocking ratio: " << fm.stability.interlocking_ratio << std::endl;
+    std::cout << "Center of mass Z: " << fm.stability.center_of_mass.z << std::endl;
+    std::cout << "min_support_ratio: " << fm.stability.min_support_ratio << std::endl;
 }
+
+/*
+===========================================================================
+                         SUMMARY STATISTICS
+===========================================================================
+Metric                          Min            Avg            Max
+-----------------------------------------------------------------
+Percolation                  0.2109         0.4005         0.7587
+Boxes                            18          116.8            465
+Height                          435         4392.6          13232
+Stability                    0.2224         0.5010         0.8590
+Interlocking                 0.1410         0.4990         0.7776
+Pallets computed                  5          341.1           7209
+-----------------------------------------------------------------
+
+Total tests:      436
+                Total time:       71.2s
+                Avg time/test:    163 ms
+===========================================================================
+*/
