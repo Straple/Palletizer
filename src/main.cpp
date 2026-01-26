@@ -94,6 +94,13 @@ void launch_solvers() {
     AggregatedStats stability_stats;
     AggregatedStats interlocking_stats;
     AggregatedStats pallets_stats;
+    AggregatedStats min_support_ratio_stats;
+    AggregatedStats com_x_stats;
+    AggregatedStats com_y_stats;
+    AggregatedStats com_z_stats;
+    AggregatedStats com_x_rel_stats;
+    AggregatedStats com_y_rel_stats;
+    AggregatedStats com_z_rel_stats;
 
     std::vector<int> tests;
     {
@@ -143,6 +150,20 @@ void launch_solvers() {
                 stability_stats.add(full_metrics.stability.stability);
                 interlocking_stats.add(full_metrics.stability.interlocking_ratio);
                 pallets_stats.add(full_metrics.pallets_computed);
+                min_support_ratio_stats.add(full_metrics.stability.min_support_ratio);
+                
+                // Center of mass
+                com_x_stats.add(full_metrics.stability.center_of_mass.x);
+                com_y_stats.add(full_metrics.stability.center_of_mass.y);
+                com_z_stats.add(full_metrics.stability.center_of_mass.z);
+                
+                // Relative center of mass
+                double rel_x = std::abs(full_metrics.stability.center_of_mass.x / full_metrics.metrics.length - 0.5);
+                double rel_y = std::abs(full_metrics.stability.center_of_mass.y / full_metrics.metrics.width - 0.5);
+                double rel_z = full_metrics.stability.center_of_mass.z / full_metrics.metrics.height;
+                com_x_rel_stats.add(rel_x);
+                com_y_rel_stats.add(rel_y);
+                com_z_rel_stats.add(rel_z);
 
                 std::cout << "  Test " << std::setw(3) << test 
                           << ": perc=" << std::fixed << std::setprecision(4) << full_metrics.metrics.percolation
@@ -208,8 +229,19 @@ void launch_solvers() {
     print_table_row_int("Boxes", (int64_t)boxes_stats.min_val, boxes_stats.avg(), (int64_t)boxes_stats.max_val);
     print_table_row_int("Height", (int64_t)height_stats.min_val, height_stats.avg(), (int64_t)height_stats.max_val);
     print_table_row("Stability", stability_stats.min_val, stability_stats.avg(), stability_stats.max_val);
+    print_table_row("Min support ratio", min_support_ratio_stats.min_val, min_support_ratio_stats.avg(), min_support_ratio_stats.max_val);
     print_table_row("Interlocking", interlocking_stats.min_val, interlocking_stats.avg(), interlocking_stats.max_val);
     print_table_row_int("Pallets computed", (int64_t)pallets_stats.min_val, pallets_stats.avg(), (int64_t)pallets_stats.max_val);
+    
+    std::cout << std::string(65, '-') << "\n";
+    std::cout << "Center of Mass:\n";
+    print_table_row("  CoM X", com_x_stats.min_val, com_x_stats.avg(), com_x_stats.max_val);
+    print_table_row("  CoM Y", com_y_stats.min_val, com_y_stats.avg(), com_y_stats.max_val);
+    print_table_row("  CoM Z", com_z_stats.min_val, com_z_stats.avg(), com_z_stats.max_val);
+    std::cout << "Relative Center of Mass:\n";
+    print_table_row("  CoM X rel", com_x_rel_stats.min_val, com_x_rel_stats.avg(), com_x_rel_stats.max_val);
+    print_table_row("  CoM Y rel", com_y_rel_stats.min_val, com_y_rel_stats.avg(), com_y_rel_stats.max_val);
+    print_table_row("  CoM Z rel", com_z_rel_stats.min_val, com_z_rel_stats.avg(), com_z_rel_stats.max_val);
     
     std::cout << std::string(65, '-') << "\n";
     
