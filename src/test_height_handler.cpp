@@ -283,11 +283,11 @@ void run_correctness_tests() {
 
 struct BenchmarkResult {
     std::string name;
-    double add_rect_time_ms = 0;
-    double get_h_time_ms = 0;
-    double get_area_time_ms = 0;
-    double get_dots_time_ms = 0;
-    double total_time_ms = 0;
+    double add_rect_ms = 0;
+    double get_h_ms = 0;
+    double get_area_ms = 0;
+    double get_dots_ms = 0;
+    double total_ms = 0;
     double total_ms = 0;  // Чистое время без накладных расходов таймеров
     uint64_t operations = 0;
 };
@@ -410,11 +410,11 @@ BenchmarkResult benchmark_handler(const std::string& name,
             step.final_height);
         add_rect_ns += op_timer.get_ns();
     }
-    result.add_rect_time_ms = add_rect_ns / 1'000'000.0;
-    result.get_h_time_ms = get_h_ns / 1'000'000.0;
-    result.get_area_time_ms = get_area_ns / 1'000'000.0;
-    result.get_dots_time_ms = 0;
-    result.total_time_ms = total_timer.get_ms();
+    result.add_rect_ms = add_rect_ns / 1'000'000.0;
+    result.get_h_ms = get_h_ns / 1'000'000.0;
+    result.get_area_ms = get_area_ns / 1'000'000.0;
+    result.get_dots_ms = 0;
+    result.total_ms = total_timer.get_ms();
     
     return result;
 }
@@ -444,11 +444,11 @@ void print_results_table(const std::vector<BenchmarkResult>& results) {
     for (const auto& r : results) {
         std::cout << std::fixed << std::setprecision(2);
         std::cout << std::left << std::setw(20) << r.name
-                  << std::right << std::setw(12) << r.total_time_ms
-                  << std::setw(12) << r.add_rect_time_ms
-                  << std::setw(12) << r.get_h_time_ms
-                  << std::setw(12) << r.get_area_time_ms
-                  << std::setw(12) << r.get_dots_time_ms
+                  << std::right << std::setw(12) << r.total_ms
+                  << std::setw(12) << r.add_rect_ms
+                  << std::setw(12) << r.get_h_ms
+                  << std::setw(12) << r.get_area_ms
+                  << std::setw(12) << r.get_dots_ms
                   << std::setw(12) << r.operations
                   << "\n";
     }
@@ -472,10 +472,10 @@ void print_speedup_table(const std::vector<BenchmarkResult>& results) {
         std::cout << std::fixed << std::setprecision(2);
         std::cout << std::left << std::setw(20) << r.name
                   << std::right 
-                  << std::setw(10) << (baseline.total_time_ms / std::max(r.total_time_ms, 0.001)) << "x"
-                  << std::setw(10) << (baseline.add_rect_time_ms / std::max(r.add_rect_time_ms, 0.001)) << "x"
-                  << std::setw(10) << (baseline.get_h_time_ms / std::max(r.get_h_time_ms, 0.001)) << "x"
-                  << std::setw(10) << (baseline.get_area_time_ms / std::max(r.get_area_time_ms, 0.001)) << "x"
+                  << std::setw(10) << (baseline.total_ms / std::max(r.total_ms, 0.001)) << "x"
+                  << std::setw(10) << (baseline.add_rect_ms / std::max(r.add_rect_ms, 0.001)) << "x"
+                  << std::setw(10) << (baseline.get_h_ms / std::max(r.get_h_ms, 0.001)) << "x"
+                  << std::setw(10) << (baseline.get_area_ms / std::max(r.get_area_ms, 0.001)) << "x"
                   << "\n";
     }
 }
@@ -562,7 +562,7 @@ void run_benchmarks() {
                           << std::setw(5) << results[0].operations << " ops): ";
                 for (const auto& r : results) {
                     std::cout << r.name << "=" << std::fixed << std::setprecision(1) 
-                              << r.total_time_ms << "ms ";
+                              << r.total_ms << "ms ";
                 }
                 std::cout << "[" << done << "/" << tests.size() << "]\n";
             }
@@ -581,9 +581,9 @@ void run_benchmarks() {
     for (const auto& test_results : all_results) {
         for (size_t j = 0; j < test_results.size() && j < aggregated.size(); ++j) {
             aggregated[j].total_ms += test_results[j].total_ms;
-            aggregated[j].add_rect_ms += test_results[j].add_rect_time_ms;
-            aggregated[j].get_h_ms += test_results[j].get_h_time_ms;
-            aggregated[j].get_area_ms += test_results[j].get_area_time_ms;
+            aggregated[j].add_rect_ms += test_results[j].add_rect_ms;
+            aggregated[j].get_h_ms += test_results[j].get_h_ms;
+            aggregated[j].get_area_ms += test_results[j].get_area_ms;
             aggregated[j].operations += test_results[j].operations;
         }
     }
