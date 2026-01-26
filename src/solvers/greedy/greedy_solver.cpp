@@ -35,7 +35,7 @@ Answer GreedySolver::solve(TimePoint end_time) {
             auto box = test_data.boxes[box_id];
 
             auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
-                return height_handler.get(x, y, X, Y) + box_height;
+                return height_handler.get_h(x, y, X, Y) + box_height;
             };
 
             auto available_boxes = get_available_boxes(test_data.header, box);
@@ -59,7 +59,7 @@ Answer GreedySolver::solve(TimePoint end_time) {
         ASSERT(best_i != -1, "unable to put box");
         auto box = test_data.boxes[order[best_i].first];
 
-        uint32_t best_h = height_handler.get(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1);
+        uint32_t best_h = height_handler.get_h(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1);
         Position pos = {
                 box.sku,
                 best_x,

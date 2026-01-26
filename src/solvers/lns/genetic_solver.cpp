@@ -54,7 +54,7 @@ Answer GeneticSolver::solve(TimePoint end_time) {
                 double best_score = 1e300;
 
                 auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
-                    uint32_t h = state.height_handler.get(x, y, X, Y);
+                    uint32_t h = state.height_handler.get_h(x, y, X, Y);
                     double score = h * 100.0 + x + y; // + box_meta.x_weight * x + box_meta.y_weight * y;
                     return score;
                 };
@@ -89,7 +89,7 @@ Answer GeneticSolver::solve(TimePoint end_time) {
                 std::stable_sort(items.begin(), items.end());
                 auto [x, y, length, width, height, rotate] = items[0];
 
-                uint32_t h = state.height_handler.get(x, y, x + length - 1, y + width - 1);
+                uint32_t h = state.height_handler.get_h(x, y, x + length - 1, y + width - 1);
 
                 State next = state;
 
@@ -109,14 +109,14 @@ Answer GeneticSolver::solve(TimePoint end_time) {
 
                 next.order.erase(std::find(next.order.begin(), next.order.end(), box_id));
 
-                next.score = next.height_handler.get(0, 0, -1, -1);
+                next.score = next.height_handler.get_h(0, 0, -1, -1);
 
                 double unused_h = 0;
                 uint32_t cnt = 0;
-                uint32_t total_h = next.height_handler.get(0, 0, -1, -1);
+                uint32_t total_h = next.height_handler.get_h(0, 0, -1, -1);
                 for (uint32_t x = 0; x < test_data.header.length; x += 10) {
                     for (uint32_t y = 0; y < test_data.header.width; y += 10) {
-                        unused_h += total_h - next.height_handler.get(x, y, x + 9, y + 9);
+                        unused_h += total_h - next.height_handler.get_h(x, y, x + 9, y + 9);
                         cnt++;
                     }
                 }

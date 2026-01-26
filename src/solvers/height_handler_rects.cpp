@@ -11,7 +11,7 @@ HeightHandlerRects::HeightHandlerRects(uint32_t length, uint32_t width) {
     height_rects.push_back(HeightRect{0, 0, length - 1, width - 1, 0});
 }
 
-uint32_t HeightHandlerRects::get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
+uint32_t HeightHandlerRects::get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
     for (auto rect: height_rects) {
         if (rect.x <= X && x <= rect.X && rect.y <= Y && y <= rect.Y) {
             return rect.h;
@@ -20,7 +20,7 @@ uint32_t HeightHandlerRects::get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y)
     return -1;
 }
 
-uint64_t HeightHandlerRects::get_area_at_max_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
+uint64_t HeightHandlerRects::get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
     uint64_t area = 0;
     uint32_t max_height = 0;
     bool found_max = false;
