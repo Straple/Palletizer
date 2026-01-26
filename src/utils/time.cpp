@@ -15,6 +15,10 @@ uint64_t Timer::get_ms() const {
     return std::chrono::duration_cast<Milliseconds>(get_now() - start).count();
 }
 
+uint64_t Timer::get_us() const {
+    return std::chrono::duration_cast<Microseconds>(get_now() - start).count();
+}
+
 uint64_t Timer::get_ns() const {
     return std::chrono::duration_cast<Nanoseconds>(get_now() - start).count();
 }
