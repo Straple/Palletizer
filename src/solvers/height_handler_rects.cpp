@@ -48,6 +48,18 @@ uint64_t HeightHandlerRects::get_area_at_max_height(uint32_t x, uint32_t y, uint
             }
         }
     }
+
+    /*{
+        uint32_t supported_cells = 0;
+        for (uint32_t a = x; a <= X; a += 1) {
+            for (uint32_t b = y; b <= Y; b += 1) {
+                if (get(a, b, a, b) == max_height) {
+                    supported_cells++;
+                }
+            }
+        }
+        ASSERT(supported_cells == area, "invalid get_area_at_max_height: " + std::to_string(area) + " != " + std::to_string(supported_cells));
+    }*/
     
     return area;
 }

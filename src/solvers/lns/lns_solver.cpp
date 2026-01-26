@@ -15,10 +15,12 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
     Answer answer;
     HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
 
+    uint32_t unable_to_put_boxes_num = 0;
+
     for (auto box_meta: order) {
         auto box = test_data.boxes[box_meta.box_id];
 
-        uint32_t best_score = -1;
+        double best_score = 1e300;
         uint32_t best_x = -1;
         uint32_t best_y = -1;
         uint32_t best_length = -1;
@@ -26,21 +28,22 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
         uint32_t best_height = -1;
         uint32_t best_rotation = -1;
 
-        auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
-            return height_handler.get(x, y, X, Y) + box_height;
-        };
-
         // Функция проверки опоры коробки (возвращает долю площади с опорой)
         auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
             uint32_t h = height_handler.get(x, y, x + length - 1, y + width - 1);
             if (h == 0) {
                 return 1.0;  // На полу - полная опора
             }
-            
+
             uint64_t supported = height_handler.get_area_at_max_height(x, y, x + length - 1, y + width - 1);
             uint64_t total = static_cast<uint64_t>(length) * width;
-            
+
             return total > 0 ? static_cast<double>(supported) / total : 0.0;
+        };
+
+        auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
+            double support = test_data.header.use_stability ? calc_support_ratio(x, y, box.length, box.width) : 0;
+            return height_handler.get(x, y, X, Y) + box_height - support * 20000;
         };
 
         auto get_position_dist = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width, uint32_t height) {
@@ -79,15 +82,15 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
             // 20/30s
             for (auto [x, y]: dots) {
                 // Проверяем опору если включена проверка устойчивости
-                if (test_data.header.use_stability) {
+                /*if (test_data.header.use_stability) {
                     double support = calc_support_ratio(x, y, box.length, box.width);
                     if (support < test_data.header.min_support_threshold) {
                         continue;  // Пропускаем позицию с недостаточной опорой
                     }
-                }
+                }*/
                 
                 // Timer timer;
-                uint32_t score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
+                auto score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
                 // total_time += timer.get_ns();
                 if (score < best_score) {
                     best_score = score;
@@ -110,7 +113,11 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
             }
         }
 
-        ASSERT(best_score != -1, "unable to put box");
+        if(best_score > 1e100){
+            unable_to_put_boxes_num++;
+            // continue;
+        }
+        ASSERT(best_score < 1e100, "unable to put box");
 
         auto [x, y, length, width, height, rotation] = std::tie(best_x, best_y, best_length, best_width, best_height, best_rotation);
 
@@ -138,7 +145,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
     }
 
     auto stability_metrics = calc_stability(test_data, answer);
-    double score = -metrics.percolation - stability_metrics.min_support_ratio;//100 - metrics.percolation - stability_metrics.min_support_ratio * 5 + 10 * stability_metrics.unstable_boxes_count * 1.0 / metrics.boxes;
+    double score = -metrics.percolation - stability_metrics.min_support_ratio * 100 + unable_to_put_boxes_num * 10;// - stability_metrics.min_support_ratio;//100 - metrics.percolation - stability_metrics.min_support_ratio * 5 + 10 * stability_metrics.unstable_boxes_count * 1.0 / metrics.boxes;
 
     return {answer, metrics, score};
 }
@@ -255,7 +262,6 @@ Answer LNSSolver::solve(TimePoint end_time) {
     simulate(test_data, order);
 
     // std::cout << "Time m: " << total_time / 1e9 << "s\n";
-
     return best_answer;
 }
 

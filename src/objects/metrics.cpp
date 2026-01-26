@@ -11,10 +11,13 @@ Metrics calc_metrics(TestData test_data, Answer answer) {
     metrics.length = test_data.header.length;
     metrics.width = test_data.header.width;
 
+    uint32_t expected_boxes = 0;
     std::unordered_map<uint32_t, uint32_t> sku_to_index;
     for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
         sku_to_index[test_data.boxes[i].sku] = i;
+        expected_boxes += test_data.boxes[i].quantity;
     }
+    ASSERT(expected_boxes == metrics.boxes, "invalid boxes num: got " + std::to_string(metrics.boxes) + " != expected " + std::to_string(expected_boxes));
     for (auto pos: answer.positions) {
         ASSERT(sku_to_index.contains(pos.sku), "sku does not contains");
         auto box = test_data.boxes[sku_to_index.at(pos.sku)];

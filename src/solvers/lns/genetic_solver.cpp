@@ -11,7 +11,8 @@ GeneticSolver::GeneticSolver(TestData test_data) : Solver(test_data) {
 }
 
 Answer GeneticSolver::solve(TimePoint end_time) {
-    std::sort(test_data.boxes.begin(), test_data.boxes.end(), [&](const Box &lhs, const Box &rhs) {
+    return Answer();
+    /*std::sort(test_data.boxes.begin(), test_data.boxes.end(), [&](const Box &lhs, const Box &rhs) {
         return lhs.length * lhs.width > rhs.length * rhs.width; // ok
     });
 
@@ -143,5 +144,5 @@ Answer GeneticSolver::solve(TimePoint end_time) {
         }
     }
 
-    return states[0].answer;
+    return states[0].answer;*/
 }
