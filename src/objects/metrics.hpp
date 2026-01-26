@@ -1,7 +1,7 @@
 #pragma once
 
-#include <objects/test_data.hpp>
 #include <objects/answer.hpp>
+#include <objects/test_data.hpp>
 
 #include <cstdint>
 

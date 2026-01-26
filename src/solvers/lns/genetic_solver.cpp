@@ -7,7 +7,6 @@
 #include <tuple>
 
 GeneticSolver::GeneticSolver(TestData test_data) : Solver(test_data) {
-
 }
 
 Answer GeneticSolver::solve(TimePoint end_time) {

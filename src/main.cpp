@@ -40,7 +40,7 @@ void launch_solvers() {
     double sum_percolation = 0;
     double max_percolation = 0;
     double min_percolation = 1;
-    
+
     // Метрики устойчивости
     double sum_stability = 0;
     double sum_interlocking_ratio = 0;
@@ -76,7 +76,7 @@ void launch_solvers() {
             {
                 std::unique_lock locker(mutex);
 
-                std::cout << test << ' ' << full_metrics.metrics.percolation 
+                std::cout << test << ' ' << full_metrics.metrics.percolation
                           << " stability:" << full_metrics.stability.stability << std::endl;
 
                 sum_percolation += full_metrics.metrics.percolation;
@@ -96,9 +96,9 @@ void launch_solvers() {
                    << "center_of_mass_x,center_of_mass_y,center_of_mass_z,total_weight,"
                    << "center_of_mass_z_relative" << std::endl;
     for (uint32_t test = 1; test < tests_metrics.size(); test++) {
-        auto& fm = tests_metrics[test];
+        auto &fm = tests_metrics[test];
         double com_z_relative = fm.stability.center_of_mass.z / fm.metrics.height;
-        
+
         metrics_output << test << ',' << fm.metrics.boxes << ',' << fm.metrics.length << ',' << fm.metrics.width
                        << ',' << fm.metrics.height << ',' << fm.metrics.boxes_volume << ',' << fm.metrics.pallet_volume
                        << ',' << fm.metrics.percolation

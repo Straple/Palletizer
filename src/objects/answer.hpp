@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
 #include <istream>
+#include <vector>
 
 struct Position {
     uint32_t sku = 0;

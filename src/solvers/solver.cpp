@@ -1,7 +1,6 @@
 #include <solvers/solver.hpp>
 
 Solver::Solver(TestData test_data) : test_data(std::move(test_data)) {
-
 }
 
 Answer Solver::solve(TimePoint end_time) {

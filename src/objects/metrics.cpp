@@ -40,7 +40,8 @@ Metrics calc_metrics(TestData test_data, Answer answer) {
 
             ASSERT(!(is_intersect(pos1.x, pos1.X, pos2.x, pos2.X) &&
                      is_intersect(pos1.y, pos1.Y, pos2.y, pos2.Y) &&
-                     is_intersect(pos1.z, pos1.Z, pos2.z, pos2.Z)), "boxes intersects");
+                     is_intersect(pos1.z, pos1.Z, pos2.z, pos2.Z)),
+                   "boxes intersects");
         }
     }
     return metrics;

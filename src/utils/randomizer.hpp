@@ -1,7 +1,7 @@
 #pragma once
 
-#include <utils/assert.hpp>
 #include <random>
+#include <utils/assert.hpp>
 
 struct Randomizer {
     std::mt19937_64 generator;

@@ -32,7 +32,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
         auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
             uint32_t h = height_handler.get_h(x, y, x + length - 1, y + width - 1);
             if (h == 0) {
-                return 1.0;  // На полу - полная опора
+                return 1.0;// На полу - полная опора
             }
 
             uint64_t supported = height_handler.get_area(x, y, x + length - 1, y + width - 1);
@@ -88,7 +88,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
                         continue;  // Пропускаем позицию с недостаточной опорой
                     }
                 }*/
-                
+
                 // Timer timer;
                 auto score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
                 // total_time += timer.get_ns();
@@ -113,7 +113,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
             }
         }
 
-        if(best_score > 1e100){
+        if (best_score > 1e100) {
             unable_to_put_boxes_num++;
             // continue;
         }

@@ -1,26 +1,26 @@
-#include <solvers/height_handler_rects.hpp>
-#include <solvers/height_handler_grid.hpp>
-#include <solvers/height_handler_segtree.hpp>
-#include <solvers/height_handler_quadtree.hpp>
 #include <objects/test_data.hpp>
-#include <utils/tools.hpp>
+#include <settings.hpp>
+#include <solvers/height_handler_grid.hpp>
+#include <solvers/height_handler_quadtree.hpp>
+#include <solvers/height_handler_rects.hpp>
+#include <solvers/height_handler_segtree.hpp>
 #include <utils/randomizer.hpp>
 #include <utils/time.hpp>
-#include <settings.hpp>
+#include <utils/tools.hpp>
 
-#include <iostream>
-#include <fstream>
 #include <algorithm>
-#include <iomanip>
-#include <sstream>
 #include <atomic>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
 #include <mutex>
+#include <sstream>
 #include <thread>
 // ======================= ЮНИТ ТЕСТЫ =======================
 
 // Тест одной реализации с известными значениями
 template<typename Handler>
-bool run_unit_tests(const std::string& name) {
+bool run_unit_tests(const std::string &name) {
     bool passed = true;
 
     std::cout << "  " << name << ": ";
@@ -32,7 +32,7 @@ bool run_unit_tests(const std::string& name) {
             std::cerr << "\n    FAIL: empty handler should return 0\n";
             passed = false;
         }
-        if (h.get_area(0, 0, 99, 99) != 100*100) {
+        if (h.get_area(0, 0, 99, 99) != 100 * 100) {
             std::cerr << "\n    FAIL: empty handler area should be full\n";
             passed = false;
         }
@@ -41,7 +41,7 @@ bool run_unit_tests(const std::string& name) {
     // Тест 2: один прямоугольник
     {
         Handler h(100, 100);
-        h.add_rect(10, 10, 29, 29, 50);  // 20x20 с высотой 50
+        h.add_rect(10, 10, 29, 29, 50);// 20x20 с высотой 50
 
         // Внутри прямоугольника
         if (h.get_h(10, 10, 29, 29) != 50) {
@@ -66,7 +66,7 @@ bool run_unit_tests(const std::string& name) {
     {
         Handler h(100, 100);
         h.add_rect(0, 0, 9, 9, 30);    // Первый: 10x10 с высотой 30
-        h.add_rect(50, 50, 59, 59, 70); // Второй: 10x10 с высотой 70
+        h.add_rect(50, 50, 59, 59, 70);// Второй: 10x10 с высотой 70
 
         if (h.get_h(0, 0, 9, 9) != 30) {
             std::cerr << "\n    FAIL: first rect should be 30\n";
@@ -88,8 +88,8 @@ bool run_unit_tests(const std::string& name) {
     // Тест 4: перекрывающиеся прямоугольники (max операция)
     {
         Handler h(100, 100);
-        h.add_rect(0, 0, 49, 49, 100);  // Первый
-        h.add_rect(25, 25, 74, 74, 80); // Второй перекрывается
+        h.add_rect(0, 0, 49, 49, 100); // Первый
+        h.add_rect(25, 25, 74, 74, 80);// Второй перекрывается
 
         // В области только первого
         if (h.get_h(0, 0, 24, 24) != 100) {
@@ -113,8 +113,8 @@ bool run_unit_tests(const std::string& name) {
     // Тест 5: get_area
     {
         Handler h(100, 100);
-        h.add_rect(0, 0, 49, 49, 100);   // 50x50 с высотой 100
-        h.add_rect(50, 0, 99, 49, 50);   // 50x50 с высотой 50
+        h.add_rect(0, 0, 49, 49, 100);// 50x50 с высотой 100
+        h.add_rect(50, 0, 99, 49, 50);// 50x50 с высотой 50
 
         // В запросе [0,0]-[99,49] максимум 100, площадь на этой высоте = 50*50 = 2500
         uint64_t area = h.get_area(0, 0, 99, 49);
@@ -158,7 +158,7 @@ struct RectOperation {
     uint32_t x, y, X, Y, h;
 };
 
-std::vector<RectOperation> generate_random_operations(uint32_t length, uint32_t width, uint32_t count, Randomizer& rnd) {
+std::vector<RectOperation> generate_random_operations(uint32_t length, uint32_t width, uint32_t count, Randomizer &rnd) {
     std::vector<RectOperation> ops;
     for (uint32_t i = 0; i < count; ++i) {
         uint32_t x = rnd.get(0, length - 1);
@@ -173,9 +173,9 @@ std::vector<RectOperation> generate_random_operations(uint32_t length, uint32_t 
 
 // Тест корректности: сравниваем две реализации
 template<typename Handler1, typename Handler2>
-bool test_correctness(const std::string& name1, const std::string& name2,
+bool test_correctness(const std::string &name1, const std::string &name2,
                       uint32_t length, uint32_t width,
-                      const std::vector<RectOperation>& ops) {
+                      const std::vector<RectOperation> &ops) {
 
     Handler1 h1(length, width);
     Handler2 h2(length, width);
@@ -183,7 +183,7 @@ bool test_correctness(const std::string& name1, const std::string& name2,
     bool passed = true;
 
     for (size_t i = 0; i < ops.size(); ++i) {
-        const auto& op = ops[i];
+        const auto &op = ops[i];
 
         uint32_t val1 = h1.get_h(op.x, op.y, op.X, op.Y);
         uint32_t val2 = h2.get_h(op.x, op.y, op.X, op.Y);
@@ -225,7 +225,7 @@ void run_correctness_tests() {
 
     std::cout << "Testing HeightHandlerRects vs HeightHandler... ";
     if (test_correctness<HeightHandlerRects, HeightHandler>(
-            "Rects", "Baseline", length, width, ops)) {
+                "Rects", "Baseline", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
@@ -234,7 +234,7 @@ void run_correctness_tests() {
 
     std::cout << "Testing HeightHandlerGrid<1,1> vs HeightHandler... ";
     if (test_correctness<HeightHandlerGridT<1, 1>, HeightHandler>(
-            "Grid<1,1>", "Baseline", length, width, ops)) {
+                "Grid<1,1>", "Baseline", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
@@ -243,7 +243,7 @@ void run_correctness_tests() {
 
     std::cout << "Testing HeightHandlerSegTree<1,1> vs HeightHandler... ";
     if (test_correctness<HeightHandlerSegTreeT<1, 1>, HeightHandler>(
-            "SegTree<1,1>", "Baseline", length, width, ops)) {
+                "SegTree<1,1>", "Baseline", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
@@ -252,7 +252,7 @@ void run_correctness_tests() {
 
     std::cout << "Testing HeightHandlerQuadtree<1> vs HeightHandler... ";
     if (test_correctness<HeightHandlerQuadtreeT<1>, HeightHandler>(
-            "Quadtree<1>", "Baseline", length, width, ops)) {
+                "Quadtree<1>", "Baseline", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
@@ -293,24 +293,24 @@ TestData load_test(int test_num) {
 // Структура для хранения предварительно вычисленных операций
 struct BenchmarkStep {
     BoxSize box;
-    std::vector<std::pair<uint32_t, uint32_t>> dots;  // Точки для проверки
-    uint32_t best_x, best_y;                           // Лучшая позиция
-    uint32_t final_height;                             // Высота для add_rect
+    std::vector<std::pair<uint32_t, uint32_t>> dots;// Точки для проверки
+    uint32_t best_x, best_y;                        // Лучшая позиция
+    uint32_t final_height;                          // Высота для add_rect
 };
 
 // Предварительно вычисляем все операции используя HeightHandler (baseline)
 std::vector<BenchmarkStep> precompute_benchmark_steps(
-    const TestData& test_data,
-    const std::vector<uint32_t>& box_order) {
+        const TestData &test_data,
+        const std::vector<uint32_t> &box_order) {
 
     std::vector<BenchmarkStep> steps;
     HeightHandler reference(test_data.header.length, test_data.header.width);
 
-    for (uint32_t box_idx : box_order) {
-        const auto& box = test_data.boxes[box_idx];
+    for (uint32_t box_idx: box_order) {
+        const auto &box = test_data.boxes[box_idx];
         auto available_boxes = get_available_boxes(test_data.header, box);
 
-        for (const auto& rotated_box : available_boxes) {
+        for (const auto &rotated_box: available_boxes) {
             BenchmarkStep step;
             step.box = rotated_box;
             step.dots = reference.get_dots(test_data.header, rotated_box);
@@ -319,7 +319,7 @@ std::vector<BenchmarkStep> precompute_benchmark_steps(
             step.best_x = 0;
             step.best_y = 0;
 
-            for (auto [x, y] : step.dots) {
+            for (auto [x, y]: step.dots) {
                 uint32_t h = reference.get_h(x, y, x + rotated_box.length - 1, y + rotated_box.width - 1);
                 uint32_t score = h + rotated_box.height;
                 if (score < best_score) {
@@ -329,14 +329,14 @@ std::vector<BenchmarkStep> precompute_benchmark_steps(
                 }
             }
 
-            if (best_score != (uint32_t)-1) {
+            if (best_score != (uint32_t) -1) {
                 uint32_t h = reference.get_h(step.best_x, step.best_y,
-                    step.best_x + rotated_box.length - 1, step.best_y + rotated_box.width - 1);
+                                             step.best_x + rotated_box.length - 1, step.best_y + rotated_box.width - 1);
                 step.final_height = h + rotated_box.height;
 
                 reference.add_rect(step.best_x, step.best_y,
-                    step.best_x + rotated_box.length - 1, step.best_y + rotated_box.width - 1,
-                    step.final_height);
+                                   step.best_x + rotated_box.length - 1, step.best_y + rotated_box.width - 1,
+                                   step.final_height);
 
                 steps.push_back(step);
                 break;
@@ -348,29 +348,29 @@ std::vector<BenchmarkStep> precompute_benchmark_steps(
 }
 
 template<typename Handler>
-double benchmark_total(Handler handler, const std::vector<BenchmarkStep>& steps) {
+double benchmark_total(Handler handler, const std::vector<BenchmarkStep> &steps) {
     Timer timer;
     volatile uint64_t sum_h = 0, sum_area = 0;
-    for (const auto& step : steps) {
-        for (auto [x, y] : step.dots) {
+    for (const auto &step: steps) {
+        for (auto [x, y]: step.dots) {
             sum_h += handler.get_h(
-                x, y, x + step.box.length - 1, y + step.box.width - 1);
+                    x, y, x + step.box.length - 1, y + step.box.width - 1);
             sum_area += handler.get_area(
-                x, y, x + step.box.length - 1, y + step.box.width - 1);
+                    x, y, x + step.box.length - 1, y + step.box.width - 1);
         }
         handler.add_rect(step.best_x, step.best_y,
-            step.best_x + step.box.length - 1, step.best_y + step.box.width - 1,
-            step.final_height);
+                         step.best_x + step.box.length - 1, step.best_y + step.box.width - 1,
+                         step.final_height);
     }
-    (void)sum_h;
-    (void)sum_area;
+    (void) sum_h;
+    (void) sum_area;
     return timer.get_ns() / 1'000'000.0;
 }
 
 template<typename Handler>
-BenchmarkResult benchmark_handler(const std::string& name,
-                                   Handler handler,
-                                   const std::vector<BenchmarkStep>& steps) {
+BenchmarkResult benchmark_handler(const std::string &name,
+                                  Handler handler,
+                                  const std::vector<BenchmarkStep> &steps) {
     BenchmarkResult result;
     result.name = name;
 
@@ -380,9 +380,9 @@ BenchmarkResult benchmark_handler(const std::string& name,
 
     volatile uint64_t sum_h = 0, sum_area = 0;
 
-    for (const auto& step : steps) {
+    for (const auto &step: steps) {
         // Проходим по всем предвычисленным точкам
-        for (auto [x, y] : step.dots) {
+        for (auto [x, y]: step.dots) {
             op_timer.reset();
             sum_h += handler.get_h(x, y, x + step.box.length - 1, y + step.box.width - 1);
             get_h_ns += op_timer.get_ns();
@@ -395,8 +395,8 @@ BenchmarkResult benchmark_handler(const std::string& name,
         }
         op_timer.reset();
         handler.add_rect(step.best_x, step.best_y,
-            step.best_x + step.box.length - 1, step.best_y + step.box.width - 1,
-            step.final_height);
+                         step.best_x + step.box.length - 1, step.best_y + step.box.width - 1,
+                         step.final_height);
         add_rect_ns += op_timer.get_ns();
     }
     result.add_rect_ms = add_rect_ns / 1'000'000.0;
@@ -404,23 +404,23 @@ BenchmarkResult benchmark_handler(const std::string& name,
     result.get_area_ms = get_area_ns / 1'000'000.0;
     result.get_dots_ms = 0;
 
-    (void)sum_h;
-    (void)sum_area;
+    (void) sum_h;
+    (void) sum_area;
 
     return result;
 }
 
 // Полный бенчмарк с чистым временем
 template<typename Handler>
-BenchmarkResult benchmark_handler_full(const std::string& name,
-                                        uint32_t length, uint32_t width,
-                                        const std::vector<BenchmarkStep>& steps) {
+BenchmarkResult benchmark_handler_full(const std::string &name,
+                                       uint32_t length, uint32_t width,
+                                       const std::vector<BenchmarkStep> &steps) {
     BenchmarkResult result = benchmark_handler(name, Handler(length, width), steps);
     result.total_ms = benchmark_total(Handler(length, width), steps);
     return result;
 }
 
-void print_results_table(const std::vector<BenchmarkResult>& results) {
+void print_results_table(const std::vector<BenchmarkResult> &results) {
     // Заголовок
     std::cout << std::left << std::setw(20) << "Implementation"
               << std::right << std::setw(12) << "Total(ms)"
@@ -432,7 +432,7 @@ void print_results_table(const std::vector<BenchmarkResult>& results) {
               << "\n";
     std::cout << std::string(92, '-') << "\n";
 
-    for (const auto& r : results) {
+    for (const auto &r: results) {
         std::cout << std::fixed << std::setprecision(2);
         std::cout << std::left << std::setw(20) << r.name
                   << std::right << std::setw(12) << r.total_ms
@@ -445,10 +445,10 @@ void print_results_table(const std::vector<BenchmarkResult>& results) {
     }
 }
 
-void print_speedup_table(const std::vector<BenchmarkResult>& results) {
+void print_speedup_table(const std::vector<BenchmarkResult> &results) {
     if (results.empty()) return;
 
-    const auto& baseline = results[0];  // Первая реализация — базовая
+    const auto &baseline = results[0];// Первая реализация — базовая
 
     std::cout << "\nSpeedup vs " << baseline.name << ":\n";
     std::cout << std::left << std::setw(20) << "Implementation"
@@ -459,7 +459,7 @@ void print_speedup_table(const std::vector<BenchmarkResult>& results) {
               << "\n";
     std::cout << std::string(60, '-') << "\n";
 
-    for (const auto& r : results) {
+    for (const auto &r: results) {
         std::cout << std::fixed << std::setprecision(2);
         std::cout << std::left << std::setw(20) << r.name
                   << std::right
@@ -489,7 +489,7 @@ void run_benchmarks() {
 
     // Собираем все тесты
     std::vector<int> tests;
-    for (int test = 1; ; test++) {
+    for (int test = 1;; test++) {
         std::ifstream input("tests/" + std::to_string(test) + ".csv");
         if (!input) break;
         tests.push_back(test);
@@ -550,7 +550,7 @@ void run_benchmarks() {
                 std::cout << "Test " << std::setw(3) << test_num
                           << " (" << std::setw(3) << box_order.size() << " boxes, "
                           << std::setw(5) << results[0].operations << " ops): ";
-                for (const auto& r : results) {
+                for (const auto &r: results) {
                     std::cout << r.name << "=" << std::fixed << std::setprecision(1)
                               << r.total_ms << "ms ";
                 }
@@ -560,14 +560,14 @@ void run_benchmarks() {
     });
 
     // Агрегируем результаты
-    std::vector<AggregatedResult> aggregated(5);  // 5 алгоритмов
+    std::vector<AggregatedResult> aggregated(5);// 5 алгоритмов
     aggregated[0].name = "Baseline";
     aggregated[1].name = "Rects";
     aggregated[2].name = "Grid";
     aggregated[3].name = "SegTree";
     aggregated[4].name = "Quadtree";
 
-    for (const auto& test_results : all_results) {
+    for (const auto &test_results: all_results) {
         for (size_t j = 0; j < test_results.size() && j < aggregated.size(); ++j) {
             aggregated[j].total_ms += test_results[j].total_ms;
             aggregated[j].add_rect_ms += test_results[j].add_rect_ms;
@@ -598,7 +598,7 @@ void run_benchmarks() {
 
     double baseline_total = aggregated[0].total_ms;
 
-    for (const auto& r : aggregated) {
+    for (const auto &r: aggregated) {
         double speedup = baseline_total / std::max(r.total_ms, 0.001);
         std::cout << std::fixed << std::setprecision(1);
         std::cout << std::left << std::setw(15) << r.name
@@ -630,7 +630,7 @@ void run_benchmarks() {
         return oss.str();
     };
 
-    for (const auto& r : aggregated) {
+    for (const auto &r: aggregated) {
         std::cout << std::fixed << std::setprecision(2);
 
         std::cout << std::left << std::setw(15) << r.name

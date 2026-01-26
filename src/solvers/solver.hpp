@@ -1,16 +1,15 @@
 #pragma once
 
-#include <objects/test_data.hpp>
 #include <objects/answer.hpp>
+#include <objects/test_data.hpp>
 #include <utils/time.hpp>
 
-class Solver{
+class Solver {
 protected:
     TestData test_data;
-public:
 
+public:
     explicit Solver(TestData test_data);
 
-    virtual // поставим все коробки друг на друга
-    Answer solve(TimePoint end_time);
+    virtual Answer solve(TimePoint end_time);
 };

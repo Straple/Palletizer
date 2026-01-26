@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vector>
 #include <cstdint>
 #include <istream>
+#include <vector>
 
 struct Box {
     uint32_t sku = 0;
@@ -23,8 +23,8 @@ struct TestDataHeader {
     bool can_swap_length_width = true;
     bool can_swap_width_height = true;
     uint32_t available_rotations = 6;
-    bool use_stability = true;           // Использовать проверку устойчивости при укладке
-    double min_support_threshold = 0.7;  // Минимальная доля опоры (70%)
+    bool use_stability = true;         // Использовать проверку устойчивости при укладке
+    double min_support_threshold = 0.7;// Минимальная доля опоры (70%)
 };
 
 struct TestData {

@@ -40,8 +40,7 @@ std::istream &operator>>(std::istream &input, TestData &test_data) {
                 parse<uint32_t>(data[5]),
                 parse<uint32_t>(data[6]),
                 parse<uint32_t>(data[7]),
-                parse<uint32_t>(data[8])
-        };
+                parse<uint32_t>(data[8])};
         test_data.boxes.emplace_back(box);
     }
     auto get_area = [&](const Box &box) {
