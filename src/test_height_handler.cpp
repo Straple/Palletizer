@@ -361,25 +361,24 @@ std::vector<BenchmarkStep> precompute_benchmark_steps(
 template<typename Handler>
 double benchmark_total(Handler handler, const std::vector<BenchmarkStep>& steps) {
     Timer timer;
-    uint64_t sum_h = 0, sum_area = 0;
+    volatile uint64_t sum_h = 0, sum_area = 0;
     for (const auto& step : steps) {
         for (auto [x, y] : step.dots) {
-            [[maybe_unused]] uint32_t h = handler.get_h(
+            sum_h += handler.get_h(
                 x, y, x + step.box.length - 1, y + step.box.width - 1);
-            [[maybe_unused]] uint64_t area = handler.get_area(
+            sum_area += handler.get_area(
                 x, y, x + step.box.length - 1, y + step.box.width - 1);
-
-            sum_h += h;
-            sum_area += area;
         }
         handler.add_rect(step.best_x, step.best_y,
             step.best_x + step.box.length - 1, step.best_y + step.box.width - 1,
             step.final_height);
     }
+    (void)sum_h;
+    (void)sum_area;
     return timer.get_us();
 }
 
-constexpr uint32_t REPEAT = 10;
+constexpr uint32_t REPEAT = 1;
 
 template<typename Handler>
 BenchmarkResult benchmark_handler(const std::string& name,
@@ -391,19 +390,21 @@ BenchmarkResult benchmark_handler(const std::string& name,
     Timer op_timer;
     
     uint64_t add_rect_ns = 0, get_h_ns = 0, get_area_ns = 0;
+
+    volatile uint64_t sum_h = 0, sum_area = 0;
     
     for (const auto& step : steps) {
         // Проходим по всем предвычисленным точкам
         for (auto [x, y] : step.dots) {
             op_timer.reset();
             for(uint32_t r = 0; r < REPEAT; r++) {
-                [[maybe_unused]] uint32_t h = handler.get_h(
+                sum_h += handler.get_h(
                         x, y, x + step.box.length - 1, y + step.box.width - 1);
             }
             get_h_ns += op_timer.get_ns();
             op_timer.reset();
             for(uint32_t r = 0; r < REPEAT; r++) {
-                [[maybe_unused]] uint64_t area = handler.get_area(
+                sum_area += handler.get_area(
                         x, y, x + step.box.length - 1, y + step.box.width - 1);
             }
             get_area_ns += op_timer.get_ns();
@@ -422,6 +423,9 @@ BenchmarkResult benchmark_handler(const std::string& name,
     result.get_h_us = get_h_ns / 1'000.0;
     result.get_area_us = get_area_ns / 1'000.0;
     result.get_dots_us = 0;
+
+    (void)sum_h;
+    (void)sum_area;
     
     return result;
 }
