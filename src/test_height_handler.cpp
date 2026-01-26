@@ -1,5 +1,4 @@
 #include <solvers/height_handler_rects.hpp>
-#include <solvers/height_handler_rects_window.hpp>
 #include <solvers/height_handler_rects_avx.hpp>
 #include <solvers/height_handler_grid.hpp>
 #include <solvers/height_handler_segtree.hpp>
@@ -14,6 +13,7 @@
 #include <fstream>
 #include <algorithm>
 #include <iomanip>
+#include <sstream>
 #include <atomic>
 #include <mutex>
 #include <thread>
@@ -138,7 +138,6 @@ void run_unit_tests_all() {
     bool all_passed = true;
     
     all_passed &= run_unit_tests<HeightHandlerRects>("HeightHandlerRects");
-    all_passed &= run_unit_tests<HeightHandlerRectsWindow>("HeightHandlerRectsWindow");
     all_passed &= run_unit_tests<HeightHandlerRectsAVX>("HeightHandlerRectsAVX");
     all_passed &= run_unit_tests<HeightHandlerGridT<1, 1>>("HeightHandlerGrid<1,1>");
     all_passed &= run_unit_tests<HeightHandlerSegTreeT<1, 1>>("HeightHandlerSegTree<1,1>");
@@ -228,15 +227,6 @@ void run_correctness_tests() {
     std::cout << "Testing HeightHandlerGrid<1,1> vs HeightHandlerRects... ";
     if (test_correctness<HeightHandlerGridT<1, 1>, HeightHandlerRects>(
             "Grid<1,1>", "Rects", length, width, ops)) {
-        std::cout << "PASSED\n";
-    } else {
-        std::cout << "FAILED\n";
-        all_passed = false;
-    }
-    
-    std::cout << "Testing HeightHandlerRectsWindow vs HeightHandlerRects... ";
-    if (test_correctness<HeightHandlerRectsWindow, HeightHandlerRects>(
-            "RectsWindow", "Rects", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
@@ -526,10 +516,6 @@ void run_benchmarks() {
                 results.push_back(benchmark_handler("Rects", h, steps));
             }
             {
-                HeightHandlerRectsWindow h(len, wid);
-                results.push_back(benchmark_handler("RectsWindow", h, steps));
-            }
-            {
                 HeightHandlerRectsAVX h(len, wid);
                 results.push_back(benchmark_handler("RectsAVX", h, steps));
             }
@@ -565,13 +551,12 @@ void run_benchmarks() {
     });
     
     // Агрегируем результаты
-    std::vector<AggregatedResult> aggregated(6);  // 6 алгоритмов
+    std::vector<AggregatedResult> aggregated(5);  // 5 алгоритмов
     aggregated[0].name = "Rects";
-    aggregated[1].name = "RectsWindow";
-    aggregated[2].name = "RectsAVX";
-    aggregated[3].name = "Grid";
-    aggregated[4].name = "SegTree";
-    aggregated[5].name = "Quadtree";
+    aggregated[1].name = "RectsAVX";
+    aggregated[2].name = "Grid";
+    aggregated[3].name = "SegTree";
+    aggregated[4].name = "Quadtree";
     
     for (const auto& test_results : all_results) {
         for (size_t j = 0; j < test_results.size() && j < aggregated.size(); ++j) {
@@ -619,21 +604,32 @@ void run_benchmarks() {
     
     // Детальные speedup по операциям
     std::cout << "\nSpeedup vs Rects (by operation):\n";
-    std::cout << std::string(60, '-') << "\n";
+    std::cout << std::string(63, '-') << "\n";
     std::cout << std::left << std::setw(15) << "Algorithm"
-              << std::right << std::setw(12) << "add_rect"
+              << std::right << std::setw(12) << "Total"
+              << std::setw(12) << "add_rect"
               << std::setw(12) << "get_h"
               << std::setw(12) << "get_area"
               << "\n";
-    std::cout << std::string(60, '-') << "\n";
+    std::cout << std::string(63, '-') << "\n";
+    
+    // Форматируем speedup как строку с "x"
+    auto format_speedup = [](double base, double val) -> std::string {
+        double speedup = base / std::max(val, 0.001);
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2) << speedup << "x";
+        return oss.str();
+    };
     
     for (const auto& r : aggregated) {
         std::cout << std::fixed << std::setprecision(2);
+        
         std::cout << std::left << std::setw(15) << r.name
                   << std::right 
-                  << std::setw(10) << (aggregated[0].add_rect_ms / std::max(r.add_rect_ms, 0.001)) << "x"
-                  << std::setw(10) << (aggregated[0].get_ms / std::max(r.get_ms, 0.001)) << "x"
-                  << std::setw(10) << (aggregated[0].get_area_ms / std::max(r.get_area_ms, 0.001)) << "x"
+                  << std::setw(12) << format_speedup(aggregated[0].total_ms, r.total_ms)
+                  << std::setw(12) << format_speedup(aggregated[0].add_rect_ms, r.add_rect_ms)
+                  << std::setw(12) << format_speedup(aggregated[0].get_ms, r.get_ms)
+                  << std::setw(12) << format_speedup(aggregated[0].get_area_ms, r.get_area_ms)
                   << "\n";
     }
     
