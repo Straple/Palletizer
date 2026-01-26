@@ -11,13 +11,13 @@ public:
     virtual ~HeightHandler() = default;
     
     // Получить максимальную высоту в прямоугольнике [x, X] × [y, Y] (включительно)
-    [[nodiscard]] virtual uint32_t get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const = 0;
+    [[nodiscard]] virtual uint32_t get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const = 0;
     
     // Добавить прямоугольник с заданной высотой
     virtual void add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) = 0;
     
     // Получить площадь (в мм²), которая находится на максимальной высоте в прямоугольнике
-    [[nodiscard]] virtual uint64_t get_area_at_max_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const = 0;
+    [[nodiscard]] virtual uint64_t get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const = 0;
     
     // Получить интересные точки для размещения коробки
     [[nodiscard]] virtual std::vector<std::pair<uint32_t, uint32_t>> get_dots(

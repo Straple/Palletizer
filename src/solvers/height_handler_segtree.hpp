@@ -62,13 +62,13 @@ public:
     HeightHandlerSegTreeT(uint32_t length, uint32_t width);
     
     // Получить максимальную высоту в прямоугольнике
-    [[nodiscard]] uint32_t get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
+    [[nodiscard]] uint32_t get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
     
     // Добавить прямоугольник с заданной высотой
     void add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) override;
     
     // Получить площадь на максимальной высоте
-    [[nodiscard]] uint64_t get_area_at_max_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
+    [[nodiscard]] uint64_t get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
     
     // Получить интересные точки для размещения коробки
     [[nodiscard]] std::vector<std::pair<uint32_t, uint32_t>> get_dots(
@@ -198,7 +198,7 @@ uint32_t HeightHandlerSegTreeT<CELL_SIZE_X, CELL_SIZE_Y>::x_query_simple(uint32_
 }
 
 template<uint32_t CELL_SIZE_X, uint32_t CELL_SIZE_Y>
-uint32_t HeightHandlerSegTreeT<CELL_SIZE_X, CELL_SIZE_Y>::get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
+uint32_t HeightHandlerSegTreeT<CELL_SIZE_X, CELL_SIZE_Y>::get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
     uint32_t cx1 = to_cell_x(x);
     uint32_t cy1 = to_cell_y(y);
     uint32_t cx2 = std::min(to_cell_x(X), grid_width - 1);
@@ -221,7 +221,7 @@ void HeightHandlerSegTreeT<CELL_SIZE_X, CELL_SIZE_Y>::add_rect(uint32_t x, uint3
 }
 
 template<uint32_t CELL_SIZE_X, uint32_t CELL_SIZE_Y>
-uint64_t HeightHandlerSegTreeT<CELL_SIZE_X, CELL_SIZE_Y>::get_area_at_max_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
+uint64_t HeightHandlerSegTreeT<CELL_SIZE_X, CELL_SIZE_Y>::get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
     uint32_t cx1 = to_cell_x(x);
     uint32_t cy1 = to_cell_y(y);
     uint32_t cx2 = std::min(to_cell_x(X), grid_width - 1);

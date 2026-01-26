@@ -1,5 +1,6 @@
 #include <solvers/height_handler_rects.hpp>
 #include <solvers/height_handler_rects_window.hpp>
+#include <solvers/height_handler_rects_avx.hpp>
 #include <solvers/height_handler_grid.hpp>
 #include <solvers/height_handler_segtree.hpp>
 #include <solvers/height_handler_quadtree.hpp>
@@ -28,11 +29,11 @@ bool run_unit_tests(const std::string& name) {
     // Тест 1: пустой handler
     {
         Handler h(100, 100);
-        if (h.get(0, 0, 99, 99) != 0) {
+        if (h.get_h(0, 0, 99, 99) != 0) {
             std::cerr << "\n    FAIL: empty handler should return 0\n";
             passed = false;
         }
-        if (h.get_area_at_max_height(0, 0, 99, 99) != 100*100) {
+        if (h.get_area(0, 0, 99, 99) != 100*100) {
             std::cerr << "\n    FAIL: empty handler area should be full\n";
             passed = false;
         }
@@ -44,20 +45,20 @@ bool run_unit_tests(const std::string& name) {
         h.add_rect(10, 10, 29, 29, 50);  // 20x20 с высотой 50
         
         // Внутри прямоугольника
-        if (h.get(10, 10, 29, 29) != 50) {
-            std::cerr << "\n    FAIL: get inside rect should be 50, got " << h.get(10, 10, 29, 29) << "\n";
+        if (h.get_h(10, 10, 29, 29) != 50) {
+            std::cerr << "\n    FAIL: get_h inside rect should be 50, got " << h.get_h(10, 10, 29, 29) << "\n";
             passed = false;
         }
         
         // Снаружи прямоугольника
-        if (h.get(0, 0, 9, 9) != 0) {
-            std::cerr << "\n    FAIL: get outside rect should be 0\n";
+        if (h.get_h(0, 0, 9, 9) != 0) {
+            std::cerr << "\n    FAIL: get_h outside rect should be 0\n";
             passed = false;
         }
         
         // Пересечение
-        if (h.get(0, 0, 15, 15) != 50) {
-            std::cerr << "\n    FAIL: get intersecting should be 50\n";
+        if (h.get_h(0, 0, 15, 15) != 50) {
+            std::cerr << "\n    FAIL: get_h intersecting should be 50\n";
             passed = false;
         }
     }
@@ -68,18 +69,18 @@ bool run_unit_tests(const std::string& name) {
         h.add_rect(0, 0, 9, 9, 30);    // Первый: 10x10 с высотой 30
         h.add_rect(50, 50, 59, 59, 70); // Второй: 10x10 с высотой 70
         
-        if (h.get(0, 0, 9, 9) != 30) {
+        if (h.get_h(0, 0, 9, 9) != 30) {
             std::cerr << "\n    FAIL: first rect should be 30\n";
             passed = false;
         }
         
-        if (h.get(50, 50, 59, 59) != 70) {
+        if (h.get_h(50, 50, 59, 59) != 70) {
             std::cerr << "\n    FAIL: second rect should be 70\n";
             passed = false;
         }
         
         // Запрос охватывающий оба
-        if (h.get(0, 0, 59, 59) != 70) {
+        if (h.get_h(0, 0, 59, 59) != 70) {
             std::cerr << "\n    FAIL: query covering both should be max=70\n";
             passed = false;
         }
@@ -92,32 +93,32 @@ bool run_unit_tests(const std::string& name) {
         h.add_rect(25, 25, 74, 74, 80); // Второй перекрывается
         
         // В области только первого
-        if (h.get(0, 0, 24, 24) != 100) {
+        if (h.get_h(0, 0, 24, 24) != 100) {
             std::cerr << "\n    FAIL: first only area should be 100\n";
             passed = false;
         }
         
         // В области перекрытия — max(100, 80) = 100
-        if (h.get(25, 25, 49, 49) != 100) {
+        if (h.get_h(25, 25, 49, 49) != 100) {
             std::cerr << "\n    FAIL: overlap area should be max=100\n";
             passed = false;
         }
         
         // В области только второго
-        if (h.get(50, 50, 74, 74) != 80) {
+        if (h.get_h(50, 50, 74, 74) != 80) {
             std::cerr << "\n    FAIL: second only area should be 80\n";
             passed = false;
         }
     }
     
-    // Тест 5: get_area_at_max_height
+    // Тест 5: get_area
     {
         Handler h(100, 100);
         h.add_rect(0, 0, 49, 49, 100);   // 50x50 с высотой 100
         h.add_rect(50, 0, 99, 49, 50);   // 50x50 с высотой 50
         
         // В запросе [0,0]-[99,49] максимум 100, площадь на этой высоте = 50*50 = 2500
-        uint64_t area = h.get_area_at_max_height(0, 0, 99, 49);
+        uint64_t area = h.get_area(0, 0, 99, 49);
         if (area != 2500) {
             std::cerr << "\n    FAIL: area at max height should be 2500, got " << area << "\n";
             passed = false;
@@ -138,6 +139,7 @@ void run_unit_tests_all() {
     
     all_passed &= run_unit_tests<HeightHandlerRects>("HeightHandlerRects");
     all_passed &= run_unit_tests<HeightHandlerRectsWindow>("HeightHandlerRectsWindow");
+    all_passed &= run_unit_tests<HeightHandlerRectsAVX>("HeightHandlerRectsAVX");
     all_passed &= run_unit_tests<HeightHandlerGridT<1, 1>>("HeightHandlerGrid<1,1>");
     all_passed &= run_unit_tests<HeightHandlerSegTreeT<1, 1>>("HeightHandlerSegTree<1,1>");
     all_passed &= run_unit_tests<HeightHandlerQuadtreeT<1>>("HeightHandlerQuadtree<1>");
@@ -185,8 +187,8 @@ bool test_correctness(const std::string& name1, const std::string& name2,
     for (size_t i = 0; i < ops.size(); ++i) {
         const auto& op = ops[i];
         
-        uint32_t val1 = h1.get(op.x, op.y, op.X, op.Y);
-        uint32_t val2 = h2.get(op.x, op.y, op.X, op.Y);
+        uint32_t val1 = h1.get_h(op.x, op.y, op.X, op.Y);
+        uint32_t val2 = h2.get_h(op.x, op.y, op.X, op.Y);
         
         if (val1 != val2) {
             std::cerr << "FAIL: get() mismatch at op " << i << ": "
@@ -195,11 +197,11 @@ bool test_correctness(const std::string& name1, const std::string& name2,
             passed = false;
         }
         
-        uint64_t area1 = h1.get_area_at_max_height(op.x, op.y, op.X, op.Y);
-        uint64_t area2 = h2.get_area_at_max_height(op.x, op.y, op.X, op.Y);
+        uint64_t area1 = h1.get_area(op.x, op.y, op.X, op.Y);
+        uint64_t area2 = h2.get_area(op.x, op.y, op.X, op.Y);
         
         if (area1 != area2) {
-            std::cerr << "FAIL: get_area_at_max_height() mismatch at op " << i << ": "
+            std::cerr << "FAIL: get_area() mismatch at op " << i << ": "
                       << name1 << "=" << area1 << ", " << name2 << "=" << area2 << "\n";
             passed = false;
         }
@@ -235,6 +237,15 @@ void run_correctness_tests() {
     std::cout << "Testing HeightHandlerRectsWindow vs HeightHandlerRects... ";
     if (test_correctness<HeightHandlerRectsWindow, HeightHandlerRects>(
             "RectsWindow", "Rects", length, width, ops)) {
+        std::cout << "PASSED\n";
+    } else {
+        std::cout << "FAILED\n";
+        all_passed = false;
+    }
+    
+    std::cout << "Testing HeightHandlerRectsAVX vs HeightHandlerRects... ";
+    if (test_correctness<HeightHandlerRectsAVX, HeightHandlerRects>(
+            "RectsAVX", "Rects", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
@@ -320,7 +331,7 @@ std::vector<BenchmarkStep> precompute_benchmark_steps(
             step.best_y = 0;
             
             for (auto [x, y] : step.dots) {
-                uint32_t h = reference.get(x, y, x + rotated_box.length - 1, y + rotated_box.width - 1);
+                uint32_t h = reference.get_h(x, y, x + rotated_box.length - 1, y + rotated_box.width - 1);
                 uint32_t score = h + rotated_box.height;
                 if (score < best_score) {
                     best_score = score;
@@ -330,7 +341,7 @@ std::vector<BenchmarkStep> precompute_benchmark_steps(
             }
             
             if (best_score != (uint32_t)-1) {
-                uint32_t h = reference.get(step.best_x, step.best_y,
+                uint32_t h = reference.get_h(step.best_x, step.best_y,
                     step.best_x + rotated_box.length - 1, step.best_y + rotated_box.width - 1);
                 step.final_height = h + rotated_box.height;
                 
@@ -364,13 +375,13 @@ BenchmarkResult benchmark_handler(const std::string& name,
         for (auto [x, y] : step.dots) {
             // get
             op_timer.reset();
-            [[maybe_unused]] uint32_t h = handler.get(
+            [[maybe_unused]] uint32_t h = handler.get_h(
                 x, y, x + step.box.length - 1, y + step.box.width - 1);
             get_ns += op_timer.get_ns();
             
-            // get_area_at_max_height
+            // get_area
             op_timer.reset();
-            [[maybe_unused]] uint64_t area = handler.get_area_at_max_height(
+            [[maybe_unused]] uint64_t area = handler.get_area(
                 x, y, x + step.box.length - 1, y + step.box.width - 1);
             get_area_ns += op_timer.get_ns();
             
@@ -400,7 +411,7 @@ void print_results_table(const std::vector<BenchmarkResult>& results) {
     std::cout << std::left << std::setw(20) << "Implementation"
               << std::right << std::setw(12) << "Total(ms)"
               << std::setw(12) << "add_rect"
-              << std::setw(12) << "get"
+              << std::setw(12) << "get_h"
               << std::setw(12) << "get_area"
               << std::setw(12) << "get_dots"
               << std::setw(12) << "Ops"
@@ -429,7 +440,7 @@ void print_speedup_table(const std::vector<BenchmarkResult>& results) {
     std::cout << std::left << std::setw(20) << "Implementation"
               << std::right << std::setw(10) << "Total"
               << std::setw(10) << "add_rect"
-              << std::setw(10) << "get"
+              << std::setw(10) << "get_h"
               << std::setw(10) << "get_area"
               << "\n";
     std::cout << std::string(60, '-') << "\n";
@@ -519,6 +530,10 @@ void run_benchmarks() {
                 results.push_back(benchmark_handler("RectsWindow", h, steps));
             }
             {
+                HeightHandlerRectsAVX h(len, wid);
+                results.push_back(benchmark_handler("RectsAVX", h, steps));
+            }
+            {
                 HeightHandlerGrid h(len, wid);
                 results.push_back(benchmark_handler("Grid", h, steps));
             }
@@ -550,12 +565,13 @@ void run_benchmarks() {
     });
     
     // Агрегируем результаты
-    std::vector<AggregatedResult> aggregated(5);  // 5 алгоритмов
+    std::vector<AggregatedResult> aggregated(6);  // 6 алгоритмов
     aggregated[0].name = "Rects";
     aggregated[1].name = "RectsWindow";
-    aggregated[2].name = "Grid";
-    aggregated[3].name = "SegTree";
-    aggregated[4].name = "Quadtree";
+    aggregated[2].name = "RectsAVX";
+    aggregated[3].name = "Grid";
+    aggregated[4].name = "SegTree";
+    aggregated[5].name = "Quadtree";
     
     for (const auto& test_results : all_results) {
         for (size_t j = 0; j < test_results.size() && j < aggregated.size(); ++j) {
@@ -579,7 +595,7 @@ void run_benchmarks() {
     std::cout << std::left << std::setw(15) << "Algorithm"
               << std::right << std::setw(12) << "Total(ms)"
               << std::setw(12) << "add_rect"
-              << std::setw(12) << "get"
+              << std::setw(12) << "get_h"
               << std::setw(12) << "get_area"
               << std::setw(12) << "Ops"
               << std::setw(10) << "Speedup"
@@ -606,7 +622,7 @@ void run_benchmarks() {
     std::cout << std::string(60, '-') << "\n";
     std::cout << std::left << std::setw(15) << "Algorithm"
               << std::right << std::setw(12) << "add_rect"
-              << std::setw(12) << "get"
+              << std::setw(12) << "get_h"
               << std::setw(12) << "get_area"
               << "\n";
     std::cout << std::string(60, '-') << "\n";

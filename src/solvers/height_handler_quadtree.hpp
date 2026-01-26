@@ -45,13 +45,13 @@ public:
     HeightHandlerQuadtreeT(uint32_t length, uint32_t width);
     
     // Получить максимальную высоту в прямоугольнике
-    [[nodiscard]] uint32_t get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
+    [[nodiscard]] uint32_t get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
     
     // Добавить прямоугольник с заданной высотой
     void add_rect(uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) override;
     
     // Получить площадь на максимальной высоте (используем Rects подход)
-    [[nodiscard]] uint64_t get_area_at_max_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
+    [[nodiscard]] uint64_t get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override;
     
     // Получить интересные точки для размещения коробки
     [[nodiscard]] std::vector<std::pair<uint32_t, uint32_t>> get_dots(
@@ -184,7 +184,7 @@ uint32_t HeightHandlerQuadtreeT<MIN_SIZE>::query_node(const Node* node, uint32_t
 }
 
 template<uint32_t MIN_SIZE>
-uint32_t HeightHandlerQuadtreeT<MIN_SIZE>::get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
+uint32_t HeightHandlerQuadtreeT<MIN_SIZE>::get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
     return query_node(root.get(), x, y, X, Y);
 }
 
@@ -197,7 +197,7 @@ void HeightHandlerQuadtreeT<MIN_SIZE>::add_rect(uint32_t x, uint32_t y, uint32_t
 }
 
 template<uint32_t MIN_SIZE>
-uint64_t HeightHandlerQuadtreeT<MIN_SIZE>::get_area_at_max_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
+uint64_t HeightHandlerQuadtreeT<MIN_SIZE>::get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const {
     // Упрощённый подход: используем алгоритм из HeightHandlerRects
     uint32_t max_h = get(x, y, X, Y);
     

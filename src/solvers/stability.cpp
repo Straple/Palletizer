@@ -194,7 +194,7 @@ StabilityMetrics calc_stability(const TestData& test_data, const Answer& answer)
         
         metrics.total_area += area;
         
-        uint64_t supported_cells = height_handler.get_area_at_max_height(pos.x, pos.y, pos.X - 1, pos.Y - 1);
+        uint64_t supported_cells = height_handler.get_area(pos.x, pos.y, pos.X - 1, pos.Y - 1);
         
         metrics.supported_area += supported_cells;
         metrics.hanging_area += (area - supported_cells);

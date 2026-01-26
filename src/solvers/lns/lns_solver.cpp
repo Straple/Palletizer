@@ -30,7 +30,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
 
         // Функция проверки опоры коробки (возвращает долю площади с опорой)
         auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
-            uint32_t h = height_handler.get(x, y, x + length - 1, y + width - 1);
+            uint32_t h = height_handler.get_h(x, y, x + length - 1, y + width - 1);
             if (h == 0) {
                 return 1.0;  // На полу - полная опора
             }
@@ -43,7 +43,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
 
         auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
             double support = test_data.header.use_stability ? calc_support_ratio(x, y, box.length, box.width) : 0;
-            return height_handler.get(x, y, X, Y) + box_height - support * 20000;
+            return height_handler.get_h(x, y, X, Y) + box_height - support * 20000;
         };
 
         auto get_position_dist = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width, uint32_t height) {
@@ -121,7 +121,7 @@ std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const st
 
         auto [x, y, length, width, height, rotation] = std::tie(best_x, best_y, best_length, best_width, best_height, best_rotation);
 
-        uint32_t h = height_handler.get(x, y, x + length - 1, y + width - 1);
+        uint32_t h = height_handler.get_h(x, y, x + length - 1, y + width - 1);
 
         Position pos = {
                 box.sku,

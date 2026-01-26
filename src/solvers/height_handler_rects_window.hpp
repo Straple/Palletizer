@@ -18,7 +18,7 @@ public:
         height_rects.push_back(HeightRect{0, 0, length - 1, width - 1, 0});
     }
     
-    [[nodiscard]] uint32_t get(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override {
+    [[nodiscard]] uint32_t get_h(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override {
         for (const auto& rect : height_rects) {
             if (rect.x <= X && x <= rect.X && rect.y <= Y && y <= rect.Y) {
                 return rect.h;
@@ -28,7 +28,7 @@ public:
         return min_z;
     }
     
-    [[nodiscard]] uint64_t get_area_at_max_height(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override {
+    [[nodiscard]] uint64_t get_area(uint32_t x, uint32_t y, uint32_t X, uint32_t Y) const override {
         uint64_t area = 0;
         uint32_t max_height = min_z;
         bool found_max = false;
