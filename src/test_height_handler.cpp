@@ -1,5 +1,4 @@
 #include <solvers/height_handler_rects.hpp>
-#include <solvers/height_handler_rects_avx.hpp>
 #include <solvers/height_handler_grid.hpp>
 #include <solvers/height_handler_segtree.hpp>
 #include <solvers/height_handler_quadtree.hpp>
@@ -139,7 +138,6 @@ void run_unit_tests_all() {
 
     all_passed &= run_unit_tests<HeightHandler>("HeightHandler (baseline)");
     all_passed &= run_unit_tests<HeightHandlerRects>("HeightHandlerRects");
-    all_passed &= run_unit_tests<HeightHandlerRectsAVX>("HeightHandlerRectsAVX");
     all_passed &= run_unit_tests<HeightHandlerGridT<1, 1>>("HeightHandlerGrid<1,1>");
     all_passed &= run_unit_tests<HeightHandlerSegTreeT<1, 1>>("HeightHandlerSegTree<1,1>");
     all_passed &= run_unit_tests<HeightHandlerQuadtreeT<1>>("HeightHandlerQuadtree<1>");
@@ -237,15 +235,6 @@ void run_correctness_tests() {
     std::cout << "Testing HeightHandlerGrid<1,1> vs HeightHandler... ";
     if (test_correctness<HeightHandlerGridT<1, 1>, HeightHandler>(
             "Grid<1,1>", "Baseline", length, width, ops)) {
-        std::cout << "PASSED\n";
-    } else {
-        std::cout << "FAILED\n";
-        all_passed = false;
-    }
-
-    std::cout << "Testing HeightHandlerRectsAVX vs HeightHandler... ";
-    if (test_correctness<HeightHandlerRectsAVX, HeightHandler>(
-            "RectsAVX", "Baseline", length, width, ops)) {
         std::cout << "PASSED\n";
     } else {
         std::cout << "FAILED\n";
@@ -548,7 +537,6 @@ void run_benchmarks() {
             // Все алгоритмы с полным бенчмарком
             results.push_back(benchmark_handler_full<HeightHandler>("Baseline", len, wid, steps));
             results.push_back(benchmark_handler_full<HeightHandlerRects>("Rects", len, wid, steps));
-            results.push_back(benchmark_handler_full<HeightHandlerRectsAVX>("RectsAVX", len, wid, steps));
             results.push_back(benchmark_handler_full<HeightHandlerGrid>("Grid", len, wid, steps));
             results.push_back(benchmark_handler_full<HeightHandlerSegTree>("SegTree", len, wid, steps));
             results.push_back(benchmark_handler_full<HeightHandlerQuadtree>("Quadtree", len, wid, steps));
@@ -572,13 +560,12 @@ void run_benchmarks() {
     });
 
     // Агрегируем результаты
-    std::vector<AggregatedResult> aggregated(6);  // 6 алгоритмов
+    std::vector<AggregatedResult> aggregated(5);  // 5 алгоритмов
     aggregated[0].name = "Baseline";
     aggregated[1].name = "Rects";
-    aggregated[2].name = "RectsAVX";
-    aggregated[3].name = "Grid";
-    aggregated[4].name = "SegTree";
-    aggregated[5].name = "Quadtree";
+    aggregated[2].name = "Grid";
+    aggregated[3].name = "SegTree";
+    aggregated[4].name = "Quadtree";
 
     for (const auto& test_results : all_results) {
         for (size_t j = 0; j < test_results.size() && j < aggregated.size(); ++j) {
