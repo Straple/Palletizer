@@ -261,6 +261,9 @@ Answer LNSSolver::solve(TimePoint end_time) {
     print_debug = true;
     simulate(test_data, order);
 
+    // Сохраняем количество вычисленных паллет (итераций + 1 начальная)
+    pallets_computed = cnt + 1;
+
     // std::cout << "Time m: " << total_time / 1e9 << "s\n";
     return best_answer;
 }

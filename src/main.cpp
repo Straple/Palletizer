@@ -10,11 +10,34 @@
 #include <atomic>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <mutex>
+#include <algorithm>
+#include <numeric>
 
 struct FullMetrics {
     Metrics metrics;
     StabilityMetrics stability;
+    uint64_t pallets_computed = 1;  // Количество вычисленных паллет
+};
+
+// Структура для агрегированной статистики
+struct AggregatedStats {
+    double min_val = std::numeric_limits<double>::max();
+    double max_val = std::numeric_limits<double>::lowest();
+    double sum = 0;
+    uint32_t count = 0;
+    
+    void add(double val) {
+        min_val = std::min(min_val, val);
+        max_val = std::max(max_val, val);
+        sum += val;
+        count++;
+    }
+    
+    [[nodiscard]] double avg() const { 
+        return count > 0 ? sum / count : 0; 
+    }
 };
 
 template<typename SolverType>
@@ -23,7 +46,8 @@ FullMetrics launch_one_solver(uint32_t test) {
     TestData test_data;
     input >> test_data;
 
-    Answer answer = SolverType(test_data).solve(get_now() + Milliseconds(5'000));
+    SolverType solver(test_data);
+    Answer answer = solver.solve(get_now() + Milliseconds(5'000));
 
     std::ofstream output("answers/" + std::to_string(test) + ".csv");
     output << answer;
@@ -31,19 +55,45 @@ FullMetrics launch_one_solver(uint32_t test) {
     FullMetrics result;
     result.metrics = calc_metrics(test_data, answer);
     result.stability = calc_stability(test_data, answer);
+    result.pallets_computed = solver.get_pallets_computed();
+    
     return result;
+}
+
+// Красивый вывод таблицы
+void print_separator(int width = 75) {
+    std::cout << std::string(width, '=') << "\n";
+}
+
+void print_table_row(const std::string& name, double min_val, double avg_val, double max_val) {
+    std::cout << std::left << std::setw(20) << name
+              << std::right << std::fixed << std::setprecision(4)
+              << std::setw(15) << min_val
+              << std::setw(15) << avg_val
+              << std::setw(15) << max_val
+              << "\n";
+}
+
+void print_table_row_int(const std::string& name, int64_t min_val, double avg_val, int64_t max_val) {
+    std::cout << std::left << std::setw(20) << name
+              << std::right
+              << std::setw(15) << min_val
+              << std::setw(15) << std::fixed << std::setprecision(1) << avg_val
+              << std::setw(15) << max_val
+              << "\n";
 }
 
 template<typename SolverType>
 void launch_solvers() {
     Timer timer;
-    double sum_percolation = 0;
-    double max_percolation = 0;
-    double min_percolation = 1;
-
-    // Метрики устойчивости
-    double sum_stability = 0;
-    double sum_interlocking_ratio = 0;
+    
+    // Агрегированные статистики
+    AggregatedStats percolation_stats;
+    AggregatedStats boxes_stats;
+    AggregatedStats height_stats;
+    AggregatedStats stability_stats;
+    AggregatedStats interlocking_stats;
+    AggregatedStats pallets_stats;
 
     std::vector<int> tests;
     {
@@ -56,10 +106,19 @@ void launch_solvers() {
             tests.push_back(test);
         }
     }
+    
     std::vector<std::atomic<bool>> visited(tests.size() + 1);
     std::mutex mutex;
-
     std::vector<FullMetrics> tests_metrics(tests.size() + 1);
+    std::atomic<int> completed{0};
+
+    std::cout << "\n";
+    print_separator();
+    std::cout << "                    PALLETIZER SOLVER BENCHMARK\n";
+    print_separator();
+    std::cout << "Tests: " << tests.size() << ", Threads: " << THREADS_NUM << ", Time limit: 5000ms\n\n";
+    
+    std::cout << "Progress:\n";
 
     launch_threads(THREADS_NUM, [&](uint32_t thr) {
         for (uint32_t test = 1; test < visited.size(); test++) {
@@ -70,31 +129,40 @@ void launch_solvers() {
             }
 
             FullMetrics full_metrics = launch_one_solver<SolverType>(test);
-
             tests_metrics[test] = full_metrics;
+            
+            int done = ++completed;
 
             {
                 std::unique_lock locker(mutex);
 
-                std::cout << test << ' ' << full_metrics.metrics.percolation
-                          << " stability:" << full_metrics.stability.stability << std::endl;
+                // Обновляем статистики
+                percolation_stats.add(full_metrics.metrics.percolation);
+                boxes_stats.add(full_metrics.metrics.boxes);
+                height_stats.add(full_metrics.metrics.height);
+                stability_stats.add(full_metrics.stability.stability);
+                interlocking_stats.add(full_metrics.stability.interlocking_ratio);
+                pallets_stats.add(full_metrics.pallets_computed);
 
-                sum_percolation += full_metrics.metrics.percolation;
-                max_percolation = std::max(max_percolation, full_metrics.metrics.percolation);
-                min_percolation = std::min(min_percolation, full_metrics.metrics.percolation);
-                sum_stability += full_metrics.stability.stability;
-                sum_interlocking_ratio += full_metrics.stability.interlocking_ratio;
+                std::cout << "  Test " << std::setw(3) << test 
+                          << ": perc=" << std::fixed << std::setprecision(4) << full_metrics.metrics.percolation
+                          << ", boxes=" << std::setw(3) << full_metrics.metrics.boxes
+                          << ", height=" << std::setw(4) << full_metrics.metrics.height
+                          << ", stability=" << std::setprecision(3) << full_metrics.stability.stability
+                          << " [" << done << "/" << tests.size() << "]\n";
             }
         }
     });
 
+    // Сохраняем детальные метрики в CSV
     std::ofstream metrics_output("answers/metrics.csv");
     metrics_output << "test,boxes_num,length,width,height,boxes_volume,pallet_volume,percolation,"
                    << "stability,stability_area,stability_area_sq,min_support_ratio,unstable_boxes_count,total_boxes_above_floor,"
                    << "interlocking_ratio,l_sum_per,l_sum,interlocking,"
                    << "supported_area,hanging_area,total_area,"
                    << "center_of_mass_x,center_of_mass_y,center_of_mass_z,total_weight,"
-                   << "center_of_mass_z_relative" << std::endl;
+                   << "center_of_mass_z_relative,pallets_computed" << std::endl;
+                   
     for (uint32_t test = 1; test < tests_metrics.size(); test++) {
         auto &fm = tests_metrics[test];
         double com_z_relative = fm.stability.center_of_mass.z / fm.metrics.height;
@@ -119,56 +187,43 @@ void launch_solvers() {
                        << ',' << fm.stability.center_of_mass.y
                        << ',' << fm.stability.center_of_mass.z
                        << ',' << fm.stability.center_of_mass.total_weight
-                       << ',' << com_z_relative << '\n';
+                       << ',' << com_z_relative 
+                       << ',' << fm.pallets_computed << '\n';
     }
 
-    /*
-    Solver:
-    Relative volume: 0.0899587avg 0.0752863min 0.130973max
-    Time: 38.2145ms
-
-    GreedySolver:
-    Relative volume: 0.735621avg 0.590052min 0.852097max
-    Time: 308.218ms
-
-    LNSSolver(1s):
-    Relative volume: 0.771827avg 0.728568min 0.863867max
-    Time: 14.4416s
-
-    LNSSolver(5s):
-    Relative volume: 0.782274avg 0.731147min 0.881534max
-    Time: 70.4132s
-
-    LNSSolver(30s):
-    Relative volume: 0.789305avg 0.753623min 0.886487max
-    Time: 420.339s
-
-    LNSSolver(300s):
-    Relative volume: 0.797138avg 0.760271min 0.903935max
-    Time: 4200.24s
-
-    GeneticSolver(1s):
-    Relative volume: 0.698772avg 0.60223min 0.825097max
-    Time: 74.9252s
-
-    Best:
-    Relative volume: 0.797138avg 0.760271min 0.903935max
-    Time: 4200.24s
-     */
-    std::cout << "Percolation: " << sum_percolation / (visited.size() - 1) << "avg " << min_percolation
-              << "min " << max_percolation << "max\n";
-    std::cout << "Time: " << timer << '\n';
+    // Выводим красивую сводную таблицу
+    std::cout << "\n";
+    print_separator();
+    std::cout << "                         SUMMARY STATISTICS\n";
+    print_separator();
+    
+    std::cout << std::left << std::setw(20) << "Metric"
+              << std::right << std::setw(15) << "Min"
+              << std::setw(15) << "Avg"
+              << std::setw(15) << "Max"
+              << "\n";
+    std::cout << std::string(65, '-') << "\n";
+    
+    print_table_row("Percolation", percolation_stats.min_val, percolation_stats.avg(), percolation_stats.max_val);
+    print_table_row_int("Boxes", (int64_t)boxes_stats.min_val, boxes_stats.avg(), (int64_t)boxes_stats.max_val);
+    print_table_row_int("Height", (int64_t)height_stats.min_val, height_stats.avg(), (int64_t)height_stats.max_val);
+    print_table_row("Stability", stability_stats.min_val, stability_stats.avg(), stability_stats.max_val);
+    print_table_row("Interlocking", interlocking_stats.min_val, interlocking_stats.avg(), interlocking_stats.max_val);
+    print_table_row_int("Pallets computed", (int64_t)pallets_stats.min_val, pallets_stats.avg(), (int64_t)pallets_stats.max_val);
+    
+    std::cout << std::string(65, '-') << "\n";
+    
+    // Итоговая информация
+    std::cout << "\nTotal tests:      " << tests.size() << "\n";
+    std::cout << "Total time:       " << timer << "\n";
+    std::cout << "Avg time/test:    " << std::fixed << std::setprecision(1) 
+              << timer.get_ms() / tests.size() << " ms\n";
+    
+    print_separator();
+    std::cout << "\n";
 }
 
 int main() {
     launch_solvers<LNSSolver>();
     return 0;
-
-    FullMetrics fm = launch_one_solver<LNSSolver>(228);
-    std::cout << "Height: " << fm.metrics.height << std::endl;
-    std::cout << "Percolation: " << fm.metrics.percolation << std::endl;
-    std::cout << "Stability: " << fm.stability.stability << std::endl;
-    std::cout << "Interlocking ratio: " << fm.stability.interlocking_ratio << std::endl;
-    std::cout << "Center of mass Z: " << fm.stability.center_of_mass.z << std::endl;
-    std::cout << "min_support_ratio: " << fm.stability.min_support_ratio << std::endl;
 }

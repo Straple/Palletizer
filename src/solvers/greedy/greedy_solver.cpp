@@ -78,5 +78,7 @@ Answer GreedySolver::solve(TimePoint end_time) {
             order.erase(order.begin() + best_i);
         }
     }
+    
+    pallets_computed = 1;
     return answer;
 }

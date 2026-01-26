@@ -21,5 +21,6 @@ Answer Solver::solve(TimePoint end_time) {
             answer.positions.push_back(pos);
         }
     }
+    pallets_computed = 1;
     return answer;
 }
