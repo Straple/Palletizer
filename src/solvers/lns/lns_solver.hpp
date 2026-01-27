@@ -12,9 +12,11 @@ struct BoxMeta {
 std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const std::vector<BoxMeta> &order);
 
 class LNSSolver : public Solver {
-protected:
 public:
+    std::vector<uint32_t> mutation_weights;
+    
     explicit LNSSolver(TestData test_data);
+    explicit LNSSolver(TestData test_data, std::vector<uint32_t> weights);
 
     Answer solve(TimePoint end_time);
 };
