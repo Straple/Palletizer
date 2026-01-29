@@ -51,6 +51,7 @@ struct SimulationParams {
             uint32_t len = rnd.get(2, max_len);
             l = rnd.get(0, order.size() - len);
             r = l + len;
+            ASSERT(l + 1 < r, "invalid segment");
         } else {
             l = rnd.get(0, order.size() - 1);
             r = rnd.get(0, order.size() - 1);
