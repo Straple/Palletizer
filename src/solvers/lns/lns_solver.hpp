@@ -10,18 +10,15 @@ struct BoxMeta {
 };
 
 struct MutableParams {
-    // Weights for mutation selection (11 mutations)
-    // 0: position_rotation, 1: reverse, 2: shuffle, 3: swap, 4: swap_adjacent,
-    // 5: threshold, 6: group_by_sku, 7: move_bad_box, 8: sort_by_area,
-    // 9: sort_by_height, 10: sort_by_weight
-    std::vector<uint32_t> weights = {52, 110, 70, 80, 100, 140, 100, 80, 213, 29, 126};
+    // Weights for mutation selection (13 mutations, grouped by similarity)
+    // Position/Rotation: 0: position_rotation_fixed, 1: position_rotation_random
+    // Order: 2: reverse, 3: shuffle, 4: swap, 5: swap_adjacent
+    // Sort: 6: sort_by_area, 7: sort_by_volume, 8: sort_by_height, 9: sort_by_weight
+    // Special: 10: threshold, 11: group_by_sku, 12: move_bad_box
+    std::vector<uint32_t> weights = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100};
 
-    // Segment selection parameters (used by reverse, shuffle, sort mutations)
-    double segment_small_probability = 0.5401;
-    double segment_small_relative_len = 1.0000;
-
-    // mutate_position_rotation parameters
-    double position_vs_rotation_probability = 0.3623;
+    // Max k for swap mutations: k = rnd(1, order.size() * swap_k_max_ratio)
+    double swap_k_max_ratio = 0.25;
 };
 
 std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const std::vector<BoxMeta> &order);

@@ -14,23 +14,29 @@
 #include <thread>
 #include <vector>
 
-const uint32_t NUM_MUTATIONS = 11;
+const uint32_t NUM_MUTATIONS = 13;
 
 // Parameters for mutating weights
 constexpr double MUTATE_WEIGHTS_SMALL_PROBABILITY = 0.6;
 
 const std::vector<std::string> MUTATION_NAMES = {
-        "position_rotation",
+        // Position/Rotation
+        "position_rotation_fixed",
+        "position_rotation_random",
+        // Order
         "reverse",
         "shuffle",
         "swap",
         "swap_adjacent",
+        // Sort
+        "sort_by_area",
+        "sort_by_volume",
+        "sort_by_height",
+        "sort_by_weight",
+        // Special
         "threshold",
         "group_by_sku",
-        "move_bad_box",
-        "sort_by_area",
-        "sort_by_height",
-        "sort_by_weight"};
+        "move_bad_box"};
 
 std::vector<TestData> load_test_data(const std::vector<int> &test_ids) {
     std::vector<TestData> result;
@@ -67,48 +73,33 @@ void print_params(const MutableParams &mp, double score) {
         std::cout << mp.weights[i];
         if (i < mp.weights.size() - 1) std::cout << ", ";
     }
-    std::cout << "}\n";
-
-    std::cout << "Params:\n";
-    std::cout << "  segment_small_probability:       " << mp.segment_small_probability << "\n";
-    std::cout << "  segment_small_relative_len:      " << mp.segment_small_relative_len << "\n";
-    std::cout << "  position_vs_rotation_probability:" << mp.position_vs_rotation_probability << "\n";
-    std::cout << "\n";
+    std::cout << "}\n\n";
 }
 
 void mutate_params(MutableParams &mp, Randomizer &rnd) {
-    if (rnd.get_d() < 0.3) {
-        // Mutate weights
-        if (rnd.get_d() < MUTATE_WEIGHTS_SMALL_PROBABILITY) {
-            uint32_t from = rnd.get(0, mp.weights.size() - 1);
-            uint32_t to = rnd.get(0, mp.weights.size() - 1);
-            if (from == to) {
-                to = (from + 1) % mp.weights.size();
-            }
+    // Mutate weights
+    if (rnd.get_d() < MUTATE_WEIGHTS_SMALL_PROBABILITY) {
+        uint32_t from = rnd.get(0, mp.weights.size() - 1);
+        uint32_t to = rnd.get(0, mp.weights.size() - 1);
+        if (from == to) {
+            to = (from + 1) % mp.weights.size();
+        }
 
-            uint32_t delta = rnd.get(1, mp.weights[from]);
+        uint32_t delta = rnd.get(1, mp.weights[from]);
 
-            if (mp.weights[from] > delta) {
-                mp.weights[from] -= delta;
-                mp.weights[to] += delta;
-            }
-        } else {
-            int s = mp.weights.size() * 100;
-            mp.weights = std::vector<uint32_t>(NUM_MUTATIONS, 0);
-            for (; s; s -= 10) {
-                mp.weights[rnd.get(0, mp.weights.size() - 1)] += 10;
-            }
+        if (mp.weights[from] > delta) {
+            mp.weights[from] -= delta;
+            mp.weights[to] += delta;
+        }
+    } else {
+        int s = mp.weights.size() * 100;
+        mp.weights = std::vector<uint32_t>(NUM_MUTATIONS, 0);
+        for (; s; s -= 10) {
+            mp.weights[rnd.get(0, mp.weights.size() - 1)] += 10;
         }
     }
-
     if (rnd.get_d() < 0.5) {
-        mp.segment_small_probability = rnd.get_d(0, 1);
-    }
-    if (rnd.get_d() < 0.5) {
-        // mp.segment_small_relative_len = rnd.get_d(0, 1);
-    }
-    if (rnd.get_d() < 0.5) {
-        mp.position_vs_rotation_probability = rnd.get_d(0, 1);
+        mp.swap_k_max_ratio = rnd.get_d(0, 1);
     }
 }
 

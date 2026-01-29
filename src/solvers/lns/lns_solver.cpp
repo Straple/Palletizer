@@ -39,49 +39,54 @@ struct SimulationParams {
     std::vector<BoxMeta> order;
     double support_threshold = 0.0;
 
-    std::pair<uint32_t, uint32_t> get_random_segment(Randomizer &rnd,
-                                                     double small_probability = 0.5,
-                                                     double small_relative_len = 0.1) {
+    std::pair<uint32_t, uint32_t> get_random_segment(Randomizer &rnd) {
         if (order.size() < 2) return {0, order.size()};
 
-        uint32_t l, r;
-        if (rnd.get_d() < small_probability) {
-            uint32_t max_len = std::max((uint32_t) 2, (uint32_t) (small_relative_len * order.size()));
-            max_len = std::min(max_len, (uint32_t) order.size());
-            uint32_t len = rnd.get(2, max_len);
-            l = rnd.get(0, order.size() - len);
-            r = l + len;
-            ASSERT(l + 1 < r, "invalid segment");
-        } else {
-            l = rnd.get(0, order.size() - 1);
-            r = rnd.get(0, order.size() - 1);
-            if (l > r) std::swap(l, r);
-            r++;
-        }
+        uint32_t l = rnd.get(0, order.size() - 1);
+        uint32_t r = rnd.get(0, order.size() - 1);
+        if (l > r) std::swap(l, r);
+        r++;
         return {l, r};
     }
 
-    void mutate_position_rotation(Randomizer &rnd, uint32_t available_rotations, const MutableParams &mp) {
-        uint32_t i = rnd.get(0, order.size() - 1);
-        if (rnd.get_d() < mp.position_vs_rotation_probability) {
-            order[i].position = rnd.get(0, 3);
+    void mutate_position_rotation_fixed(Randomizer &rnd, uint32_t available_rotations) {
+        auto [l, r] = get_random_segment(rnd);
+        if (rnd.get_d() < 0.5) {
+            uint32_t new_position = rnd.get(0, 3);
+            for (uint32_t i = l; i < r; i++) {
+                order[i].position = new_position;
+            }
         } else {
-            order[i].rotation = rnd.get(-1, available_rotations - 1);
+            int32_t new_rotation = rnd.get(-1, available_rotations - 1);
+            for (uint32_t i = l; i < r; i++) {
+                order[i].rotation = new_rotation;
+            }
         }
     }
 
-    void mutate_reverse(Randomizer &rnd, const MutableParams &mp) {
-        auto [l, r] = get_random_segment(rnd, mp.segment_small_probability, mp.segment_small_relative_len);
+    void mutate_position_rotation_random(Randomizer &rnd, uint32_t available_rotations) {
+        auto [l, r] = get_random_segment(rnd);
+        for (uint32_t i = l; i < r; i++) {
+            if (rnd.get_d() < 0.5) {
+                order[i].position = rnd.get(0, 3);
+            } else {
+                order[i].rotation = rnd.get(-1, available_rotations - 1);
+            }
+        }
+    }
+
+    void mutate_reverse(Randomizer &rnd) {
+        auto [l, r] = get_random_segment(rnd);
         std::reverse(order.begin() + l, order.begin() + r);
     }
 
-    void mutate_shuffle(Randomizer &rnd, const MutableParams &mp) {
-        auto [l, r] = get_random_segment(rnd, mp.segment_small_probability, mp.segment_small_relative_len);
+    void mutate_shuffle(Randomizer &rnd) {
+        auto [l, r] = get_random_segment(rnd);
         std::shuffle(order.begin() + l, order.begin() + r, rnd.generator);
     }
 
-    void mutate_sort_by_area(Randomizer &rnd, const TestData &test_data, const MutableParams &mp) {
-        auto [l, r] = get_random_segment(rnd, mp.segment_small_probability, mp.segment_small_relative_len);
+    void mutate_sort_by_area(Randomizer &rnd, const TestData &test_data) {
+        auto [l, r] = get_random_segment(rnd);
         std::stable_sort(order.begin() + l, order.begin() + r,
                          [&](const BoxMeta &a, const BoxMeta &b) {
                              auto &ba = test_data.boxes[a.box_id];
@@ -90,32 +95,50 @@ struct SimulationParams {
                          });
     }
 
-    void mutate_sort_by_height(Randomizer &rnd, const TestData &test_data, const MutableParams &mp) {
-        auto [l, r] = get_random_segment(rnd, mp.segment_small_probability, mp.segment_small_relative_len);
+    void mutate_sort_by_volume(Randomizer &rnd, const TestData &test_data) {
+        auto [l, r] = get_random_segment(rnd);
+        std::stable_sort(order.begin() + l, order.begin() + r,
+                         [&](const BoxMeta &a, const BoxMeta &b) {
+                             auto &ba = test_data.boxes[a.box_id];
+                             auto &bb = test_data.boxes[b.box_id];
+                             return (uint64_t)ba.length * ba.width * ba.height > 
+                                    (uint64_t)bb.length * bb.width * bb.height;
+                         });
+    }
+
+    void mutate_sort_by_height(Randomizer &rnd, const TestData &test_data) {
+        auto [l, r] = get_random_segment(rnd);
         std::stable_sort(order.begin() + l, order.begin() + r,
                          [&](const BoxMeta &a, const BoxMeta &b) {
                              return test_data.boxes[a.box_id].height > test_data.boxes[b.box_id].height;
                          });
     }
 
-    void mutate_sort_by_weight(Randomizer &rnd, const TestData &test_data, const MutableParams &mp) {
-        auto [l, r] = get_random_segment(rnd, mp.segment_small_probability, mp.segment_small_relative_len);
+    void mutate_sort_by_weight(Randomizer &rnd, const TestData &test_data) {
+        auto [l, r] = get_random_segment(rnd);
         std::stable_sort(order.begin() + l, order.begin() + r,
                          [&](const BoxMeta &a, const BoxMeta &b) {
                              return test_data.boxes[a.box_id].weight > test_data.boxes[b.box_id].weight;
                          });
     }
 
-    void mutate_swap(Randomizer &rnd) {
-        uint32_t a = rnd.get(0, order.size() - 1);
-        uint32_t b = rnd.get(0, order.size() - 1);
-        if (a != b) std::swap(order[a], order[b]);
+    void mutate_swap(Randomizer &rnd, const MutableParams &mp) {
+        uint32_t max_k = std::max(1u, (uint32_t)(order.size() * mp.swap_k_max_ratio));
+        uint32_t k = rnd.get(1, max_k);
+        for (uint32_t i = 0; i < k; i++) {
+            uint32_t a = rnd.get(0, order.size() - 1);
+            uint32_t b = rnd.get(0, order.size() - 1);
+            if (a != b) std::swap(order[a], order[b]);
+        }
     }
 
-    void mutate_swap_adjacent(Randomizer &rnd) {
-        if (order.size() >= 2) {
-            uint32_t i = rnd.get(0, order.size() - 2);
-            std::swap(order[i], order[i + 1]);
+    void mutate_swap_adjacent(Randomizer &rnd, const MutableParams &mp) {
+        if (order.size() < 2) return;
+        uint32_t max_k = std::max(1u, (uint32_t)(order.size() * mp.swap_k_max_ratio));
+        uint32_t k = rnd.get(1, max_k);
+        for (uint32_t i = 0; i < k; i++) {
+            uint32_t idx = rnd.get(0, order.size() - 2);
+            std::swap(order[idx], order[idx + 1]);
         }
     }
 
@@ -168,38 +191,48 @@ struct SimulationParams {
         uint32_t type = rnd.get(mp.weights);
 
         switch (type) {
+            // Position/Rotation mutations
             case 0:
-                mutate_position_rotation(rnd, test_data.header.available_rotations, mp);
+                mutate_position_rotation_fixed(rnd, test_data.header.available_rotations);
                 break;
             case 1:
-                mutate_reverse(rnd, mp);
+                mutate_position_rotation_random(rnd, test_data.header.available_rotations);
                 break;
+            // Order mutations
             case 2:
-                mutate_shuffle(rnd, mp);
+                mutate_reverse(rnd);
                 break;
             case 3:
-                mutate_swap(rnd);
+                mutate_shuffle(rnd);
                 break;
             case 4:
-                mutate_swap_adjacent(rnd);
+                mutate_swap(rnd, mp);
                 break;
             case 5:
-                mutate_threshold(rnd);
+                mutate_swap_adjacent(rnd, mp);
                 break;
+            // Sort mutations
             case 6:
-                mutate_group_by_sku(rnd, test_data);
+                mutate_sort_by_area(rnd, test_data);
                 break;
             case 7:
-                mutate_move_bad_box(rnd, last_result);
+                mutate_sort_by_volume(rnd, test_data);
                 break;
             case 8:
-                mutate_sort_by_area(rnd, test_data, mp);
+                mutate_sort_by_height(rnd, test_data);
                 break;
             case 9:
-                mutate_sort_by_height(rnd, test_data, mp);
+                mutate_sort_by_weight(rnd, test_data);
                 break;
+            // Special mutations
             case 10:
-                mutate_sort_by_weight(rnd, test_data, mp);
+                mutate_threshold(rnd);
+                break;
+            case 11:
+                mutate_group_by_sku(rnd, test_data);
+                break;
+            case 12:
+                mutate_move_bad_box(rnd, last_result);
                 break;
         }
     }
@@ -327,187 +360,6 @@ SimulateResult simulate(const TestData &test_data, const SimulationParams &param
     return result;
 }
 
-/*
-{154, 40, 127, 13, 143, 110, 120, 51, 93, 130, 114, 105}
-===========================================================================
-                         SUMMARY STATISTICS
-===========================================================================
-Metric                          Min            Avg            Max
------------------------------------------------------------------
-Percolation                  0.5901         0.7369         0.8793
-Boxes                            18          116.8            465
-Height                          427         2308.1           8253
-Stability                    0.3806         0.7647         0.8451
-Min support ratio            0.2352         0.6098         1.0000
-Interlocking                 0.1549         0.2353         0.6194
-Pallets computed                  9          276.8           6425
------------------------------------------------------------------
-Center of Mass:
-  CoM X                    520.5307       581.8379       659.3443
-  CoM Y                    329.4956       386.4755       424.8256
-  CoM Z                    155.5019      1161.0020      4195.2254
-Relative Center of Mass:
-  CoM X rel                  0.0002         0.0192         0.0662
-  CoM Y rel                  0.0002         0.0199         0.0881
-  CoM Z rel                  0.3240         0.4971         0.5700
------------------------------------------------------------------
-
-Total tests:      436
-Total time:       70.4081s
-Avg time/test:    161 ms
-===========================================================================
-
-
-{20, 10, 20, 10, 20, 10, 15, 15, 15, 10, 10, 10}
-===========================================================================
-                         SUMMARY STATISTICS
-===========================================================================
-Metric                          Min            Avg            Max
------------------------------------------------------------------
-Percolation                  0.6809         0.7550         0.8782
-Boxes                            18          116.8            465
-Height                          343         2241.9           8450
-Stability                    0.4139         0.7904         0.8596
-Min support ratio            0.2381         0.4749         1.0000
-Interlocking                 0.1404         0.2096         0.5861
-Pallets computed                  9          285.1           5752
------------------------------------------------------------------
-Center of Mass:
-  CoM X                    522.9119       585.1729       640.9133
-  CoM Y                    350.7816       387.8627       440.2379
-  CoM Z                    154.0760      1148.5858      4242.7479
-Relative Center of Mass:
-  CoM X rel                  0.0000         0.0169         0.0642
-  CoM Y rel                  0.0001         0.0177         0.0615
-  CoM Z rel                  0.3542         0.5058         0.5660
------------------------------------------------------------------
-
-Total tests:      436
-Total time:       70.3891s
-Avg time/test:    161 ms
-===========================================================================
-
-
-{48, 189, 13, 120, 100, 140, 110, 90, 60, 1, 80, 249}
-===========================================================================
-                         SUMMARY STATISTICS
-===========================================================================
-Metric                          Min            Avg            Max
------------------------------------------------------------------
-Percolation                  0.5889         0.7318         0.8794
-Boxes                            18          116.8            465
-Height                          343         2325.1           8355
-Stability                    0.3661         0.7603         0.8500
-Min support ratio            0.2334         0.6092         1.0000
-Interlocking                 0.1500         0.2397         0.6339
-Pallets computed                  9          275.2           6209
------------------------------------------------------------------
-Center of Mass:
-  CoM X                    530.1208       584.7408       740.2443
-  CoM Y                    346.8055       385.8213       419.1210
-  CoM Z                    153.8393      1159.1164      4280.3664
-Relative Center of Mass:
-  CoM X rel                  0.0000         0.0174         0.1169
-  CoM Y rel                  0.0001         0.0199         0.0665
-  CoM Z rel                  0.3545         0.4922         0.5620
------------------------------------------------------------------
-
-Total tests:      436
-Total time:       70.4036s
-Avg time/test:    161 ms
-===========================================================================
-
-
-{211, 40, 19, 113, 90, 110, 131, 71, 109, 130, 66, 110}
-===========================================================================
-                         SUMMARY STATISTICS
-===========================================================================
-Metric                          Min            Avg            Max
------------------------------------------------------------------
-Percolation                  0.6224         0.7411         0.8771
-Boxes                            18          116.8            465
-Height                          342         2281.2           8112
-Stability                    0.3923         0.7682         0.8653
-Min support ratio            0.2352         0.5670         0.9922
-Interlocking                 0.1347         0.2318         0.6077
-Pallets computed                  9          276.2           5937
------------------------------------------------------------------
-Center of Mass:
-  CoM X                    531.7485       582.0476       654.7976
-  CoM Y                    346.8604       385.6336       427.8344
-  CoM Z                    157.3268      1151.0990      4140.5116
-Relative Center of Mass:
-  CoM X rel                  0.0004         0.0183         0.0569
-  CoM Y rel                  0.0000         0.0201         0.0664
-  CoM Z rel                  0.3617         0.4981         0.5612
------------------------------------------------------------------
-
-Total tests:      436
-Total time:       70.3590s
-Avg time/test:    161 ms
-===========================================================================
-
-
- {140, 40, 90, 110, 90, 110, 120, 70, 110, 130, 80, 110}
-===========================================================================
-                         SUMMARY STATISTICS
-===========================================================================
-Metric                          Min            Avg            Max
------------------------------------------------------------------
-Percolation                  0.6459         0.7422         0.8782
-Boxes                            18          116.8            465
-Height                          342         2287.3           8112
-Stability                    0.3521         0.7683         0.8653
-Min support ratio            0.2352         0.5944         1.0000
-Interlocking                 0.1347         0.2317         0.6479
-Pallets computed                  9          275.3           5837
------------------------------------------------------------------
-Center of Mass:
-  CoM X                    512.5594       581.9695       639.0343
-  CoM Y                    354.3403       387.0639       433.4556
-  CoM Z                    155.1935      1154.2291      4140.5116
-Relative Center of Mass:
-  CoM X rel                  0.0000         0.0183         0.0729
-  CoM Y rel                  0.0001         0.0196         0.0571
-  CoM Z rel                  0.3199         0.4981         0.5643
------------------------------------------------------------------
-
-Total tests:      436
-Total time:       70.4033s
-Avg time/test:    161 ms
-===========================================================================
-
-
-
-{104, 100, 87, 26, 190, 113, 59, 59, 162, 100, 100, 100}
-===========================================================================
-                         SUMMARY STATISTICS
-===========================================================================
-Metric                          Min            Avg            Max
------------------------------------------------------------------
-Percolation                  0.6483         0.7413         0.8771
-Boxes                            18          116.8            465
-Height                          342         2295.1           8322
-Stability                    0.3753         0.7704         0.8747
-Min support ratio            0.2352         0.5958         0.9959
-Interlocking                 0.1253         0.2296         0.6247
-Pallets computed                  9          278.1           6016
------------------------------------------------------------------
-Center of Mass:
-  CoM X                    515.6637       584.1441       662.8473
-  CoM Y                    336.5401       385.5339       445.0851
-  CoM Z                    150.2756      1156.4067      4187.1479
-Relative Center of Mass:
-  CoM X rel                  0.0003         0.0175         0.0703
-  CoM Y rel                  0.0001         0.0211         0.0793
-  CoM Z rel                  0.3455         0.4982         0.5670
------------------------------------------------------------------
-
-Total tests:      436
-Total time:       70.3858s
-Avg time/test:    161 ms
-===========================================================================
-*/
 LNSSolver::LNSSolver(TestData test_data) : Solver(test_data) {
 }
 
