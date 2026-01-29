@@ -101,8 +101,6 @@ public:
         }
     }
 
-    void add_rect(HeightRect rect) { add_rect(rect.x, rect.y, rect.X, rect.Y, rect.h); }
-
     [[nodiscard]] std::vector<std::pair<uint32_t, uint32_t>> get_dots(
             const TestDataHeader &header, const BoxSize &box) const {
 

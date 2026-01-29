@@ -222,7 +222,7 @@ StabilityMetrics calc_stability(const TestData &test_data, const Answer &answer)
 
         // Добавляем коробку в HeightHandler для следующих итераций
         // HeightHandler использует включительные координаты, поэтому -1
-        height_handler.add_rect({pos.x, pos.y, pos.X - 1, pos.Y - 1, pos.Z});
+        height_handler.add_rect(pos.x, pos.y, pos.X - 1, pos.Y - 1, pos.Z);
     }
 
     if (metrics.total_area > 0) {

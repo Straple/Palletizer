@@ -70,8 +70,7 @@ Answer GreedySolver::solve(TimePoint end_time) {
                 best_h + best_height,
         };
         answer.positions.push_back(pos);
-        height_handler.add_rect(HeightRect{
-                best_x, best_y, best_x + best_length - 1, best_y + best_width - 1, best_h + best_height});
+        height_handler.add_rect(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1, best_h + best_height);
 
         order[best_i].second--;
         if (order[best_i].second == 0) {

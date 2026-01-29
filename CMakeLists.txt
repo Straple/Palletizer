@@ -40,8 +40,12 @@ target_link_libraries(main Threads::Threads)
 target_compile_options(main PRIVATE -mavx2)
 target_compile_options(main PRIVATE -march=native)
 
-
 add_executable(test_height_handler src/test_height_handler.cpp ${SOURCES})
 target_link_libraries(test_height_handler Threads::Threads)
 target_compile_options(test_height_handler PRIVATE -mavx2)
 target_compile_options(test_height_handler PRIVATE -march=native)
+
+add_executable(train_lns_solver_mutations src/train_lns_solver_mutations.cpp ${SOURCES})
+target_link_libraries(train_lns_solver_mutations Threads::Threads)
+target_compile_options(train_lns_solver_mutations PRIVATE -mavx2)
+target_compile_options(train_lns_solver_mutations PRIVATE -march=native)

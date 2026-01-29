@@ -15,6 +15,8 @@
 #include <algorithm>
 #include <numeric>
 
+constexpr uint32_t TIMELIMIT = 5'000;
+
 struct FullMetrics {
     Metrics metrics;
     StabilityMetrics stability;
@@ -47,7 +49,7 @@ FullMetrics launch_one_solver(uint32_t test) {
     input >> test_data;
 
     SolverType solver(test_data);
-    Answer answer = solver.solve(get_now() + Milliseconds(5'000));
+    Answer answer = solver.solve(get_now() + Milliseconds(TIMELIMIT));
 
     std::ofstream output("answers/" + std::to_string(test) + ".csv");
     output << answer;
@@ -123,7 +125,7 @@ void launch_solvers() {
     print_separator();
     std::cout << "                    PALLETIZER SOLVER BENCHMARK\n";
     print_separator();
-    std::cout << "Tests: " << tests.size() << ", Threads: " << THREADS_NUM << ", Time limit: 5000ms\n\n";
+    std::cout << "Tests: " << tests.size() << ", Threads: " << THREADS_NUM << ", Time limit: " << TIMELIMIT << "ms\n\n";
     
     std::cout << "Progress:\n";
 
@@ -256,7 +258,7 @@ void launch_solvers() {
 }
 
 int main() {
-    launch_solvers<GreedySolver>();
+    launch_solvers<LNSSolver>();
     return 0;
 
     FullMetrics fm = launch_one_solver<LNSSolver>(228);
