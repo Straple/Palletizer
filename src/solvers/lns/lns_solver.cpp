@@ -14,11 +14,11 @@ struct SimulateResult {
     uint32_t unable_to_put = 0;
     std::vector<double> per_box_support;
 
-    double get_score(double support_weight = 0.3) const {
+    double get_score() const {
         if (unable_to_put) {
             return -1e9;
         }
-        return metrics.percolation + support_weight * min_support_ratio;
+        return metrics.percolation + 0.3 * min_support_ratio;
     }
 
     uint32_t get_worst_box_idx() const {
@@ -60,27 +60,27 @@ struct SimulationParams {
         return {l, r};
     }
 
-    void mutate_position_rotation(Randomizer &rnd, uint32_t available_rotations) {
+    void mutate_position_rotation(Randomizer &rnd, uint32_t available_rotations, const MutableParams &mp) {
         uint32_t i = rnd.get(0, order.size() - 1);
-        if (rnd.get_d() < 0.5) {
+        if (rnd.get_d() < mp.position_vs_rotation_probability) {
             order[i].position = rnd.get(0, 3);
         } else {
             order[i].rotation = rnd.get(-1, available_rotations - 1);
         }
     }
 
-    void mutate_reverse(Randomizer &rnd) {
-        auto [l, r] = get_random_segment(rnd, 0.5, 0.2);
+    void mutate_reverse(Randomizer &rnd, const MutableParams &mp) {
+        auto [l, r] = get_random_segment(rnd, mp.segment_small_probability, mp.segment_small_relative_len);
         std::reverse(order.begin() + l, order.begin() + r);
     }
 
-    void mutate_shuffle(Randomizer &rnd) {
-        auto [l, r] = get_random_segment(rnd, 0.5, 0.2);
+    void mutate_shuffle(Randomizer &rnd, const MutableParams &mp) {
+        auto [l, r] = get_random_segment(rnd, mp.segment_small_probability, mp.segment_small_relative_len);
         std::shuffle(order.begin() + l, order.begin() + r, rnd.generator);
     }
 
-    void mutate_sort_by_area(Randomizer &rnd, const TestData &test_data) {
-        auto [l, r] = get_random_segment(rnd, 0.7, 0.15);
+    void mutate_sort_by_area(Randomizer &rnd, const TestData &test_data, const MutableParams &mp) {
+        auto [l, r] = get_random_segment(rnd, mp.segment_small_probability, mp.segment_small_relative_len);
         std::stable_sort(order.begin() + l, order.begin() + r,
                          [&](const BoxMeta &a, const BoxMeta &b) {
                              auto &ba = test_data.boxes[a.box_id];
@@ -89,16 +89,16 @@ struct SimulationParams {
                          });
     }
 
-    void mutate_sort_by_height(Randomizer &rnd, const TestData &test_data) {
-        auto [l, r] = get_random_segment(rnd, 0.7, 0.15);
+    void mutate_sort_by_height(Randomizer &rnd, const TestData &test_data, const MutableParams &mp) {
+        auto [l, r] = get_random_segment(rnd, mp.segment_small_probability, mp.segment_small_relative_len);
         std::stable_sort(order.begin() + l, order.begin() + r,
                          [&](const BoxMeta &a, const BoxMeta &b) {
                              return test_data.boxes[a.box_id].height > test_data.boxes[b.box_id].height;
                          });
     }
 
-    void mutate_sort_by_weight(Randomizer &rnd, const TestData &test_data) {
-        auto [l, r] = get_random_segment(rnd, 0.7, 0.15);
+    void mutate_sort_by_weight(Randomizer &rnd, const TestData &test_data, const MutableParams &mp) {
+        auto [l, r] = get_random_segment(rnd, mp.segment_small_probability, mp.segment_small_relative_len);
         std::stable_sort(order.begin() + l, order.begin() + r,
                          [&](const BoxMeta &a, const BoxMeta &b) {
                              return test_data.boxes[a.box_id].weight > test_data.boxes[b.box_id].weight;
@@ -119,12 +119,7 @@ struct SimulationParams {
     }
 
     void mutate_threshold(Randomizer &rnd) {
-        support_threshold = rnd.get_d(0, 0.7);
-    }
-
-    void mutate_2opt_small(Randomizer &rnd) {
-        auto [l, r] = get_random_segment(rnd, 1.0, 0.05);
-        std::reverse(order.begin() + l, order.begin() + r);
+        support_threshold = rnd.get_d(0, 1);
     }
 
     void mutate_move_bad_box(Randomizer &rnd, const SimulateResult &last_result) {
@@ -168,18 +163,18 @@ struct SimulationParams {
     }
 
     void mutate(Randomizer &rnd, const TestData &test_data, const SimulateResult &last_result,
-                const std::vector<uint32_t> &weights) {
-        uint32_t type = rnd.get(weights);
+                const MutableParams &mp) {
+        uint32_t type = rnd.get(mp.weights);
 
         switch (type) {
             case 0:
-                mutate_position_rotation(rnd, test_data.header.available_rotations);
+                mutate_position_rotation(rnd, test_data.header.available_rotations, mp);
                 break;
             case 1:
-                mutate_reverse(rnd);
+                mutate_reverse(rnd, mp);
                 break;
             case 2:
-                mutate_shuffle(rnd);
+                mutate_shuffle(rnd, mp);
                 break;
             case 3:
                 mutate_swap(rnd);
@@ -194,19 +189,16 @@ struct SimulationParams {
                 mutate_group_by_sku(rnd, test_data);
                 break;
             case 7:
-                mutate_2opt_small(rnd);
-                break;
-            case 8:
                 mutate_move_bad_box(rnd, last_result);
                 break;
+            case 8:
+                mutate_sort_by_area(rnd, test_data, mp);
+                break;
             case 9:
-                mutate_sort_by_area(rnd, test_data);
+                mutate_sort_by_height(rnd, test_data, mp);
                 break;
             case 10:
-                mutate_sort_by_height(rnd, test_data);
-                break;
-            case 11:
-                mutate_sort_by_weight(rnd, test_data);
+                mutate_sort_by_weight(rnd, test_data, mp);
                 break;
         }
     }
@@ -515,13 +507,11 @@ Total time:       70.3858s
 Avg time/test:    161 ms
 ===========================================================================
 */
-std::vector<uint32_t> DEFAULT_MUTATION_WEIGHTS = {104, 100, 87, 26, 190, 113, 59, 59, 162, 100, 100, 100};
-
-LNSSolver::LNSSolver(TestData test_data) : Solver(test_data), mutation_weights(DEFAULT_MUTATION_WEIGHTS) {
+LNSSolver::LNSSolver(TestData test_data) : Solver(test_data) {
 }
 
-LNSSolver::LNSSolver(TestData test_data, std::vector<uint32_t> weights)
-    : Solver(test_data), mutation_weights(std::move(weights)) {
+LNSSolver::LNSSolver(TestData test_data, MutableParams params)
+    : Solver(test_data), mutable_params(std::move(params)) {
 }
 
 Answer LNSSolver::solve(TimePoint end_time) {
@@ -540,7 +530,7 @@ Answer LNSSolver::solve(TimePoint end_time) {
 
     while (get_now() < end_time) {
         SimulationParams new_params = params;
-        new_params.mutate(rnd, test_data, best_result, mutation_weights);
+        new_params.mutate(rnd, test_data, best_result, mutable_params);
 
         SimulateResult new_result = simulate(test_data, new_params);
 

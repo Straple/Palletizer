@@ -14,7 +14,11 @@
 #include <thread>
 #include <vector>
 
-const uint32_t NUM_MUTATIONS = 12;
+const uint32_t NUM_MUTATIONS = 11;
+
+// Parameters for mutating weights
+constexpr double MUTATE_WEIGHTS_SMALL_PROBABILITY = 0.6;
+
 const std::vector<std::string> MUTATION_NAMES = {
         "position_rotation",
         "reverse",
@@ -23,7 +27,6 @@ const std::vector<std::string> MUTATION_NAMES = {
         "swap_adjacent",
         "threshold",
         "group_by_sku",
-        "2opt_small",
         "move_bad_box",
         "sort_by_area",
         "sort_by_height",
@@ -42,12 +45,12 @@ std::vector<TestData> load_test_data(const std::vector<int> &test_ids) {
     return result;
 }
 
-double evaluate_weights(const std::vector<TestData> &test_data_list,
-                        const std::vector<uint32_t> &weights,
-                        uint32_t time_per_test_ms) {
+double evaluate_params(const std::vector<TestData> &test_data_list,
+                       const MutableParams &mp,
+                       uint32_t time_per_test_ms) {
     double total_score = 0;
     for (const auto &test_data: test_data_list) {
-        LNSSolver solver(test_data, weights);
+        LNSSolver solver(test_data, mp);
         Answer answer = solver.solve(get_now() + Milliseconds(time_per_test_ms));
         Metrics metrics = calc_metrics(test_data, answer);
         StabilityMetrics stability = calc_stability(test_data, answer);
@@ -56,47 +59,59 @@ double evaluate_weights(const std::vector<TestData> &test_data_list,
     return total_score;
 }
 
-void print_weights(const std::vector<uint32_t> &weights, double score) {
-    std::cout << "Score: " << std::fixed << std::setprecision(4) << score << " | Weights: {";
-    for (uint32_t i = 0; i < weights.size(); i++) {
-        std::cout << weights[i];
-        if (i < weights.size() - 1) std::cout << ", ";
+void print_params(const MutableParams &mp, double score) {
+    std::cout << "Score: " << std::fixed << std::setprecision(4) << score << "\n";
+    
+    std::cout << "Weights: {";
+    for (uint32_t i = 0; i < mp.weights.size(); i++) {
+        std::cout << mp.weights[i];
+        if (i < mp.weights.size() - 1) std::cout << ", ";
     }
     std::cout << "}\n";
 
-    std::cout << "Details:\n";
-    for (uint32_t i = 0; i < weights.size(); i++) {
-        std::cout << "  " << std::setw(20) << std::left << MUTATION_NAMES[i]
-                  << ": " << std::setw(5) << weights[i] << "\n";
-    }
+    std::cout << "Params:\n";
+    std::cout << "  segment_small_probability:       " << mp.segment_small_probability << "\n";
+    std::cout << "  segment_small_relative_len:      " << mp.segment_small_relative_len << "\n";
+    std::cout << "  position_vs_rotation_probability:" << mp.position_vs_rotation_probability << "\n";
     std::cout << "\n";
 }
 
-void mutate_weights(std::vector<uint32_t> &weights, Randomizer &rnd) {
-    if (rnd.get_d() < 0.6) {
-        uint32_t from = rnd.get(0, weights.size() - 1);
-        uint32_t to = rnd.get(0, weights.size() - 1);
+void mutate_params(MutableParams &mp, Randomizer &rnd) {
+    // Mutate weights
+    if (rnd.get_d() < MUTATE_WEIGHTS_SMALL_PROBABILITY) {
+        uint32_t from = rnd.get(0, mp.weights.size() - 1);
+        uint32_t to = rnd.get(0, mp.weights.size() - 1);
         if (from == to) {
-            to = (from + 1) % weights.size();
+            to = (from + 1) % mp.weights.size();
         }
 
-        uint32_t delta = rnd.get(1, weights[from]);
+        uint32_t delta = rnd.get(1, mp.weights[from]);
 
-        if (weights[from] > delta) {
-            weights[from] -= delta;
-            weights[to] += delta;
+        if (mp.weights[from] > delta) {
+            mp.weights[from] -= delta;
+            mp.weights[to] += delta;
         }
     } else {
-        int s = weights.size() * 100;
-        weights = std::vector<uint32_t>(NUM_MUTATIONS, 0);
+        int s = mp.weights.size() * 100;
+        mp.weights = std::vector<uint32_t>(NUM_MUTATIONS, 0);
         for (; s; s -= 10) {
-            weights[rnd.get(0, weights.size() - 1)] += 10;
+            mp.weights[rnd.get(0, mp.weights.size() - 1)] += 10;
         }
+    }
+
+    if (rnd.get_d() < 0.5){
+        mp.segment_small_probability = rnd.get_d(0, 1);
+    }
+    if (rnd.get_d() < 0.5){
+        mp.segment_small_relative_len = rnd.get_d(0, 1);
+    }
+    if (rnd.get_d() < 0.5){
+        mp.position_vs_rotation_probability = rnd.get_d(0, 1);
     }
 }
 
 int main() {
-    std::cout << "=== LNS Mutation Weights Training ===\n\n";
+    std::cout << "=== LNS Mutation Params Training ===\n\n";
 
     // TODO: подобрать небольшой пул хороших тестов
     std::vector<int> test_ids = {17, 423, 338};
@@ -104,12 +119,7 @@ int main() {
     std::cout << "Loaded " << test_data_list.size() << " tests\n";
     std::cout << "Threads: " << THREADS_NUM << "\n\n";
 
-    // {104, 100, 87, 26, 190, 113, 59, 59, 162, 100, 100, 100}
-    // {140, 40, 90, 110, 90, 110, 120, 70, 110, 130, 80, 110}
-    // {211, 40, 19, 113, 90, 110, 131, 71, 109, 130, 66, 110}
-    // {48, 189, 13, 120, 100, 140, 110, 90, 60, 1, 80, 249}
-    // {154, 40, 127, 13, 143, 110, 120, 51, 93, 130, 114, 105}
-    std::vector<uint32_t> best_weights(NUM_MUTATIONS, 100);
+    MutableParams best_params;
     double best_score = 0;
     std::mutex mutex;
     uint32_t total_iterations = 0;
@@ -117,26 +127,26 @@ int main() {
     uint32_t TIMELIMIT = 3'000;
 
     {
-        double init_score = evaluate_weights(test_data_list, best_weights, TIMELIMIT);
+        double init_score = evaluate_params(test_data_list, best_params, TIMELIMIT);
         best_score = init_score;
         std::cout << "Initial ";
-        print_weights(best_weights, best_score);
+        print_params(best_params, best_score);
     }
 
     launch_threads(THREADS_NUM, [&](uint32_t thr) {
         Randomizer rnd(thr * 12345 + 249 + 8712831);
 
-        std::vector<uint32_t> local_weights;
+        MutableParams local_params;
         {
             std::unique_lock lock(mutex);
-            local_weights = best_weights;
+            local_params = best_params;
         }
 
         while (true) {
-            std::vector<uint32_t> new_weights = local_weights;
-            mutate_weights(new_weights, rnd);
+            MutableParams new_params = local_params;
+            mutate_params(new_params, rnd);
 
-            double new_score = evaluate_weights(test_data_list, new_weights, TIMELIMIT);
+            double new_score = evaluate_params(test_data_list, new_params, TIMELIMIT);
             {
                 std::unique_lock lock(mutex);
 
@@ -144,13 +154,13 @@ int main() {
 
                 if (new_score > best_score) {
                     best_score = new_score;
-                    best_weights = new_weights;
-                    local_weights = new_weights;
+                    best_params = new_params;
+                    local_params = new_params;
 
                     std::cout << "Thread " << thr << ", Iteration " << iter << " - NEW BEST ";
-                    print_weights(best_weights, best_score);
+                    print_params(best_params, best_score);
                 } else {
-                    local_weights = best_weights;
+                    local_params = best_params;
                 }
             }
         }
