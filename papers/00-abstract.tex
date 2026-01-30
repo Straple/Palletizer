@@ -1,17 +1,31 @@
 % Также можно использовать \Referat, как в оригинале
 \chapter*{Реферат}
-Целью данной курсовой является разработка алгоритма эффективной паллетизации складов, наполненных множеством коробок, имеющих свой размер. Актуальность данной исследования обуславливается достижением максимально компактного и приближенного к прямоугольной форме расположения грузов со склада в целях дальнейшей транспортировки, что позволит уменьшить затраты и сократить занимаемое пространство. В ходе исследования рассматриваются различные современные методы оптимизации данной задачи, включая эвристические, жадные и метаэвристические подходы. В результате данной работе мы получили прототип алгоритма, способного в автоматическом режиме генерировать план паллетизации, учитывая геометрические ограничения и готового к дальнейшему расширению за счет интеграции метаэвристик и дополнительных факторов и внедрения решения в глобальную систему управления складом. 
+Целью данной курсовой работы является разработка алгоритмов эффективной трёхмерной укладки коробок на паллету. Актуальность исследования обусловлена необходимостью максимально компактного размещения грузов для транспортировки, что позволяет снизить логистические затраты и оптимизировать использование складских площадей.
 
-Ключевые слова: паллетизация, алгоритм оптимизации, складская логистика, укладка коробок.  
+В работе реализованы два алгоритма: жадный GreedySolver (среднее заполнение 73.6\%) и метаэвристический LNSSolver на основе поиска в большой окрестности (Large Neighborhood Search), достигающий заполнения до 90.4\%. Разработана эффективная структура данных HeightHandler для хранения карты высот паллеты — сравнительное тестирование пяти реализаций показало ускорение в 12.9 раза. Реализованы метрики оценки устойчивости укладки и интерактивный 3D-визуализатор.
 
-%В работе 32 страниц, 4 иллюстрации, 26 источников.
+Тестирование проводилось на 436 реальных задачах от компаний-партнёров. Исходный код доступен в открытом репозитории.
+
+% TODO: Раскомментировать после добавления ссылки на GitHub
+% Исходный код: \url{https://github.com/Straple/Palletizer}
+
+Ключевые слова: паллетизация, трёхмерная упаковка, Large Neighborhood Search, складская логистика, NP-трудная задача.
+
+%В работе XX страниц, XX иллюстраций, XX источников.
 
 \chapter*{Abstract}
-The purpose of this course work is to develop an algorithm for the effective palletization of warehouses filled with masses of boxes, determining their size. The relevance of this study is determined by achieving the most compact and nearly rectangular arrangement of cargo from the warehouse for further transportation, which will reduce costs and reduce the space occupied. The study examines various modern methods for optimization, including heuristic, greedy and metaheuristic approaches. As a result of this work, we obtained a prototype of an algorithm, which is capable of automatically generating a palletization plan, including geometric restrictions and ready for further expansion by integrating metaheuristics, additional factors and implementing the solution into a global warehouse management system.
+The purpose of this course work is to develop algorithms for efficient three-dimensional box packing on a pallet. The relevance of this research is determined by the need for the most compact cargo placement for transportation, which reduces logistics costs and optimizes warehouse space utilization.
 
-Keywords: palletization, optimization algorithm, warehouse logistics, box packing
+Two algorithms were implemented: the greedy GreedySolver (average fill rate 73.6\%) and the metaheuristic LNSSolver based on Large Neighborhood Search, achieving up to 90.4\% fill rate. An efficient HeightHandler data structure was developed for storing the pallet height map — comparative testing of five implementations showed a 12.9x speedup. Stability metrics and an interactive 3D visualizer were implemented.
 
-%The thesis consists of 32 pages, 4 illustrations, 26 references.
+Testing was conducted on 436 real-world tasks from partner companies. The source code is available in an open repository.
+
+% TODO: Uncomment after adding GitHub link
+% Source code: \url{https://github.com/Straple/Palletizer}
+
+Keywords: palletization, 3D bin packing, Large Neighborhood Search, warehouse logistics, NP-hard problem.
+
+%The thesis consists of XX pages, XX illustrations, XX references.
 \pagestyle{plain} % нумерация вкл.
 %%% Local Variables: 
 %%% mode: latex
