@@ -62,12 +62,12 @@ double evaluate_params(const std::vector<TestData> &test_data_list,
         StabilityMetrics stability = calc_stability(test_data, answer);
         total_score += metrics.percolation + stability.min_support_ratio * 2;
     }
-    return total_score;
+    return total_score / test_data_list.size();
 }
 
 void print_params(const MutableParams &mp, double score) {
     std::cout << "Score: " << std::fixed << std::setprecision(4) << score << "\n";
-
+    std::cout << "swap_k_max_ratio: " << mp.swap_k_max_ratio << '\n';
     std::cout << "Weights: {";
     for (uint32_t i = 0; i < mp.weights.size(); i++) {
         std::cout << mp.weights[i];
@@ -84,10 +84,11 @@ void mutate_params(MutableParams &mp, Randomizer &rnd) {
         if (from == to) {
             to = (from + 1) % mp.weights.size();
         }
-
-        uint32_t delta = rnd.get(1, mp.weights[from]);
-
-        if (mp.weights[from] > delta) {
+        if (mp.weights[from] > 0) {
+            uint32_t delta = rnd.get(1, mp.weights[from]);
+            if (rnd.get_d() < 0.5) {
+                delta = mp.weights[from];
+            }
             mp.weights[from] -= delta;
             mp.weights[to] += delta;
         }
@@ -107,7 +108,7 @@ int main() {
     std::cout << "=== LNS Mutation Params Training ===\n\n";
 
     // TODO: подобрать небольшой пул хороших тестов
-    std::vector<int> test_ids = {17, 423, 338};
+    std::vector<int> test_ids = {17, 25, 101, 228, 333, 338, 400, 423};
     auto test_data_list = load_test_data(test_ids);
     std::cout << "Loaded " << test_data_list.size() << " tests\n";
     std::cout << "Threads: " << THREADS_NUM << "\n\n";
@@ -117,7 +118,7 @@ int main() {
     std::mutex mutex;
     uint32_t total_iterations = 0;
 
-    uint32_t TIMELIMIT = 3'000;
+    uint32_t TIMELIMIT = 5'000;
 
     {
         double init_score = evaluate_params(test_data_list, best_params, TIMELIMIT);
@@ -162,237 +163,6 @@ int main() {
 
 
 /*
-Thread 23, Iteration 657 - NEW BEST Score: 6.4314
-Weights: {177, 98, 4, 100, 100, 110, 91, 80, 120, 90, 130}
-Params:
-  segment_small_probability:       0.3031
-  segment_small_relative_len:      0.6662
-  position_vs_rotation_probability:0.9679
-===========================================================================
-                         SUMMARY STATISTICS
-===========================================================================
-Metric                          Min            Avg            Max
------------------------------------------------------------------
-Percolation                  0.6234         0.7244         0.8627
-Boxes                            18          116.8            465
-Height                          342         2352.5           8355
-Stability                    0.3431         0.7515         0.8630
-Min support ratio            0.2424         0.6523         1.0000
-Interlocking                 0.1370         0.2485         0.6569
-Pallets computed                  8          290.5           5734
------------------------------------------------------------------
-Center of Mass:
-  CoM X                    501.1509       585.5748       649.8238
-  CoM Y                    335.2152       386.5364       434.9929
-  CoM Z                    153.4503      1147.2058      3876.0176
-Relative Center of Mass:
-  CoM X rel                  0.0002         0.0174         0.0824
-  CoM Y rel                  0.0000         0.0193         0.0810
-  CoM Z rel                  0.3536         0.4815         0.5589
------------------------------------------------------------------
-
-Total tests:      436
-Total time:       70.3543s
-Avg time/test:    161 ms
-===========================================================================
-
-
-
-
-
-Thread 5, Iteration 563 - NEW BEST Score: 6.3087
-Weights: {205, 15, 1, 92, 64, 140, 100, 173, 120, 140, 50}
-Params:
-  segment_small_probability:       0.3988
-  segment_small_relative_len:      0.0101
-  position_vs_rotation_probability:0.9230
-===========================================================================
-                         SUMMARY STATISTICS
-===========================================================================
-Metric                          Min            Avg            Max
------------------------------------------------------------------
-Percolation                  0.6257         0.7374         0.8593
-Boxes                            18          116.8            465
-Height                          343         2293.0           7999
-Stability                    0.3285         0.7632         0.8686
-Min support ratio            0.2451         0.5949         1.0000
-Interlocking                 0.1314         0.2368         0.6715
-Pallets computed                 10          294.1           5469
------------------------------------------------------------------
-Center of Mass:
-  CoM X                    513.8649       582.6536       695.3036
-  CoM Y                    325.5344       386.0571       441.2503
-  CoM Z                    157.8268      1150.6282      3980.5171
-Relative Center of Mass:
-  CoM X rel                  0.0002         0.0183         0.0794
-  CoM Y rel                  0.0001         0.0204         0.0931
-  CoM Z rel                  0.3760         0.4947         0.5640
------------------------------------------------------------------
-
-Total tests:      436
-Total time:       70.3743s
-Avg time/test:    161 ms
-===========================================================================
-
-
-
-
-
-
-
-Thread 19, Iteration 508 - NEW BEST Score: 6.3681
-Weights: {90, 60, 150, 70, 100, 130, 80, 100, 130, 70, 120}
-Params:
-  segment_small_probability:       0.5966
-  segment_small_relative_len:      0.0337
-  position_vs_rotation_probability:0.2139
-===========================================================================
-                         SUMMARY STATISTICS
-===========================================================================
-Metric                          Min            Avg            Max
------------------------------------------------------------------
-Percolation                  0.6230         0.7242         0.8593
-Boxes                            18          116.8            465
-Height                          342         2346.0           8234
-Stability                    0.3020         0.7532         0.8630
-Min support ratio            0.2285         0.6436         1.0000
-Interlocking                 0.1370         0.2468         0.6980
-Pallets computed                  7          296.6           5814
------------------------------------------------------------------
-Center of Mass:
-  CoM X                    504.6417       584.3441       757.1150
-  CoM Y                    327.4306       384.9259       431.0034
-  CoM Z                    157.7538      1150.9833      4092.4628
-Relative Center of Mass:
-  CoM X rel                  0.0001         0.0189         0.1309
-  CoM Y rel                  0.0002         0.0216         0.0907
-  CoM Z rel                  0.3737         0.4832         0.5587
------------------------------------------------------------------
-
-Total tests:      436
-Total time:       70.3730s
-Avg time/test:    161 ms
-===========================================================================
-
-
-
-
-
-Thread 29, Iteration 515 - NEW BEST Score: 6.3423
-Weights: {160, 60, 80, 90, 96, 124, 50, 110, 130, 100, 100}
-Params:
-  segment_small_probability:       0.6546
-  segment_small_relative_len:      0.0998
-  position_vs_rotation_probability:0.9119
-===========================================================================
-                         SUMMARY STATISTICS
-===========================================================================
-Metric                          Min            Avg            Max
------------------------------------------------------------------
-Percolation                  0.5985         0.7243         0.8792
-Boxes                            18          116.8            465
-Height                          342         2350.6           8184
-Stability                    0.3257         0.7517         0.8527
-Min support ratio            0.2486         0.6488         1.0000
-Interlocking                 0.1473         0.2483         0.6743
-Pallets computed                  8          290.1           5748
------------------------------------------------------------------
-Center of Mass:
-  CoM X                    506.6725       583.8754       659.0923
-  CoM Y                    354.7854       385.6370       433.0283
-  CoM Z                    157.8884      1159.9724      4162.3006
-Relative Center of Mass:
-  CoM X rel                  0.0001         0.0173         0.0778
-  CoM Y rel                  0.0001         0.0211         0.0565
-  CoM Z rel                  0.3684         0.4869         0.5622
------------------------------------------------------------------
-
-Total tests:      436
-Total time:       70.3822s
-Avg time/test:    161 ms
-===========================================================================
-
-
-
-
-
-Thread 0, Iteration 729 - NEW BEST Score: 6.2828
-Weights: {120, 90, 29, 131, 103, 117, 69, 71, 139, 140, 91}
-Params:
-  segment_small_probability:       0.7090
-  segment_small_relative_len:      0.0129
-  position_vs_rotation_probability:0.6557
-===========================================================================
-                         SUMMARY STATISTICS
-===========================================================================
-Metric                          Min            Avg            Max
------------------------------------------------------------------
-Percolation                  0.6114         0.7218         0.8604
-Boxes                            18          116.8            465
-Height                          343         2359.2           8160
-Stability                    0.3125         0.7518         0.8659
-Min support ratio            0.2179         0.6449         1.0000
-Interlocking                 0.1341         0.2482         0.6875
-Pallets computed                  8          292.1           5506
------------------------------------------------------------------
-Center of Mass:
-  CoM X                    509.5114       583.4017       635.2786
-  CoM Y                    339.9424       385.5823       426.6199
-  CoM Z                    159.9463      1156.6390      4137.0395
-Relative Center of Mass:
-  CoM X rel                  0.0000         0.0173         0.0754
-  CoM Y rel                  0.0000         0.0208         0.0751
-  CoM Z rel                  0.3728         0.4836         0.5655
------------------------------------------------------------------
-
-Total tests:      436
-Total time:       70.3871s
-Avg time/test:    161 ms
-===========================================================================
-
-
-
-
-
-Thread 17, Iteration 272 - NEW BEST Score: 6.4191
-Weights: {90, 110, 70, 80, 100, 140, 100, 80, 100, 120, 110}
-Params:
-  segment_small_probability:       0.6593
-  segment_small_relative_len:      0.8780
-  position_vs_rotation_probability:0.0317
-===========================================================================
-                         SUMMARY STATISTICS
-===========================================================================
-Metric                          Min            Avg            Max
------------------------------------------------------------------
-Percolation                  0.6082         0.7300         0.8604
-Boxes                            18          116.8            465
-Height                          342         2329.8           8057
-Stability                    0.3763         0.7550         0.8653
-Min support ratio            0.2230         0.6384         1.0000
-Interlocking                 0.1347         0.2450         0.6237
-Pallets computed                  8          297.3           6070
------------------------------------------------------------------
-Center of Mass:
-  CoM X                    522.7393       584.7226       673.7351
-  CoM Y                    340.7828       388.4990       447.9066
-  CoM Z                    157.8884      1123.3386      3875.6449
-Relative Center of Mass:
-  CoM X rel                  0.0000         0.0182         0.0644
-  CoM Y rel                  0.0001         0.0177         0.0740
-  CoM Z rel                  0.3703         0.4765         0.5524
------------------------------------------------------------------
-
-Total tests:      436
-Total time:       70.3334s
-Avg time/test:    161 ms
-===========================================================================
-
-
-
-
-
-
 Thread 14, Iteration 360 - NEW BEST Score: 6.5068
 Weights: {90, 110, 70, 80, 100, 140, 100, 80, 100, 120, 110}
 Params:
@@ -431,37 +201,34 @@ Avg time/test:    161 ms
 
 
 
-Thread 3, Iteration 832 - NEW BEST Score: 6.4485
-Weights: {137, 3, 160, 80, 78, 122, 72, 160, 58, 39, 191}
-Params:
-  segment_small_probability:       0.2719
-  segment_small_relative_len:      1.0000
-  position_vs_rotation_probability:0.3815
+Initial Score: 6.0635
+swap_k_max_ratio: 0.1000
+Weights: {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}
 ===========================================================================
                          SUMMARY STATISTICS
 ===========================================================================
 Metric                          Min            Avg            Max
 -----------------------------------------------------------------
-Percolation                  0.6133         0.7295         0.8631
+Percolation                  0.6219         0.7396         0.8833
 Boxes                            18          116.8            465
-Height                          342         2327.0           8313
-Stability                    0.3779         0.7506         0.8620
-Min support ratio            0.2451         0.6381         1.0000
-Interlocking                 0.1380         0.2494         0.6221
-Pallets computed                  9          295.9           6437
+Height                          341         2290.6           8225
+Stability                    0.2534         0.7735         0.9322
+Min support ratio            0.1956         0.5602         1.0000
+Interlocking                 0.0678         0.2265         0.7466
+Pallets computed                  9          307.9          11745
 -----------------------------------------------------------------
 Center of Mass:
-  CoM X                    526.6364       586.0367       653.1293
-  CoM Y                    326.4340       386.0863       428.6807
-  CoM Z                    155.8725      1121.8356      3919.9838
+  CoM X                    504.6496       586.0959       683.0965
+  CoM Y                    342.6004       387.6067       439.3842
+  CoM Z                    158.6700      1152.6985      4269.4982
 Relative Center of Mass:
-  CoM X rel                  0.0000         0.0160         0.0611
-  CoM Y rel                  0.0002         0.0204         0.0920
-  CoM Z rel                  0.3580         0.4750         0.5717
+  CoM X rel                  0.0001         0.0168         0.0795
+  CoM Y rel                  0.0000         0.0182         0.0717
+  CoM Z rel                  0.3559         0.4965         0.5614
 -----------------------------------------------------------------
 
 Total tests:      436
-Total time:       70.3566s
+Total time:       70.3577s
 Avg time/test:    161 ms
 ===========================================================================
 
@@ -470,37 +237,133 @@ Avg time/test:    161 ms
 
 
 
-Thread 18, Iteration 230 - NEW BEST Score: 6.3035
-Weights: {52, 110, 70, 80, 100, 140, 100, 80, 213, 29, 126}
-Params:
-  segment_small_probability:       0.5401
-  segment_small_relative_len:      1.0000
-  position_vs_rotation_probability:0.3623
+
+Thread 26, Iteration 690 - NEW BEST Score: 6.5550
+swap_k_max_ratio: 0.1000
+Weights: {77, 111, 112, 100, 100, 59, 100, 141, 46, 154, 100, 100, 100}
 ===========================================================================
                          SUMMARY STATISTICS
 ===========================================================================
 Metric                          Min            Avg            Max
 -----------------------------------------------------------------
-Percolation                  0.6367         0.7393         0.8806
+Percolation                  0.6488         0.7409         0.8759
 Boxes                            18          116.8            465
-Height                          343         2289.8           8201
-Stability                    0.2806         0.7661         0.8540
-Min support ratio            0.2539         0.5963         1.0000
-Interlocking                 0.1460         0.2339         0.7194
-Pallets computed                 10          300.0           6046
+Height                          343         2285.4           8225
+Stability                    0.3750         0.7768         0.9170
+Min support ratio            0.1956         0.5570         1.0000
+Interlocking                 0.0830         0.2232         0.6250
+Pallets computed                  9          294.0           9734
 -----------------------------------------------------------------
 Center of Mass:
-  CoM X                    507.9496       581.5001       648.0049
-  CoM Y                    345.2545       386.1477       440.2090
-  CoM Z                    160.1030      1130.3560      3902.0949
+  CoM X                    533.3960       587.7034       740.2853
+  CoM Y                    315.7982       388.2885       453.3932
+  CoM Z                    156.0679      1145.6621      4269.4982
 Relative Center of Mass:
-  CoM X rel                  0.0002         0.0189         0.0767
-  CoM Y rel                  0.0000         0.0200         0.0684
-  CoM Z rel                  0.3752         0.4874         0.5614
+  CoM X rel                  0.0000         0.0162         0.1169
+  CoM Y rel                  0.0001         0.0180         0.1053
+  CoM Z rel                  0.3595         0.4944         0.5751
 -----------------------------------------------------------------
 
 Total tests:      436
-Total time:       70.3649s
+Total time:       70.3508s
+Avg time/test:    161 ms
+===========================================================================
+
+
+Thread 17, Iteration 322 - NEW BEST Score: 6.3744
+swap_k_max_ratio: 0.3870
+Weights: {110, 90, 140, 150, 60, 70, 90, 130, 90, 120, 110, 60, 80}
+===========================================================================
+                         SUMMARY STATISTICS
+===========================================================================
+Metric                          Min            Avg            Max
+-----------------------------------------------------------------
+Percolation                  0.6458         0.7408         0.8638
+Boxes                            18          116.8            465
+Height                          350         2286.7           8307
+Stability                    0.2598         0.7763         0.9403
+Min support ratio            0.1954         0.5785         1.0000
+Interlocking                 0.0597         0.2237         0.7402
+Pallets computed                 10          298.7           7761
+-----------------------------------------------------------------
+Center of Mass:
+  CoM X                    461.7443       587.6055       672.5079
+  CoM Y                    337.7759       387.4666       437.9733
+  CoM Z                    158.7647      1146.4223      4312.2023
+Relative Center of Mass:
+  CoM X rel                  0.0001         0.0157         0.1152
+  CoM Y rel                  0.0000         0.0183         0.0778
+  CoM Z rel                  0.3620         0.4945         0.5688
+-----------------------------------------------------------------
+
+Total tests:      436
+Total time:       70.3934s
+Avg time/test:    161 ms
+===========================================================================
+
+
+
+
+Thread 27, Iteration 479 - NEW BEST Score: 6.3225
+swap_k_max_ratio: 0.3093
+Weights: {70, 110, 120, 100, 150, 90, 130, 90, 80, 130, 60, 100, 70}
+===========================================================================
+                         SUMMARY STATISTICS
+===========================================================================
+Metric                          Min            Avg            Max
+-----------------------------------------------------------------
+Percolation                  0.6509         0.7382         0.8709
+Boxes                            18          116.8            465
+Height                          350         2291.8           8578
+Stability                    0.3230         0.7748         0.8889
+Min support ratio            0.2477         0.5561         1.0000
+Interlocking                 0.1111         0.2252         0.6770
+Pallets computed                  9          297.3           8430
+-----------------------------------------------------------------
+Center of Mass:
+  CoM X                    509.3234       586.9774       646.8726
+  CoM Y                    339.3519       387.6863       440.7114
+  CoM Z                    158.8756      1139.6985      4391.4895
+Relative Center of Mass:
+  CoM X rel                  0.0001         0.0160         0.0756
+  CoM Y rel                  0.0000         0.0187         0.0758
+  CoM Z rel                  0.3808         0.4905         0.5656
+-----------------------------------------------------------------
+
+Total tests:      436
+Total time:       70.3704s
+Avg time/test:    161 ms
+===========================================================================
+
+
+Thread 29, Iteration 54 - NEW BEST Score: 6.2858
+swap_k_max_ratio: 0.0527
+Weights: {100, 130, 100, 110, 150, 70, 80, 100, 70, 140, 80, 90, 80}
+===========================================================================
+                         SUMMARY STATISTICS
+===========================================================================
+Metric                          Min            Avg            Max
+-----------------------------------------------------------------
+Percolation                  0.5915         0.7368         0.8604
+Boxes                            18          116.8            465
+Height                          343         2296.3           8578
+Stability                    0.4115         0.7751         0.8583
+Min support ratio            0.2572         0.5666         1.0000
+Interlocking                 0.1417         0.2249         0.5885
+Pallets computed                  9          299.1           9044
+-----------------------------------------------------------------
+Center of Mass:
+  CoM X                    480.0283       587.9374       687.3342
+  CoM Y                    337.8788       388.4246       440.4970
+  CoM Z                    151.7054      1147.4313      4391.4895
+Relative Center of Mass:
+  CoM X rel                  0.0002         0.0166         0.1000
+  CoM Y rel                  0.0001         0.0176         0.0777
+  CoM Z rel                  0.3625         0.4938         0.5908
+-----------------------------------------------------------------
+
+Total tests:      436
+Total time:       70.4164s
 Avg time/test:    161 ms
 ===========================================================================
 
