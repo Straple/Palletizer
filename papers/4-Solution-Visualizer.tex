@@ -1,0 +1,132 @@
+\section{Визуализатор}
+
+Для анализа и отладки результатов укладки разработан интерактивный 3D-визуализатор на Python с использованием библиотеки Plotly.
+
+% TODO: Добавить скриншот визуализатора с уложенной паллетой (figures/visualizer_example.png)
+% Показать: 3D-вид паллеты с разноцветными коробками, панель управления внизу
+
+\subsection{Технологии}
+
+Визуализатор реализован с использованием:
+\begin{itemize}
+    \item \textbf{Python 3} --- основной язык
+    \item \textbf{Plotly} --- библиотека для интерактивных 3D-графиков
+    \item \textbf{Pandas} --- работа с CSV-файлами
+    \item \textbf{NumPy} --- математические операции
+\end{itemize}
+
+Результат --- автономный HTML-файл, который можно открыть в любом браузере без необходимости установки дополнительного ПО.
+
+\subsection{Интерактивные возможности}
+
+\subsubsection{Навигация в 3D-пространстве}
+\begin{itemize}
+    \item Вращение модели мышью (drag)
+    \item Масштабирование (scroll)
+    \item Перемещение (shift+drag)
+    \item Сброс вида (double-click)
+\end{itemize}
+
+\subsubsection{Пошаговый просмотр укладки}
+
+Ключевая функция --- возможность просмотреть процесс укладки по шагам:
+\begin{itemize}
+    \item Клавиши $\leftarrow$ / A --- убрать последнюю коробку
+    \item Клавиши $\rightarrow$ / D --- добавить следующую коробку
+    \item Кнопки ``Start (0)'' и ``End (All)'' --- перейти в начало/конец
+    \item Поле ввода ``Go to:'' --- перейти к конкретному шагу
+\end{itemize}
+
+Это позволяет анализировать, как алгоритм принимает решения на каждом шаге, и выявлять потенциальные проблемы.
+
+% TODO: Добавить скриншот пошагового просмотра (figures/visualizer_steps.png)
+% Показать: паллету с частично уложенными коробками и панель управления
+
+\subsubsection{Режимы отображения}
+
+\textbf{Режим граней (meshes):}
+\begin{itemize}
+    \item Коробки отображаются как полупрозрачные 3D-объекты
+    \item Регулируемая прозрачность (\texttt{--opacity})
+    \item Цветовая палитра по SKU или единый цвет
+\end{itemize}
+
+\textbf{Режим рёбер (edges):}
+\begin{itemize}
+    \item \texttt{sku} --- рёбра окрашены по SKU, можно выбирать типы в легенде
+    \item \texttt{single} --- все рёбра одного цвета
+    \item \texttt{none} --- рёбра не отображаются
+\end{itemize}
+
+\subsubsection{Hover-информация}
+
+При наведении на коробку отображается:
+\begin{itemize}
+    \item SKU (артикул товара)
+    \item Координаты: $x$, $y$, $z$ (мин и макс)
+    \item Размеры коробки
+\end{itemize}
+
+\subsection{Параметры командной строки}
+
+\begin{table}[ht]
+\centering
+\caption{Основные параметры визуализатора}
+\label{tab:visualizer_params}
+\begin{tabular}{|l|l|p{6cm}|}
+\hline
+\textbf{Параметр} & \textbf{По умолч.} & \textbf{Описание} \\
+\hline
+\texttt{csv} & --- & Путь к CSV с результатами укладки \\
+\texttt{--mode} & meshes & meshes или wireframe \\
+\texttt{--opacity} & 0.35 & Прозрачность граней (0--1) \\
+\texttt{--color-by} & none & Цвет граней: none или sku \\
+\texttt{--edges} & sku & Режим рёбер: sku, single, none \\
+\texttt{--edge-color} & \#000000 & Цвет для режима single \\
+\texttt{--edge-width} & 2.0 & Толщина рёбер \\
+\texttt{--pallet-length} & --- & Длина паллеты (X) \\
+\texttt{--pallet-width} & --- & Ширина паллеты (Y) \\
+\texttt{--initial-count} & 1 & Сколько коробок показать изначально \\
+\texttt{--out} & auto & Путь к выходному HTML \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Примеры использования}
+
+\textbf{Базовый запуск:}
+\begin{verbatim}
+python3 src/scripts/visualizer.py answers/261.csv \
+    --pallet-length 1200 --pallet-width 800
+\end{verbatim}
+
+\textbf{С раскраской по SKU и полупрозрачностью:}
+\begin{verbatim}
+python3 src/scripts/visualizer.py answers/261.csv \
+    --pallet-length 1200 --pallet-width 800 \
+    --color-by sku --opacity 0.4 --edges sku
+\end{verbatim}
+
+\textbf{Показать сразу всю паллету:}
+\begin{verbatim}
+python3 src/scripts/visualizer.py answers/261.csv \
+    --pallet-length 1200 --pallet-width 800 \
+    --initial-count 1000000 --opacity 0.5
+\end{verbatim}
+
+\subsection{Формат входных данных}
+
+Визуализатор читает CSV-файл с обязательными колонками:
+
+\begin{verbatim}
+SKU,x,y,z,X,Y,Z
+900001,0,0,0,600,400,200
+900001,600,0,0,1200,400,200
+900002,0,400,0,200,800,200
+...
+\end{verbatim}
+
+где $(x, y, z)$ --- координаты нижнего угла коробки, $(X, Y, Z)$ --- координаты верхнего угла.
+
+% TODO: Добавить скриншот с раскраской по SKU (figures/visualizer_sku_colors.png)
+% Показать: паллету с коробками разных цветов и легенду справа
