@@ -391,3 +391,7 @@ Total time:       70.7080s
 Avg time/test:    162 ms
 ===========================================================================
 */
+
+
+// grep -rn "TODO" papers/*.tex
+// rm -rf build && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j8
