@@ -495,10 +495,7 @@ void run_benchmarks() {
         tests.push_back(test);
     }
 
-    uint32_t num_threads = std::thread::hardware_concurrency();
-    if (num_threads == 0) num_threads = 4;
-
-    std::cout << "Found " << tests.size() << " tests, using " << num_threads << " threads\n\n";
+    std::cout << "Found " << tests.size() << " tests, using " << THREADS_NUM << " threads\n\n";
 
     // Результаты для каждого теста и каждого алгоритма
     std::vector<std::vector<BenchmarkResult>> all_results(tests.size());
@@ -507,7 +504,7 @@ void run_benchmarks() {
     std::atomic<int> completed{0};
 
     // Многопоточный запуск
-    launch_threads(num_threads, [&](uint32_t thr) {
+    launch_threads(THREADS_NUM, [&](uint32_t thr) {
         for (size_t i = 0; i < tests.size(); i++) {
             bool expected = false;
             if (!visited[i].compare_exchange_strong(expected, true)) {
@@ -583,7 +580,7 @@ void run_benchmarks() {
     std::cout << "                              SUMMARY\n";
     std::cout << "=============================================================================\n";
     std::cout << "Tests: " << tests.size() << ", Wall time: " << std::fixed << std::setprecision(1)
-              << total_timer.get_ms() << "ms, Threads: " << num_threads << "\n\n";
+              << total_timer.get_ms() << "ms, Threads: " << THREADS_NUM << "\n\n";
 
     // Таблица результатов
     std::cout << std::left << std::setw(15) << "Algorithm"
