@@ -26,8 +26,8 @@ struct TestDataHeader {
     double min_support_threshold = 0;
 
     double score_percolation_mult = 1.0;
-    double score_min_support_ratio_mult = 2.0;
-    double score_center_of_mass_z_mult = 0.0;
+    double score_min_support_ratio_mult = 1.0;
+    double score_center_of_mass_z_mult = 10.0;
 };
 
 struct TestData {

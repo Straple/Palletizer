@@ -19,6 +19,7 @@ struct SimulationResult {
         score += header.score_percolation_mult * metrics.percolation;
         score += header.score_min_support_ratio_mult * metrics.min_support_ratio;
         score += header.score_center_of_mass_z_mult * (1 - metrics.relative_center_of_mass.z);
+        score -= metrics.center_of_mass.z;
         return score;
     }
 
