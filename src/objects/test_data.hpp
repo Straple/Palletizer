@@ -28,6 +28,7 @@ struct TestDataHeader {
     double score_percolation_mult = 1.0;
     double score_min_support_ratio_mult = 1.0;
     double score_center_of_mass_z_mult = 10.0;
+    uint32_t score_normalization_height = 2200;
 };
 
 struct TestData {

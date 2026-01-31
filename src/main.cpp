@@ -14,25 +14,64 @@
 #include <algorithm>
 #include <numeric>
 
+/*
+ * CSV формат для записи результатов запуска бенчмарка:
+ * 
+ * BENCHMARK_CSV_HEADER:
+ * algorithm,timelimit_ms,avg_time_per_test_ms,
+ * pallet_length,pallet_width,score_normalization_height,available_rotations,min_support_threshold,
+ * score_percolation_mult,score_min_support_ratio_mult,score_center_of_mass_z_mult,
+ * percolation_min,percolation_ci_low,percolation_avg,percolation_ci_high,percolation_max,
+ * min_support_ratio_min,min_support_ratio_ci_low,min_support_ratio_avg,min_support_ratio_ci_high,min_support_ratio_max,
+ * height_min,height_ci_low,height_avg,height_ci_high,height_max,
+ * com_z_rel_min,com_z_rel_ci_low,com_z_rel_avg,com_z_rel_ci_high,com_z_rel_max
+ */
+
 constexpr uint32_t TIMELIMIT = 5'000;
 
-// Структура для агрегированной статистики
+// Структура для агрегированной статистики с доверительным интервалом
 struct AggregatedStats {
-    double min_val = std::numeric_limits<double>::max();
-    double max_val = std::numeric_limits<double>::lowest();
+    std::vector<double> values;
     double sum = 0;
-    uint32_t count = 0;
     
     void add(double val) {
-        min_val = std::min(min_val, val);
-        max_val = std::max(max_val, val);
+        values.push_back(val);
         sum += val;
-        count++;
+    }
+    
+    [[nodiscard]] double min_val() const { 
+        return values.empty() ? 0 : *std::min_element(values.begin(), values.end()); 
+    }
+    
+    [[nodiscard]] double max_val() const { 
+        return values.empty() ? 0 : *std::max_element(values.begin(), values.end()); 
     }
     
     [[nodiscard]] double avg() const { 
-        return count > 0 ? sum / count : 0; 
+        return values.empty() ? 0 : sum / values.size(); 
     }
+    
+    // Вычисляет доверительный интервал X% (по умолчанию 90%)
+    // Возвращает пару (lower_bound, upper_bound) - границы интервала,
+    // в который попадает X% значений (центральная часть распределения)
+    [[nodiscard]] std::pair<double, double> confidence_interval(double confidence_percent = 90.0) const {
+        if (values.empty()) return {0, 0};
+        if (values.size() == 1) return {values[0], values[0]};
+        
+        std::vector<double> sorted = values;
+        std::sort(sorted.begin(), sorted.end());
+
+        double tail_percent = (100.0 - confidence_percent) / 2.0 / 100.0;
+        size_t lower_idx = static_cast<size_t>(sorted.size() * tail_percent);
+        size_t upper_idx = static_cast<size_t>(sorted.size() * (1.0 - tail_percent)) - 1;
+        
+        // Гарантируем корректные индексы
+        upper_idx = std::min(upper_idx, sorted.size() - 1);
+        
+        return {sorted[lower_idx], sorted[upper_idx]};
+    }
+    
+    [[nodiscard]] size_t count() const { return values.size(); }
 };
 
 template<typename SolverType>
@@ -58,27 +97,34 @@ void print_separator(int width = 75) {
     std::cout << std::string(width, '=') << "\n";
 }
 
-void print_table_row(const std::string& name, double min_val, double avg_val, double max_val) {
+void print_table_row(const std::string& name, const AggregatedStats& stats, double ci_percent = 90.0) {
+    auto [ci_low, ci_high] = stats.confidence_interval(ci_percent);
     std::cout << std::left << std::setw(20) << name
               << std::right << std::fixed << std::setprecision(4)
-              << std::setw(15) << min_val
-              << std::setw(15) << avg_val
-              << std::setw(15) << max_val
+              << std::setw(12) << stats.min_val()
+              << std::setw(12) << ci_low
+              << std::setw(12) << stats.avg()
+              << std::setw(12) << ci_high
+              << std::setw(12) << stats.max_val()
               << "\n";
 }
 
-void print_table_row_int(const std::string& name, int64_t min_val, double avg_val, int64_t max_val) {
+void print_table_row_int(const std::string& name, const AggregatedStats& stats, double ci_percent = 90.0) {
+    auto [ci_low, ci_high] = stats.confidence_interval(ci_percent);
     std::cout << std::left << std::setw(20) << name
               << std::right
-              << std::setw(15) << min_val
-              << std::setw(15) << std::fixed << std::setprecision(1) << avg_val
-              << std::setw(15) << max_val
+              << std::setw(12) << (int64_t)stats.min_val()
+              << std::setw(12) << (int64_t)ci_low
+              << std::setw(12) << std::fixed << std::setprecision(1) << stats.avg()
+              << std::setw(12) << (int64_t)ci_high
+              << std::setw(12) << (int64_t)stats.max_val()
               << "\n";
 }
 
 template<typename SolverType>
-void launch_solvers() {
+void launch_solvers(const std::string& algorithm_name) {
     Timer timer;
+    TestDataHeader header;  // Используем дефолтные значения из TestDataHeader
     
     // Агрегированные статистики
     AggregatedStats percolation_stats;
@@ -185,36 +231,40 @@ void launch_solvers() {
                        << ',' << m.pallets_computed << '\n';
     }
 
-    // Выводим красивую сводную таблицу
+    // Выводим красивую сводную таблицу с доверительным интервалом 90%
+    constexpr double CI_PERCENT = 90.0;
+    
     std::cout << "\n";
-    print_separator();
-    std::cout << "                         SUMMARY STATISTICS\n";
-    print_separator();
+    print_separator(80);
+    std::cout << "                         SUMMARY STATISTICS (CI " << CI_PERCENT << "%)\n";
+    print_separator(80);
     
     std::cout << std::left << std::setw(20) << "Metric"
-              << std::right << std::setw(15) << "Min"
-              << std::setw(15) << "Avg"
-              << std::setw(15) << "Max"
+              << std::right << std::setw(12) << "Min"
+              << std::setw(12) << "CI_Low"
+              << std::setw(12) << "Avg"
+              << std::setw(12) << "CI_High"
+              << std::setw(12) << "Max"
               << "\n";
-    std::cout << std::string(65, '-') << "\n";
+    std::cout << std::string(80, '-') << "\n";
     
-    print_table_row("Percolation", percolation_stats.min_val, percolation_stats.avg(), percolation_stats.max_val);
-    print_table_row_int("Boxes", (int64_t)boxes_stats.min_val, boxes_stats.avg(), (int64_t)boxes_stats.max_val);
-    print_table_row_int("Height", (int64_t)height_stats.min_val, height_stats.avg(), (int64_t)height_stats.max_val);
-    print_table_row("Min support ratio", min_support_ratio_stats.min_val, min_support_ratio_stats.avg(), min_support_ratio_stats.max_val);
-    print_table_row_int("Pallets computed", (int64_t)pallets_stats.min_val, pallets_stats.avg(), (int64_t)pallets_stats.max_val);
+    print_table_row("Percolation", percolation_stats, CI_PERCENT);
+    print_table_row_int("Boxes", boxes_stats, CI_PERCENT);
+    print_table_row_int("Height", height_stats, CI_PERCENT);
+    print_table_row("Min support ratio", min_support_ratio_stats, CI_PERCENT);
+    print_table_row_int("Pallets computed", pallets_stats, CI_PERCENT);
     
-    std::cout << std::string(65, '-') << "\n";
+    std::cout << std::string(80, '-') << "\n";
     std::cout << "Center of Mass:\n";
-    print_table_row("  CoM X", com_x_stats.min_val, com_x_stats.avg(), com_x_stats.max_val);
-    print_table_row("  CoM Y", com_y_stats.min_val, com_y_stats.avg(), com_y_stats.max_val);
-    print_table_row("  CoM Z", com_z_stats.min_val, com_z_stats.avg(), com_z_stats.max_val);
+    print_table_row("  CoM X", com_x_stats, CI_PERCENT);
+    print_table_row("  CoM Y", com_y_stats, CI_PERCENT);
+    print_table_row("  CoM Z", com_z_stats, CI_PERCENT);
     std::cout << "Relative Center of Mass:\n";
-    print_table_row("  CoM X rel", com_x_rel_stats.min_val, com_x_rel_stats.avg(), com_x_rel_stats.max_val);
-    print_table_row("  CoM Y rel", com_y_rel_stats.min_val, com_y_rel_stats.avg(), com_y_rel_stats.max_val);
-    print_table_row("  CoM Z rel", com_z_rel_stats.min_val, com_z_rel_stats.avg(), com_z_rel_stats.max_val);
+    print_table_row("  CoM X rel", com_x_rel_stats, CI_PERCENT);
+    print_table_row("  CoM Y rel", com_y_rel_stats, CI_PERCENT);
+    print_table_row("  CoM Z rel", com_z_rel_stats, CI_PERCENT);
     
-    std::cout << std::string(65, '-') << "\n";
+    std::cout << std::string(80, '-') << "\n";
     
     // Итоговая информация
     std::cout << "\nTotal tests:      " << tests.size() << "\n";
@@ -223,11 +273,60 @@ void launch_solvers() {
               << timer.get_ms() / tests.size() << " ms\n";
     
     print_separator();
-    std::cout << "\n";
+    
+    // Выводим CSV строку для сбора результатов бенчмарка
+    auto [perc_ci_low, perc_ci_high] = percolation_stats.confidence_interval(CI_PERCENT);
+    auto [msr_ci_low, msr_ci_high] = min_support_ratio_stats.confidence_interval(CI_PERCENT);
+    auto [h_ci_low, h_ci_high] = height_stats.confidence_interval(CI_PERCENT);
+    auto [comz_ci_low, comz_ci_high] = com_z_rel_stats.confidence_interval(CI_PERCENT);
+    
+    double avg_time_per_test_ms = timer.get_ms() / tests.size();
+    
+    std::cout << "\nBENCHMARK_CSV_LINE:\n";
+    std::cout << algorithm_name << ","
+              << TIMELIMIT << ","
+              << std::fixed << std::setprecision(1) << avg_time_per_test_ms << ","
+              // TestDataHeader params
+              << header.length << ","
+              << header.width << ","
+              << header.score_normalization_height << ","
+              << header.available_rotations << ","
+              << header.min_support_threshold << ","
+              << header.score_percolation_mult << ","
+              << header.score_min_support_ratio_mult << ","
+              << header.score_center_of_mass_z_mult << ","
+              // Percolation stats
+              << std::setprecision(4)
+              << percolation_stats.min_val() << ","
+              << perc_ci_low << ","
+              << percolation_stats.avg() << ","
+              << perc_ci_high << ","
+              << percolation_stats.max_val() << ","
+              // Min support ratio stats
+              << min_support_ratio_stats.min_val() << ","
+              << msr_ci_low << ","
+              << min_support_ratio_stats.avg() << ","
+              << msr_ci_high << ","
+              << min_support_ratio_stats.max_val() << ","
+              // Height stats
+              << std::setprecision(1)
+              << height_stats.min_val() << ","
+              << h_ci_low << ","
+              << height_stats.avg() << ","
+              << h_ci_high << ","
+              << height_stats.max_val() << ","
+              // CoM Z rel stats
+              << std::setprecision(4)
+              << com_z_rel_stats.min_val() << ","
+              << comz_ci_low << ","
+              << com_z_rel_stats.avg() << ","
+              << comz_ci_high << ","
+              << com_z_rel_stats.max_val()
+              << "\n\n";
 }
 
 int main() {
-    launch_solvers<LNSSolver>();
+    launch_solvers<LNSSolver>("LNSSolver");
     return 0;
 
     Metrics m = launch_one_solver<LNSSolver>(228);

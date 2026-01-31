@@ -75,7 +75,8 @@ struct Metrics {
     // Центр тяжести
     CenterOfMass center_of_mass;
     RelativeCenterOfMass relative_center_of_mass;
-    uint64_t total_weight = 0;  // Суммарный вес всех коробок
+    double com_z_normalized = 0;  // center_of_mass.z / score_normalization_height (для скора отжига)
+    uint64_t total_weight = 0;    // Суммарный вес всех коробок
 
     // Нормализованные метрики (0-1)
     // double interlocking_ratio = 0;// l_sum / l_sum_per (чем меньше, тем лучше)

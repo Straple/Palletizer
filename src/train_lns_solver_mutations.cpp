@@ -62,7 +62,7 @@ double evaluate_params(const std::vector<TestData> &test_data_list,
         double score = 0;
         score += header.score_percolation_mult * metrics.percolation;
         score += header.score_min_support_ratio_mult * metrics.min_support_ratio;
-        score += header.score_center_of_mass_z_mult * (1 - metrics.relative_center_of_mass.z);
+        score += header.score_center_of_mass_z_mult * (1 - metrics.com_z_normalized);
         total_score += score;
     }
     return total_score / test_data_list.size();

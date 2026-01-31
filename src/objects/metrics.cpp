@@ -162,6 +162,9 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
     metrics.relative_center_of_mass.x = std::abs(metrics.center_of_mass.x / metrics.length - 0.5);
     metrics.relative_center_of_mass.y = std::abs(metrics.center_of_mass.y / metrics.width - 0.5);
     metrics.relative_center_of_mass.z = metrics.center_of_mass.z / metrics.height;
+    
+    // Нормализованный центр масс Z для скора отжига
+    metrics.com_z_normalized = metrics.center_of_mass.z / test_data.header.score_normalization_height;
 
     // Рассчитываем min_support_ratio с помощью HeightHandler
     HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
