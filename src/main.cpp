@@ -6,12 +6,12 @@
 #include <utils/assert.hpp>
 #include <utils/tools.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <fstream>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <mutex>
-#include <algorithm>
 #include <numeric>
 
 /*
@@ -34,44 +34,44 @@ constexpr uint32_t TIMELIMIT = 5'000;
 struct AggregatedStats {
     std::vector<double> values;
     double sum = 0;
-    
+
     void add(double val) {
         values.push_back(val);
         sum += val;
     }
-    
-    [[nodiscard]] double min_val() const { 
-        return values.empty() ? 0 : *std::min_element(values.begin(), values.end()); 
+
+    [[nodiscard]] double min_val() const {
+        return values.empty() ? 0 : *std::min_element(values.begin(), values.end());
     }
-    
-    [[nodiscard]] double max_val() const { 
-        return values.empty() ? 0 : *std::max_element(values.begin(), values.end()); 
+
+    [[nodiscard]] double max_val() const {
+        return values.empty() ? 0 : *std::max_element(values.begin(), values.end());
     }
-    
-    [[nodiscard]] double avg() const { 
-        return values.empty() ? 0 : sum / values.size(); 
+
+    [[nodiscard]] double avg() const {
+        return values.empty() ? 0 : sum / values.size();
     }
-    
+
     // Вычисляет доверительный интервал X% (по умолчанию 90%)
     // Возвращает пару (lower_bound, upper_bound) - границы интервала,
     // в который попадает X% значений (центральная часть распределения)
     [[nodiscard]] std::pair<double, double> confidence_interval(double confidence_percent = 90.0) const {
         if (values.empty()) return {0, 0};
         if (values.size() == 1) return {values[0], values[0]};
-        
+
         std::vector<double> sorted = values;
         std::sort(sorted.begin(), sorted.end());
 
         double tail_percent = (100.0 - confidence_percent) / 2.0 / 100.0;
         size_t lower_idx = static_cast<size_t>(sorted.size() * tail_percent);
         size_t upper_idx = static_cast<size_t>(sorted.size() * (1.0 - tail_percent)) - 1;
-        
+
         // Гарантируем корректные индексы
         upper_idx = std::min(upper_idx, sorted.size() - 1);
-        
+
         return {sorted[lower_idx], sorted[upper_idx]};
     }
-    
+
     [[nodiscard]] size_t count() const { return values.size(); }
 };
 
@@ -89,7 +89,7 @@ Metrics launch_one_solver(uint32_t test) {
 
     Metrics metrics = calc_metrics(test_data, answer);
     metrics.pallets_computed = solver.get_pallets_computed();
-    
+
     return metrics;
 }
 
@@ -98,7 +98,7 @@ void print_separator(int width = 75) {
     std::cout << std::string(width, '=') << "\n";
 }
 
-void print_table_row(const std::string& name, const AggregatedStats& stats, double ci_percent = 90.0) {
+void print_table_row(const std::string &name, const AggregatedStats &stats, double ci_percent = 90.0) {
     auto [ci_low, ci_high] = stats.confidence_interval(ci_percent);
     std::cout << std::left << std::setw(20) << name
               << std::right << std::fixed << std::setprecision(4)
@@ -110,23 +110,23 @@ void print_table_row(const std::string& name, const AggregatedStats& stats, doub
               << "\n";
 }
 
-void print_table_row_int(const std::string& name, const AggregatedStats& stats, double ci_percent = 90.0) {
+void print_table_row_int(const std::string &name, const AggregatedStats &stats, double ci_percent = 90.0) {
     auto [ci_low, ci_high] = stats.confidence_interval(ci_percent);
     std::cout << std::left << std::setw(20) << name
               << std::right
-              << std::setw(12) << (int64_t)stats.min_val()
-              << std::setw(12) << (int64_t)ci_low
+              << std::setw(12) << (int64_t) stats.min_val()
+              << std::setw(12) << (int64_t) ci_low
               << std::setw(12) << std::fixed << std::setprecision(1) << stats.avg()
-              << std::setw(12) << (int64_t)ci_high
-              << std::setw(12) << (int64_t)stats.max_val()
+              << std::setw(12) << (int64_t) ci_high
+              << std::setw(12) << (int64_t) stats.max_val()
               << "\n";
 }
 
 template<typename SolverType>
-void launch_solvers(const std::string& algorithm_name) {
+void launch_solvers(const std::string &algorithm_name) {
     Timer timer;
-    TestDataHeader header;  // Используем дефолтные значения из TestDataHeader
-    
+    TestDataHeader header;// Используем дефолтные значения из TestDataHeader
+
     // Агрегированные статистики
     AggregatedStats percolation_stats;
     AggregatedStats boxes_stats;
@@ -151,7 +151,7 @@ void launch_solvers(const std::string& algorithm_name) {
             tests.push_back(test);
         }
     }
-    
+
     std::vector<std::atomic<bool>> visited(tests.size() + 1);
     std::mutex mutex;
     std::vector<Metrics> tests_metrics(tests.size() + 1);
@@ -162,7 +162,7 @@ void launch_solvers(const std::string& algorithm_name) {
     std::cout << "                    PALLETIZER SOLVER BENCHMARK\n";
     print_separator();
     std::cout << "Tests: " << tests.size() << ", Threads: " << THREADS_NUM << ", Time limit: " << TIMELIMIT << "ms\n\n";
-    
+
     std::cout << "Progress:\n";
 
     double sum_time_per_test = 0;
@@ -179,7 +179,7 @@ void launch_solvers(const std::string& algorithm_name) {
             Metrics metrics = launch_one_solver<SolverType>(test);
             double time = timer.get_ms();
             tests_metrics[test] = metrics;
-            
+
             int done = ++completed;
 
             {
@@ -193,18 +193,18 @@ void launch_solvers(const std::string& algorithm_name) {
                 height_stats.add(metrics.height);
                 pallets_stats.add(metrics.pallets_computed);
                 min_support_ratio_stats.add(metrics.min_support_ratio);
-                
+
                 // Center of mass
                 com_x_stats.add(metrics.center_of_mass.x);
                 com_y_stats.add(metrics.center_of_mass.y);
                 com_z_stats.add(metrics.center_of_mass.z);
-                
+
                 // Relative center of mass
                 com_x_rel_stats.add(metrics.relative_center_of_mass.x);
                 com_y_rel_stats.add(metrics.relative_center_of_mass.y);
                 com_z_rel_stats.add(metrics.relative_center_of_mass.z);
 
-                std::cout << "  Test " << std::setw(3) << test 
+                std::cout << "  Test " << std::setw(3) << test
                           << ": perc=" << std::fixed << std::setprecision(4) << metrics.percolation
                           << ", boxes=" << std::setw(3) << metrics.boxes
                           << ", height=" << std::setw(5) << metrics.height
@@ -220,7 +220,7 @@ void launch_solvers(const std::string& algorithm_name) {
                    << "min_support_ratio,supported_area,total_area,"
                    << "center_of_mass_x,center_of_mass_y,center_of_mass_z,total_weight,"
                    << "center_of_mass_z_relative,pallets_computed" << std::endl;
-                   
+
     for (uint32_t test = 1; test < tests_metrics.size(); test++) {
         auto &m = tests_metrics[test];
 
@@ -234,18 +234,18 @@ void launch_solvers(const std::string& algorithm_name) {
                        << ',' << m.center_of_mass.y
                        << ',' << m.center_of_mass.z
                        << ',' << m.total_weight
-                       << ',' << m.relative_center_of_mass.z 
+                       << ',' << m.relative_center_of_mass.z
                        << ',' << m.pallets_computed << '\n';
     }
 
     // Выводим красивую сводную таблицу с доверительным интервалом 90%
     constexpr double CI_PERCENT = 90.0;
-    
+
     std::cout << "\n";
     print_separator(80);
     std::cout << "                         SUMMARY STATISTICS (CI " << CI_PERCENT << "%)\n";
     print_separator(80);
-    
+
     std::cout << std::left << std::setw(20) << "Metric"
               << std::right << std::setw(12) << "Min"
               << std::setw(12) << "CI_Low"
@@ -254,13 +254,13 @@ void launch_solvers(const std::string& algorithm_name) {
               << std::setw(12) << "Max"
               << "\n";
     std::cout << std::string(80, '-') << "\n";
-    
+
     print_table_row("Percolation", percolation_stats, CI_PERCENT);
     print_table_row_int("Boxes", boxes_stats, CI_PERCENT);
     print_table_row_int("Height", height_stats, CI_PERCENT);
     print_table_row("Min support ratio", min_support_ratio_stats, CI_PERCENT);
     print_table_row_int("Pallets computed", pallets_stats, CI_PERCENT);
-    
+
     std::cout << std::string(80, '-') << "\n";
     std::cout << "Center of Mass:\n";
     print_table_row("  CoM X", com_x_stats, CI_PERCENT);
@@ -270,26 +270,26 @@ void launch_solvers(const std::string& algorithm_name) {
     print_table_row("  CoM X rel", com_x_rel_stats, CI_PERCENT);
     print_table_row("  CoM Y rel", com_y_rel_stats, CI_PERCENT);
     print_table_row("  CoM Z rel", com_z_rel_stats, CI_PERCENT);
-    
+
     std::cout << std::string(80, '-') << "\n";
-    
+
     // Итоговая информация
     std::cout << "\nTotal tests:      " << tests.size() << "\n";
     std::cout << "Total time:       " << timer << "\n";
-    std::cout << "Avg time/test:    " << std::fixed << std::setprecision(1) 
+    std::cout << "Avg time/test:    " << std::fixed << std::setprecision(1)
               << timer.get_ms() / tests.size() << " ms\n";
-    
+
     print_separator();
-    
+
     // Выводим CSV строку для сбора результатов бенчмарка
     auto [perc_ci_low, perc_ci_high] = percolation_stats.confidence_interval(CI_PERCENT);
     auto [msr_ci_low, msr_ci_high] = min_support_ratio_stats.confidence_interval(CI_PERCENT);
     auto [h_ci_low, h_ci_high] = height_stats.confidence_interval(CI_PERCENT);
     auto [comz_ci_low, comz_ci_high] = com_z_rel_stats.confidence_interval(CI_PERCENT);
     auto [pallets_stats_ci_low, pallets_stats_ci_high] = pallets_stats.confidence_interval(CI_PERCENT);
-    
+
     double avg_time_per_test_ms = sum_time_per_test / tests.size();
-    
+
     std::cout << "\nBENCHMARK_CSV_LINE:\n";
     std::cout << algorithm_name << ","
               << TIMELIMIT << ","
@@ -459,4 +459,3 @@ Avg time/test:    161 ms
 ===========================================================================
 
 */
-
