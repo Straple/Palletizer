@@ -1,7 +1,6 @@
 #include <objects/metrics.hpp>
 #include <settings.hpp>
 #include <solvers/lns/lns_solver.hpp>
-#include <solvers/stability.hpp>
 #include <utils/randomizer.hpp>
 #include <utils/time.hpp>
 #include <utils/tools.hpp>
@@ -59,15 +58,18 @@ double evaluate_params(const std::vector<TestData> &test_data_list,
         LNSSolver solver(test_data, mp);
         Answer answer = solver.solve(get_now() + Milliseconds(time_per_test_ms));
         Metrics metrics = calc_metrics(test_data, answer);
-        StabilityMetrics stability = calc_stability(test_data, answer);
-        total_score += metrics.percolation + stability.min_support_ratio * 2;
+        const auto &header = test_data.header;
+        double score = 0;
+        score += header.score_percolation_mult * metrics.percolation;
+        score += header.score_min_support_ratio_mult * metrics.min_support_ratio;
+        score += header.score_center_of_mass_z_mult * (1 - metrics.relative_center_of_mass.z);
+        total_score += score;
     }
     return total_score / test_data_list.size();
 }
 
 void print_params(const MutableParams &mp, double score) {
     std::cout << "Score: " << std::fixed << std::setprecision(4) << score << "\n";
-    std::cout << "swap_k_max_ratio: " << mp.swap_k_max_ratio << '\n';
     std::cout << "Weights: {";
     for (uint32_t i = 0; i < mp.weights.size(); i++) {
         std::cout << mp.weights[i];
@@ -98,9 +100,6 @@ void mutate_params(MutableParams &mp, Randomizer &rnd) {
         for (; s; s -= 10) {
             mp.weights[rnd.get(0, mp.weights.size() - 1)] += 10;
         }
-    }
-    if (rnd.get_d() < 0.5) {
-        mp.swap_k_max_ratio = rnd.get_d(0, 1);
     }
 }
 

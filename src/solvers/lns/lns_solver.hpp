@@ -16,9 +16,6 @@ struct MutableParams {
     // Sort: 6: sort_by_area, 7: sort_by_volume, 8: sort_by_height, 9: sort_by_weight
     // Special: 10: threshold, 11: group_by_sku, 12: move_bad_box
     std::vector<uint32_t> weights = {80, 100, 70, 130, 90, 60, 128, 110, 90, 70, 100, 150, 122};//{100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100};//{100, 100, 140, 0, 190, 60, 80, 70, 80, 130, 133, 97, 120};
-
-    // Max k for swap mutations: k = rnd(1, order.size() * swap_k_max_ratio)
-    double swap_k_max_ratio = 0.2824;
 };
 
 std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const std::vector<BoxMeta> &order);

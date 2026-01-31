@@ -23,8 +23,11 @@ struct TestDataHeader {
     bool can_swap_length_width = true;
     bool can_swap_width_height = true;
     uint32_t available_rotations = 6;
-    bool use_stability = true;         // Использовать проверку устойчивости при укладке
-    double min_support_threshold = 0.7;// Минимальная доля опоры (70%)
+    double min_support_threshold = 0;
+
+    double score_percolation_mult = 1.0;
+    double score_min_support_ratio_mult = 2.0;
+    double score_center_of_mass_z_mult = 0.0;
 };
 
 struct TestData {

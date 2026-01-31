@@ -1,24 +1,25 @@
 #include <solvers/lns/lns_solver.hpp>
 
 #include <solvers/height_handler_rects.hpp>
-#include <solvers/stability.hpp>
 #include <utils/assert.hpp>
 #include <utils/randomizer.hpp>
 
 #include <map>
 
-struct SimulateResult {
+struct SimulationResult {
     Answer answer;
     Metrics metrics;
-    double min_support_ratio = 0;
-    uint32_t unable_to_put = 0;
     std::vector<double> per_box_support;
 
-    double get_score() const {
-        if (unable_to_put) {
+    double get_score(const TestDataHeader &header) const {
+        if (metrics.unable_to_put_boxes) {
             return -1e9;
         }
-        return metrics.percolation + 2 * min_support_ratio;
+        double score = 0;
+        score += header.score_percolation_mult * metrics.percolation;
+        score += header.score_min_support_ratio_mult * metrics.min_support_ratio;
+        score += header.score_center_of_mass_z_mult * (1 - metrics.relative_center_of_mass.z);
+        return score;
     }
 
     uint32_t get_worst_box_idx() const {
@@ -138,7 +139,7 @@ struct SimulationParams {
         support_threshold = rnd.get_d(0, 1);
     }
 
-    void mutate_move_bad_box(Randomizer &rnd, const SimulateResult &last_result) {
+    void mutate_move_bad_box(Randomizer &rnd, const SimulationResult &last_result) {
         uint32_t from_idx = last_result.get_worst_box_idx();
         if (from_idx == 0) return;
         uint32_t to_idx = rnd.get(0, from_idx - 1);
@@ -178,7 +179,7 @@ struct SimulationParams {
         }
     }
 
-    void mutate(Randomizer &rnd, const TestData &test_data, const SimulateResult &last_result,
+    void mutate(Randomizer &rnd, const TestData &test_data, const SimulationResult &last_result,
                 const MutableParams &mp) {
         uint32_t type = rnd.get(mp.weights);
 
@@ -230,11 +231,9 @@ struct SimulationParams {
     }
 };
 
-SimulateResult simulate(const TestData &test_data, const SimulationParams &params) {
-    SimulateResult result;
+SimulationResult simulate(const TestData &test_data, const SimulationParams &params) {
+    SimulationResult result;
     HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
-
-    double min_support_seen = 1.0;
 
     for (auto box_meta: params.order) {
         auto box = test_data.boxes[box_meta.box_id];
@@ -324,12 +323,10 @@ SimulateResult simulate(const TestData &test_data, const SimulationParams &param
         }
 
         if (best_score > 1e100) {
-            result.unable_to_put++;
             result.per_box_support.push_back(0.0);
             continue;
         }
 
-        min_support_seen = std::min(min_support_seen, best_support);
         result.per_box_support.push_back(best_support);
 
         uint32_t h = height_handler.get_h(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1);
@@ -348,7 +345,6 @@ SimulateResult simulate(const TestData &test_data, const SimulationParams &param
         height_handler.add_rect(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1, h + best_height);
     }
     result.metrics = calc_metrics(test_data, result.answer);
-    result.min_support_ratio = min_support_seen;
     return result;
 }
 
@@ -370,22 +366,22 @@ Answer LNSSolver::solve(TimePoint end_time) {
     }
 
     pallets_computed = 1;
-    SimulateResult best_result = simulate(test_data, params);
+    SimulationResult best_result = simulate(test_data, params);
     SimulationParams best_params = params;
 
     while (get_now() < end_time) {
         SimulationParams new_params = params;
         new_params.mutate(rnd, test_data, best_result, mutable_params);
 
-        SimulateResult new_result = simulate(test_data, new_params);
+        SimulationResult new_result = simulate(test_data, new_params);
 
-        if (new_result.get_score() > best_result.get_score()) {
+        if (new_result.get_score(test_data.header) > best_result.get_score(test_data.header)) {
             best_result = new_result;
             best_params = new_params;
             params = new_params;
         }
         pallets_computed++;
     }
-    ASSERT(best_result.unable_to_put == 0, "unable to put some boxes: " + std::to_string(best_result.unable_to_put));
+    ASSERT(best_result.metrics.unable_to_put_boxes == 0, "unable to put some boxes: " + std::to_string(best_result.metrics.unable_to_put_boxes));
     return best_result.answer;
 }
