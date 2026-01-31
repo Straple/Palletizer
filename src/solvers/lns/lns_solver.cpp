@@ -102,8 +102,8 @@ struct SimulationParams {
                          [&](const BoxMeta &a, const BoxMeta &b) {
                              auto &ba = test_data.boxes[a.box_id];
                              auto &bb = test_data.boxes[b.box_id];
-                             return (uint64_t)ba.length * ba.width * ba.height > 
-                                    (uint64_t)bb.length * bb.width * bb.height;
+                             return (uint64_t) ba.length * ba.width * ba.height >
+                                    (uint64_t) bb.length * bb.width * bb.height;
                          });
     }
 
@@ -235,60 +235,62 @@ SimulationResult simulate(const TestData &test_data, const SimulationParams &par
     SimulationResult result;
     HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
 
-    for (auto box_meta: params.order) {
+    auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
+        uint32_t h = height_handler.get_h(x, y, x + length - 1, y + width - 1);
+        if (h == 0) return 1.0;
+        uint64_t supported = height_handler.get_area(x, y, x + length - 1, y + width - 1);
+        uint64_t total = static_cast<uint64_t>(length) * width;
+        return total > 0 ? static_cast<double>(supported) / total : 0.0;
+    };
+
+    auto is_center_of_mass_supported = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> bool {
+        uint32_t h = height_handler.get_h(x, y, x + length - 1, y + width - 1);
+        if (h == 0) return true;
+
+        uint32_t com_x = x + length / 2;
+        uint32_t com_y = y + width / 2;
+
+        uint32_t h_at_com = height_handler.get_h(com_x, com_y, com_x, com_y);
+        return h_at_com == h;
+    };
+
+    auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
+        return height_handler.get_h(x, y, X, Y) + box_height;
+        // double support_ratio = calc_support_ratio(x, y, X - x, Y - y);
+        // return (height_handler.get_h(x, y, X, Y) + box_height) / test_data.header.score_normalization_height * test_data.header.score_percolation_mult +
+        // (support_ratio < params.support_threshold ? params.support_threshold - support_ratio * 100 : 0) * test_data.header.score_min_support_ratio_mult;
+    };
+
+    auto get_position_dist = [&](uint32_t position, uint32_t x, uint32_t y, uint32_t length, uint32_t width, uint32_t height) {
+        auto dist_func = [&](uint64_t px, uint64_t py) -> uint64_t {
+            if (position == 0) {
+                return px * px + py * py;
+            } else if (position == 1) {
+                return px * px + (test_data.header.width - py) * (test_data.header.width - py);
+            } else if (position == 2) {
+                return (test_data.header.length - px) * (test_data.header.length - px) + py * py;
+            } else {
+                return (test_data.header.length - px) * (test_data.header.length - px) +
+                       (test_data.header.width - py) * (test_data.header.width - py);
+            }
+        };
+
+        return std::min({dist_func(x, y),
+                         dist_func(x + length - 1, y),
+                         dist_func(x, y + width - 1),
+                         dist_func(x + length - 1, y + width - 1)});
+    };
+
+    auto set_box = [&](BoxMeta box_meta) {
         auto box = test_data.boxes[box_meta.box_id];
 
         double best_score = 1e300;
-        double best_support = 0;
         uint32_t best_x = -1;
         uint32_t best_y = -1;
         uint32_t best_length = -1;
         uint32_t best_width = -1;
         uint32_t best_height = -1;
         uint32_t best_rotation = -1;
-
-        auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
-            uint32_t h = height_handler.get_h(x, y, x + length - 1, y + width - 1);
-            if (h == 0) return 1.0;
-            uint64_t supported = height_handler.get_area(x, y, x + length - 1, y + width - 1);
-            uint64_t total = static_cast<uint64_t>(length) * width;
-            return total > 0 ? static_cast<double>(supported) / total : 0.0;
-        };
-
-        auto is_center_of_mass_supported = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> bool {
-            uint32_t h = height_handler.get_h(x, y, x + length - 1, y + width - 1);
-            if (h == 0) return true;
-
-            uint32_t com_x = x + length / 2;
-            uint32_t com_y = y + width / 2;
-
-            uint32_t h_at_com = height_handler.get_h(com_x, com_y, com_x, com_y);
-            return h_at_com == h;
-        };
-
-        auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
-            return height_handler.get_h(x, y, X, Y) + box_height;
-        };
-
-        auto get_position_dist = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width, uint32_t height) {
-            auto dist_func = [&](uint64_t px, uint64_t py) -> uint64_t {
-                if (box_meta.position == 0) {
-                    return px * px + py * py;
-                } else if (box_meta.position == 1) {
-                    return px * px + (test_data.header.width - py) * (test_data.header.width - py);
-                } else if (box_meta.position == 2) {
-                    return (test_data.header.length - px) * (test_data.header.length - px) + py * py;
-                } else {
-                    return (test_data.header.length - px) * (test_data.header.length - px) +
-                           (test_data.header.width - py) * (test_data.header.width - py);
-                }
-            };
-
-            return std::min({dist_func(x, y),
-                             dist_func(x + length - 1, y),
-                             dist_func(x, y + width - 1),
-                             dist_func(x + length - 1, y + width - 1)});
-        };
 
         auto available_boxes = get_available_boxes(test_data.header, box);
 
@@ -298,9 +300,10 @@ SimulationResult simulate(const TestData &test_data, const SimulationParams &par
             }
 
             auto dots = height_handler.get_dots(test_data.header, rotated_box);
-
             for (auto [x, y]: dots) {
-                if (!is_center_of_mass_supported(x, y, rotated_box.length, rotated_box.width)) continue;
+                // если центр масс этой коробки висит, то скипаем
+                // увеличивает min_support_ratio до 0.3
+                // if (!is_center_of_mass_supported(x, y, rotated_box.length, rotated_box.width)) continue;
 
                 double support = calc_support_ratio(x, y, rotated_box.length, rotated_box.width);
                 if (support < params.support_threshold) continue;
@@ -308,10 +311,9 @@ SimulationResult simulate(const TestData &test_data, const SimulationParams &par
                 auto score = get_score(x, y, x + rotated_box.length - 1, y + rotated_box.width - 1, rotated_box.height);
 
                 if (score < best_score ||
-                    (score == best_score && get_position_dist(x, y, rotated_box.length, rotated_box.width, rotated_box.height) <
-                                                    get_position_dist(best_x, best_y, best_length, best_width, best_height))) {
+                    (score == best_score && get_position_dist(box_meta.position, x, y, rotated_box.length, rotated_box.width, rotated_box.height) <
+                                                    get_position_dist(box_meta.position, best_x, best_y, best_length, best_width, best_height))) {
                     best_score = score;
-                    best_support = support;
                     best_x = x;
                     best_y = y;
                     best_length = rotated_box.length;
@@ -323,10 +325,12 @@ SimulationResult simulate(const TestData &test_data, const SimulationParams &par
         }
 
         if (best_score > 1e100) {
-            result.per_box_support.push_back(0.0);
-            continue;
+            // ASSERT(false, "kek");
+            result.per_box_support.push_back(0);
+            return false;
         }
 
+        double best_support = calc_support_ratio(best_x, best_y, best_length, best_width);
         result.per_box_support.push_back(best_support);
 
         uint32_t h = height_handler.get_h(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1);
@@ -343,6 +347,12 @@ SimulationResult simulate(const TestData &test_data, const SimulationParams &par
         result.answer.positions.push_back(pos);
 
         height_handler.add_rect(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1, h + best_height);
+        return true;
+    };
+
+    for (auto box_meta: params.order) {
+        if (!set_box(box_meta)) {
+        }
     }
     result.metrics = calc_metrics(test_data, result.answer);
     return result;
@@ -375,7 +385,7 @@ Answer LNSSolver::solve(TimePoint end_time) {
 
         SimulationResult new_result = simulate(test_data, new_params);
 
-        if (new_result.get_score(test_data.header) > best_result.get_score(test_data.header)) {
+        if (new_result.get_score(test_data.header) + 1e-6 > best_result.get_score(test_data.header)) {
             best_result = new_result;
             best_params = new_params;
             params = new_params;

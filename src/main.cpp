@@ -19,8 +19,9 @@
  * 
  * BENCHMARK_CSV_HEADER:
  * algorithm,timelimit_ms,avg_time_per_test_ms,
- * pallet_length,pallet_width,score_normalization_height,available_rotations,min_support_threshold,
+ * pallet_length,pallet_width,score_normalization_height,available_rotations,
  * score_percolation_mult,score_min_support_ratio_mult,score_center_of_mass_z_mult,
+ * pallets_computed_min,pallets_computed_ci_low,pallets_computed_avg,pallets_computed_ci_high,pallets_computed_max,
  * percolation_min,percolation_ci_low,percolation_avg,percolation_ci_high,percolation_max,
  * min_support_ratio_min,min_support_ratio_ci_low,min_support_ratio_avg,min_support_ratio_ci_high,min_support_ratio_max,
  * height_min,height_ci_low,height_avg,height_ci_high,height_max,
@@ -164,6 +165,8 @@ void launch_solvers(const std::string& algorithm_name) {
     
     std::cout << "Progress:\n";
 
+    double sum_time_per_test = 0;
+
     launch_threads(THREADS_NUM, [&](uint32_t thr) {
         for (uint32_t test = 1; test < visited.size(); test++) {
 
@@ -172,13 +175,17 @@ void launch_solvers(const std::string& algorithm_name) {
                 continue;
             }
 
+            Timer timer;
             Metrics metrics = launch_one_solver<SolverType>(test);
+            double time = timer.get_ms();
             tests_metrics[test] = metrics;
             
             int done = ++completed;
 
             {
                 std::unique_lock locker(mutex);
+
+                sum_time_per_test += time;
 
                 // Обновляем статистики
                 percolation_stats.add(metrics.percolation);
@@ -200,7 +207,7 @@ void launch_solvers(const std::string& algorithm_name) {
                 std::cout << "  Test " << std::setw(3) << test 
                           << ": perc=" << std::fixed << std::setprecision(4) << metrics.percolation
                           << ", boxes=" << std::setw(3) << metrics.boxes
-                          << ", height=" << std::setw(4) << metrics.height
+                          << ", height=" << std::setw(5) << metrics.height
                           << ", min_support=" << std::setprecision(3) << metrics.min_support_ratio
                           << " [" << done << "/" << tests.size() << "]\n";
             }
@@ -279,8 +286,9 @@ void launch_solvers(const std::string& algorithm_name) {
     auto [msr_ci_low, msr_ci_high] = min_support_ratio_stats.confidence_interval(CI_PERCENT);
     auto [h_ci_low, h_ci_high] = height_stats.confidence_interval(CI_PERCENT);
     auto [comz_ci_low, comz_ci_high] = com_z_rel_stats.confidence_interval(CI_PERCENT);
+    auto [pallets_stats_ci_low, pallets_stats_ci_high] = pallets_stats.confidence_interval(CI_PERCENT);
     
-    double avg_time_per_test_ms = timer.get_ms() / tests.size();
+    double avg_time_per_test_ms = sum_time_per_test / tests.size();
     
     std::cout << "\nBENCHMARK_CSV_LINE:\n";
     std::cout << algorithm_name << ","
@@ -291,12 +299,17 @@ void launch_solvers(const std::string& algorithm_name) {
               << header.width << ","
               << header.score_normalization_height << ","
               << header.available_rotations << ","
-              << header.min_support_threshold << ","
               << header.score_percolation_mult << ","
               << header.score_min_support_ratio_mult << ","
               << header.score_center_of_mass_z_mult << ","
-              // Percolation stats
               << std::setprecision(4)
+              // pallets computed
+              << pallets_stats.min_val() << ","
+              << pallets_stats_ci_low << ","
+              << pallets_stats.avg() << ","
+              << pallets_stats_ci_high << ","
+              << pallets_stats.max_val() << ","
+              // Percolation stats
               << percolation_stats.min_val() << ","
               << perc_ci_low << ","
               << percolation_stats.avg() << ","
@@ -447,5 +460,3 @@ Avg time/test:    161 ms
 
 */
 
-
-// TODO: улучшение center of mass z relative дает очень плохой percolation, потому что чтобы улучшить эту метрику, он ставит коробки в башню, увеличивая высоту, чтобы относительный центр масс был ниже, но фактический центр масс становится даже хуже

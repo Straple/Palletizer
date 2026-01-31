@@ -21,13 +21,12 @@ struct TestDataHeader {
     uint32_t length = 1200;
     uint32_t width = 800;
     bool can_swap_length_width = true;
-    bool can_swap_width_height = true;
-    uint32_t available_rotations = 6;
-    double min_support_threshold = 0;
+    bool can_swap_width_height = false;
+    uint32_t available_rotations = 2;
 
-    double score_percolation_mult = 1.0;
-    double score_min_support_ratio_mult = 1.0;
-    double score_center_of_mass_z_mult = 10.0;
+    double score_percolation_mult = 1;
+    double score_min_support_ratio_mult = 1;
+    double score_center_of_mass_z_mult = 0;
     uint32_t score_normalization_height = 2200;
 };
 
