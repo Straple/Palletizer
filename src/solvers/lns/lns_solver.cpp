@@ -18,7 +18,7 @@ struct SimulateResult {
         if (unable_to_put) {
             return -1e9;
         }
-        return metrics.percolation + 0.3 * min_support_ratio;
+        return metrics.percolation + 2 * min_support_ratio;
     }
 
     uint32_t get_worst_box_idx() const {
@@ -123,23 +123,15 @@ struct SimulationParams {
     }
 
     void mutate_swap(Randomizer &rnd, const MutableParams &mp) {
-        uint32_t max_k = std::max(1u, (uint32_t)(order.size() * mp.swap_k_max_ratio));
-        uint32_t k = rnd.get(1, max_k);
-        for (uint32_t i = 0; i < k; i++) {
-            uint32_t a = rnd.get(0, order.size() - 1);
-            uint32_t b = rnd.get(0, order.size() - 1);
-            if (a != b) std::swap(order[a], order[b]);
-        }
+        uint32_t a = rnd.get(0, order.size() - 1);
+        uint32_t b = rnd.get(0, order.size() - 1);
+        std::swap(order[a], order[b]);
     }
 
     void mutate_swap_adjacent(Randomizer &rnd, const MutableParams &mp) {
         if (order.size() < 2) return;
-        uint32_t max_k = std::max(1u, (uint32_t)(order.size() * mp.swap_k_max_ratio));
-        uint32_t k = rnd.get(1, max_k);
-        for (uint32_t i = 0; i < k; i++) {
-            uint32_t idx = rnd.get(0, order.size() - 2);
-            std::swap(order[idx], order[idx + 1]);
-        }
+        uint32_t idx = rnd.get(0, order.size() - 2);
+        std::swap(order[idx], order[idx + 1]);
     }
 
     void mutate_threshold(Randomizer &rnd) {
