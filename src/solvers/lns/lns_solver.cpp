@@ -303,7 +303,7 @@ SimulationResult simulate(const TestData &test_data, const SimulationParams &par
             for (auto [x, y]: dots) {
                 // если центр масс этой коробки висит, то скипаем
                 // увеличивает min_support_ratio до 0.3
-                // if (!is_center_of_mass_supported(x, y, rotated_box.length, rotated_box.width)) continue;
+                if (!is_center_of_mass_supported(x, y, rotated_box.length, rotated_box.width)) continue;
 
                 double support = calc_support_ratio(x, y, rotated_box.length, rotated_box.width);
                 if (support < params.support_threshold) continue;
