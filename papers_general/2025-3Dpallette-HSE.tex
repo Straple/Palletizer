@@ -1,0 +1,87 @@
+%% Преамбула TeX-файла
+
+% 1. Стиль и язык
+\documentclass[utf8x]{G7-32} % Стиль (по умолчанию будет 14pt)
+\usepackage[T2A]{fontenc}
+\usepackage[russian]{babel}
+% Остальные стандартные настройки убраны в preamble.inc.tex.
+\include{preamble.inc}
+
+% Настройки листингов.
+\include{listings.inc}
+
+% Полезные макросы листингов.
+\include{macros.inc}
+
+\title{Разработка одномерной популяционной модели}
+\author{ВСе}
+\date{18.02.2024}
+
+\begin{document}
+
+%\frontmatter % выключает нумерацию ВСЕГО; здесь начинаются ненумерованные главы: реферат, введение, глоссарий, сокращения и прочее.
+
+% Команды \breakingbeforechapters и \nonbreakingbeforechapters
+% управляют разрывом страницы перед главами.
+% По-умолчанию страница разрывается.
+
+% \nobreakingbeforechapters
+% \breakingbeforechapters
+
+%\includepdf[pages=-]{pdf/Titulniy list k KT1.pdf}
+\include{data}
+\renewcommand{\student}{Е.Юхневич}
+\renewcommand{\group}{группы БПМИ 235, 3 курса}
+\include{titlepage}
+
+ \listoftodos 
+
+
+%\include{NB}
+\include{00-abstract}
+
+\tableofcontents
+
+\include{10-defines}
+\include{11-abbrev}
+\include{12-intro}
+
+\mainmatter % это включает нумерацию глав и секций в документе ниже
+
+\include{1-Postanovka}  % Постановка задачи
+%\include{1-1-Simple}
+\include{1-2-Eco}
+\include{1-3}
+\include{1-4}
+\include{3-Obzor}       % Обзор литературы
+\include{2-Data}  % Формализованная постановка задачи
+\input{4-Solution}        
+\input{4-1-EYU}
+\input{4-2-RS}
+\input{4-3-AG}
+ 
+% Описание  решения
+\include{6-Results}       % Описание результатов
+
+\backmatter %% Здесь заканчивается нумерованная часть документа и начинаются ссылки и
+            %% заключение
+
+%\include{80-conclusion}  % Выводы 
+
+\include{81-biblio}      % Список литературы 
+
+%\include{98-Otzyv}
+
+\appendix   % Тут идут приложения
+
+% \include{90-appendix1}
+% \include{91-appendix2}
+\include{Plan}
+
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
