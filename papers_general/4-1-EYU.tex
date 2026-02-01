@@ -1,5 +1,335 @@
 \section{Разработка алгоритма укладки паллеты}
 
-\AKHworries{АХ: для описания алгоритмов используем  algorithm2e с параметрами linesnumbered,ruled,vlined. При этом внутри псевдокода все на английском. Описание алгоритма технически корректным языком. Третируем русский и английский текст.  }
+В данном разделе описываются алгоритмы укладки коробок на паллету, разработанные в рамках проекта.
 
-\AKHworries{АХ:  алгоритм Егора.  }
+\subsection{Структура HeightHandler}
+
+Ключевым компонентом решения является структура \texttt{HeightHandler}, которая эффективно хранит информацию о текущих высотах на паллете. Данная структура критически важна для производительности алгоритма, поскольку операции с ней выполняются при размещении каждой коробки.
+
+\subsubsection{Основные операции}
+
+HeightHandler предоставляет следующие ключевые операции:
+
+\begin{itemize}
+    \item \texttt{get\_h(x, y, X, Y)} --- возвращает максимальную высоту в прямоугольной области $[x, X] \times [y, Y]$
+    \item \texttt{get\_area(x, y, X, Y)} --- возвращает площадь (в мм²), которая находится на максимальной высоте в заданном прямоугольнике (используется для расчёта опоры коробки)
+    \item \texttt{add\_rect(x, y, X, Y, h)} --- добавляет новый прямоугольник с заданной высотой, обновляя карту высот
+    \item \texttt{get\_dots(header, box)} --- возвращает ``интересные'' точки для размещения коробки заданного размера
+\end{itemize}
+
+Функция \texttt{get\_dots} генерирует кандидатные позиции на основе углов существующих прямоугольников, что значительно сокращает пространство поиска с $O(W \times L)$ до $O(n)$, где $n$ --- количество уже уложенных коробок.
+
+\subsubsection{Реализации HeightHandler}
+
+В рамках работы были исследованы пять различных реализаций структуры HeightHandler с разными алгоритмическими подходами.
+
+\paragraph{Baseline (наивная реализация)}
+
+Простейшая реализация, которая хранит все добавленные прямоугольники в векторе и при каждом запросе честно перебирает их.
+
+\textbf{Сложность операций:}
+\begin{itemize}
+    \item \texttt{get\_h()}: $O(n)$ --- перебор всех прямоугольников
+    \item \texttt{get\_area()}: $O(n)$ --- перебор всех прямоугольников
+    \item \texttt{add\_rect()}: $O(1)$ --- просто добавление в конец вектора
+\end{itemize}
+
+\textbf{Особенность:} Корректность гарантируется свойством задачи паллетизации --- прямоугольники добавляются ``сверху'', поэтому новый прямоугольник всегда имеет высоту строго больше, чем все существующие в той же области. Два прямоугольника на одной высоте никогда не перекрываются.
+
+\paragraph{Rects (оптимизированный список прямоугольников)}
+
+Улучшенная версия Baseline с оптимизацией: прямоугольники сортируются по убыванию высоты. Это позволяет при поиске максимума остановиться на первом найденном пересечении.
+
+\textbf{Сложность операций:}
+\begin{itemize}
+    \item \texttt{get\_h()}: $O(n)$ в худшем случае, но на практике значительно быстрее из-за раннего выхода
+    \item \texttt{get\_area()}: $O(n)$ в худшем случае, раннее завершение при снижении высоты
+    \item \texttt{add\_rect()}: $O(n)$ --- вставка с сохранением сортировки
+\end{itemize}
+
+\paragraph{Grid (плотная 2D сетка)}
+
+Разбивает паллету на ячейки размером $10 \times 10$ мм. В каждой ячейке хранится максимальная высота. Для паллеты $1200 \times 800$ мм это $120 \times 80 = 9600$ ячеек.
+
+\textbf{Сложность операций:}
+\begin{itemize}
+    \item \texttt{get\_h()}: $O(k)$, где $k$ --- количество ячеек в запросе
+    \item \texttt{get\_area()}: $O(k)$
+    \item \texttt{add\_rect()}: $O(k)$ --- обновление всех затронутых ячеек
+\end{itemize}
+
+\textbf{Недостаток:} Большой объём памяти и медленное обновление при добавлении крупных прямоугольников.
+
+\paragraph{SegTree (2D дерево отрезков)}
+
+Двумерное дерево отрезков с отложенным обновлением (Lazy Propagation). X-дерево содержит Y-деревья, каждый Y-узел хранит количество 2D-ячеек с максимальной высотой.
+
+\textbf{Сложность операций:}
+\begin{itemize}
+    \item \texttt{get\_h()}: $O(\log W \cdot \log H)$
+    \item \texttt{get\_area()}: $O(\log W \cdot \log H)$
+    \item \texttt{add\_rect()}: $O(\log W \cdot H)$ --- необходим merge Y-деревьев
+\end{itemize}
+
+\textbf{Особенность:} Асимптотически эффективен для запросов, но высокая константа и сложная операция обновления делают его медленнее на практике.
+
+\paragraph{Quadtree (квадродерево)}
+
+Рекурсивное разбиение пространства на 4 части. Каждый узел хранит максимальную высоту в своей области. При частичном пересечении с областью обновления узел разбивается на 4 дочерних.
+
+\textbf{Сложность операций:}
+\begin{itemize}
+    \item \texttt{get\_h()}: $O(\log(\max(W,H)))$ при равномерном распределении
+    \item \texttt{get\_area()}: $O(n)$ --- использует fallback на список прямоугольников
+    \item \texttt{add\_rect()}: $O(\log(\max(W,H)))$ в среднем, но может деградировать
+\end{itemize}
+
+\textbf{Недостаток:} Высокие накладные расходы на управление памятью (unique\_ptr), частое разбиение узлов.
+
+\subsubsection{Сравнительное тестирование}
+
+Тестирование проводилось на 436 реальных задачах с суммарно 27.5 миллионами операций.
+
+\begin{table}[ht]
+\centering
+\caption{Результаты тестирования реализаций HeightHandler (время в мс)}
+\label{tab:heighthandler}
+\begin{tabular}{|l|r|r|r|r|r|}
+\hline
+\textbf{Алгоритм} & \textbf{Total} & \textbf{add\_rect} & \textbf{get\_h} & \textbf{get\_area} & \textbf{Speedup} \\
+\hline
+Baseline & 36412.1 & 3.9 & 19724.4 & 21230.7 & 1.00x \\
+Rects & 1657.5 & 13.7 & 1713.4 & 2121.1 & \textbf{21.97x} \\
+Grid & 120688.0 & 111.6 & 32015.1 & 93546.9 & 0.30x \\
+SegTree & 71199.2 & 5824.6 & 34876.8 & 33292.1 & 0.51x \\
+Quadtree & 168970.6 & 885.0 & 86821.8 & 81856.8 & 0.22x \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Анализ результатов тестирования HeightHandler}
+
+Реализация \textbf{Rects} показала наилучшую производительность с ускорением в \textbf{21.97x} относительно базовой реализации. Это объясняется:
+\begin{itemize}
+    \item Сортировкой по убыванию высоты, позволяющей быстро находить максимум
+    \item Низкими накладными расходами (простой вектор)
+    \item Эффективным использованием кэша процессора
+\end{itemize}
+
+\textbf{Grid, SegTree и Quadtree} оказались медленнее Baseline. Причины:
+\begin{itemize}
+    \item Высокие накладные расходы на управление структурами данных
+    \item Типичные коробки покрывают значительную часть паллеты, что нивелирует преимущества иерархических структур
+    \item Константные факторы асимптотически эффективных алгоритмов превышают выигрыш
+\end{itemize}
+
+В финальной версии алгоритма используется реализация \textbf{Rects}.
+
+\subsection{Жадный алгоритм (GreedySolver)}
+
+GreedySolver реализует простой, но эффективный жадный подход к укладке коробок.
+
+\begin{algorithm}[H]
+\caption{GreedySolver}
+\label{alg:greedy}
+\KwIn{boxes --- list of boxes, pallet --- pallet dimensions}
+\KwOut{answer --- positions of all boxes}
+$answer \leftarrow$ empty list\;
+$heightHandler \leftarrow$ new HeightHandler($pallet.length$, $pallet.width$)\;
+\While{boxes is not empty}{
+    $bestScore \leftarrow \infty$\;
+    $bestBox \leftarrow$ null\;
+    $bestPosition \leftarrow$ null\;
+    $box \leftarrow boxes[0]$\;
+    $availableRotations \leftarrow$ getAvailableBoxes($box$)\;
+    \ForEach{rotatedBox $\in$ availableRotations}{
+        $candidatePositions \leftarrow$ heightHandler.getDots($rotatedBox$)\;
+        \ForEach{$(x, y) \in candidatePositions$}{
+            $h \leftarrow$ heightHandler.getH($x$, $y$, $x + rotatedBox.length$, $y + rotatedBox.width$)\;
+            $score \leftarrow h + rotatedBox.height$\;
+            \If{$score < bestScore$}{
+                $bestScore \leftarrow score$\;
+                $bestBox \leftarrow rotatedBox$\;
+                $bestPosition \leftarrow (x, y, h)$\;
+            }
+        }
+    }
+    answer.add($bestBox$ at $bestPosition$)\;
+    heightHandler.addRect($bestPosition$, $bestBox.height$)\;
+    remove $box$ from $boxes$\;
+}
+\Return{answer}
+\end{algorithm}
+
+\textbf{Сложность:} $O(n \cdot k \cdot m)$, где $n$ --- число коробок, $k$ --- число ориентаций (до 6), $m$ --- число кандидатных позиций.
+
+\subsection{Жадный поиск в большой окрестности (LNSSolver)}
+
+LNSSolver использует метаэвристический подход Large Neighborhood Search (LNS) с жадным критерием принятия решений.
+
+\subsubsection{Представление решения}
+
+Решение кодируется структурой \texttt{SimulationParams}:
+\begin{itemize}
+    \item \texttt{order} --- массив структур \texttt{BoxMeta}, определяющий порядок укладки
+    \item \texttt{support\_threshold} --- минимальный порог опоры (коробки с меньшей опорой отклоняются)
+\end{itemize}
+
+Структура \texttt{BoxMeta}:
+\begin{itemize}
+    \item \texttt{box\_id} --- индекс типа коробки в исходном наборе
+    \item \texttt{rotation} --- выбранная ориентация ($-1$ = рассмотреть все, $0$--$5$ = фиксированная)
+    \item \texttt{position} --- предпочтительный угол паллеты ($0$--$3$, по умолчанию $3$)
+\end{itemize}
+
+\textbf{Порядок элементов в массиве определяет порядок укладки коробок.} Перестановка элементов приводит к другой укладке.
+
+\subsubsection{Функция симуляции}
+
+Функция \texttt{simulate} принимает \texttt{SimulationParams} и выполняет укладку:
+\begin{enumerate}
+    \item Для каждой коробки в порядке \texttt{order}:
+    \begin{enumerate}
+        \item Если \texttt{rotation} $\neq -1$ --- используем указанную ориентацию, иначе перебираем все
+        \item Для каждой ориентации получаем кандидатные позиции из HeightHandler
+        \item Фильтруем позиции: отклоняем, если центр масс коробки не попадает на опору
+        \item Фильтруем позиции: отклоняем, если \texttt{support\_ratio} $<$ \texttt{support\_threshold}
+        \item Выбираем позицию с минимальной итоговой высотой $h + h_{box}$
+        \item При равной высоте выбираем позицию ближе к углу \texttt{position}
+    \end{enumerate}
+    \item Возвращается укладка и метрики (percolation, min\_support\_ratio, center\_of\_mass)
+\end{enumerate}
+
+\subsubsection{Операторы мутации}
+
+Реализовано 13 операторов мутации, разделённых на категории:
+
+\textbf{Изменение параметров (position/rotation):}
+\begin{itemize}
+    \item \texttt{position\_rotation\_fixed} --- установка одинакового значения для сегмента
+    \item \texttt{position\_rotation\_random} --- случайные значения для каждой коробки в сегменте
+\end{itemize}
+
+\textbf{Изменение порядка:}
+\begin{itemize}
+    \item \texttt{reverse} --- реверс подмассива
+    \item \texttt{shuffle} --- случайная перестановка подмассива
+    \item \texttt{swap} --- обмен двух случайных коробок
+    \item \texttt{swap\_adjacent} --- обмен соседних коробок
+\end{itemize}
+
+\textbf{Сортировки:}
+\begin{itemize}
+    \item \texttt{sort\_by\_area} --- сортировка по площади основания
+    \item \texttt{sort\_by\_volume} --- сортировка по объёму
+    \item \texttt{sort\_by\_height} --- сортировка по высоте
+    \item \texttt{sort\_by\_weight} --- сортировка по весу
+\end{itemize}
+
+\textbf{Специальные:}
+\begin{itemize}
+    \item \texttt{threshold} --- изменение порога минимальной опоры
+    \item \texttt{group\_by\_sku} --- группировка коробок одного типа вместе
+    \item \texttt{move\_bad\_box} --- перемещение коробки с худшей опорой в начало
+\end{itemize}
+
+Каждому оператору назначается вес, определяющий вероятность его выбора.
+
+\begin{algorithm}[H]
+\caption{LNSSolver}
+\label{alg:lns}
+\KwIn{testData --- input data, endTime --- time limit}
+\KwOut{bestAnswer --- best found solution}
+$params \leftarrow$ initializeParams($testData$)\;
+$bestResult \leftarrow$ simulate($testData$, $params$)\;
+$bestParams \leftarrow params$\;
+\While{$currentTime < endTime$}{
+    $newParams \leftarrow$ copy($params$)\;
+    $mutation \leftarrow$ selectMutation($weights$)\;
+    newParams.mutate($mutation$)\;
+    $newResult \leftarrow$ simulate($testData$, $newParams$)\;
+    \If{$newResult.score > bestResult.score$}{
+        $bestResult \leftarrow newResult$\;
+        $bestParams \leftarrow newParams$\;
+        $params \leftarrow newParams$\;
+    }
+}
+\Return{bestResult.answer}
+\end{algorithm}
+
+\subsubsection{Целевая функция и критерий принятия}
+
+Целевая функция (score) вычисляется как взвешенная сумма метрик:
+
+$$score = w_1 \cdot percolation + w_2 \cdot min\_support\_ratio + w_3 \cdot (1 - com\_z\_normalized)$$
+
+где:
+\begin{itemize}
+    \item $w_1$, $w_2$, $w_3$ --- настраиваемые веса (по умолчанию $w_1 = 1$, $w_2 = 1$, $w_3 = 10$)
+    \item $com\_z\_normalized$ --- нормализованная высота центра масс
+\end{itemize}
+
+Алгоритм использует \textbf{жадный критерий принятия}: новое решение принимается только если $score_{new} > score_{best}$.
+
+\subsection{Метрики качества укладки}
+
+Для оценки качества укладки используются следующие метрики:
+
+\begin{itemize}
+    \item \textbf{Percolation} (коэффициент заполнения) --- отношение суммарного объёма коробок к объёму паллеты:
+    $$percolation = \frac{V_{boxes}}{L \times W \times H}$$
+    
+    \item \textbf{Min support ratio} --- минимальный коэффициент опоры среди всех коробок. Для каждой коробки рассчитывается как отношение площади, опирающейся на предыдущий слой, к полной площади основания.
+    
+    \item \textbf{Center of mass} --- координаты центра масс паллеты, используются для оценки устойчивости.
+\end{itemize}
+
+\subsection{Результаты}
+
+\begin{table}[ht]
+\centering
+\caption{Сравнительные результаты алгоритмов}
+\label{tab:benchmark_eyu}
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Алгоритм} & \textbf{Лимит} & \textbf{Среднее} & \textbf{Мин} & \textbf{Макс} & \textbf{Время} \\
+\hline
+GreedySolver & — & 73.56\% & 59.01\% & 85.21\% & 308 мс \\
+LNSSolver & 1 сек & 77.18\% & 72.86\% & 86.39\% & 14 сек \\
+LNSSolver & 5 сек & 78.23\% & 73.11\% & 88.15\% & 70 сек \\
+LNSSolver & 30 сек & 78.93\% & 75.36\% & 88.65\% & 7 мин \\
+LNSSolver & 300 сек & 79.71\% & 76.03\% & 90.39\% & 70 мин \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Анализ результатов}
+
+\textbf{GreedySolver} демонстрирует высокую скорость работы --- все 436 тестов обрабатываются за 308 миллисекунд. Однако качество укладки варьируется в широком диапазоне (59\%--85\%).
+
+\textbf{LNSSolver} показывает значительно более стабильные результаты: минимальный коэффициент заполнения составляет 72.86\% даже при лимите в 1 секунду, что выше худшего результата GreedySolver.
+
+Наблюдается логарифмическая зависимость качества от времени работы:
+\begin{itemize}
+    \item Первая секунда даёт прирост +3.6 п.п. относительно GreedySolver
+    \item Увеличение времени в 5 раз (1с $\rightarrow$ 5с) даёт +1.05 п.п.
+    \item Увеличение времени в 6 раз (5с $\rightarrow$ 30с) даёт +0.7 п.п.
+    \item Увеличение времени в 10 раз (30с $\rightarrow$ 300с) даёт +0.78 п.п.
+\end{itemize}
+
+\subsubsection{Практические рекомендации}
+
+\begin{enumerate}
+    \item Для систем реального времени рекомендуется использовать LNSSolver с лимитом 1--5 секунд
+    \item Для офлайн-планирования оптимален лимит 30--300 секунд
+    \item GreedySolver может использоваться для быстрой оценки или как начальное приближение
+\end{enumerate}
+
+\subsection{Выводы}
+
+\begin{enumerate}
+    \item Разработанный алгоритм LNSSolver достигает коэффициента заполнения до 90\%, что соответствует современным промышленным решениям
+    \item Жадный поиск в большой окрестности (LNS) с разнообразными операторами мутации эффективно исследует пространство решений, обеспечивая стабильное качество на всех тестах
+    \item Структура HeightHandler обеспечивает эффективную работу с картой высот, что критически важно для производительности
+    \item Простая реализация HeightHandler на списке прямоугольников показала лучшие результаты по сравнению с более сложными структурами данных (деревья отрезков, квадродеревья)
+\end{enumerate}
