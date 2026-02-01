@@ -339,7 +339,7 @@ void launch_solvers(const std::string &algorithm_name) {
 }
 
 int main() {
-    launch_solvers<LNSSolver>("LNSSolver");
+    launch_solvers<GreedySolver>("GreedySolver");
     return 0;
 
     Metrics m = launch_one_solver<LNSSolver>(228);
