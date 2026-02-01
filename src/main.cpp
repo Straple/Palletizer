@@ -28,7 +28,7 @@
  * com_z_rel_min,com_z_rel_ci_low,com_z_rel_avg,com_z_rel_ci_high,com_z_rel_max
  */
 
-constexpr uint32_t TIMELIMIT = 5'000;
+constexpr uint32_t TIMELIMIT = 100'000;
 
 // Структура для агрегированной статистики с доверительным интервалом
 struct AggregatedStats {
@@ -339,7 +339,7 @@ void launch_solvers(const std::string &algorithm_name) {
 }
 
 int main() {
-    launch_solvers<GreedySolver>("GreedySolver");
+    launch_solvers<LNSSolver>("LNSSolver");
     return 0;
 
     Metrics m = launch_one_solver<LNSSolver>(228);
@@ -459,3 +459,5 @@ Avg time/test:    161 ms
 ===========================================================================
 
 */
+
+// TODO: описание алгоритмов текстом. К псевдокоду текст. Меньше всяких пунктов, больше именно текста. Меньше иишного, более научный текст. Не: "Сложность: O(n)", а "Сложность составляет O(N)"

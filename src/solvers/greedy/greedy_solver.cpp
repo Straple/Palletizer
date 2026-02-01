@@ -19,6 +19,17 @@ Answer GreedySolver::solve(TimePoint end_time) {
         order.emplace_back(i, test_data.boxes[i].quantity);
     }
 
+    auto is_center_of_mass_supported = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> bool {
+        uint32_t h = height_handler.get_h(x, y, x + length - 1, y + width - 1);
+        if (h == 0) return true;
+
+        uint32_t com_x = x + length / 2;
+        uint32_t com_y = y + width / 2;
+
+        uint32_t h_at_com = height_handler.get_h(com_x, com_y, com_x, com_y);
+        return h_at_com == h;
+    };
+
     while (!order.empty()) {
         uint32_t best_score = -1;
         uint32_t best_i = -1;
@@ -42,6 +53,8 @@ Answer GreedySolver::solve(TimePoint end_time) {
             for (const auto &box: available_boxes) {
                 auto dots = height_handler.get_dots(test_data.header, box);
                 for (auto [x, y]: dots) {
+                    if (!is_center_of_mass_supported(x, y, box.length, box.width)) continue;
+
                     uint32_t score = get_score(x, y, x + box.length - 1, y + box.width - 1, box.height);
                     if (std::tie(score, x, y) < std::tie(best_score, best_x, best_y)) {
                         best_score = score;

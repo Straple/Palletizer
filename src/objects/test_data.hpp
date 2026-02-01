@@ -25,7 +25,7 @@ struct TestDataHeader {
     uint32_t available_rotations = 2; // 6
 
     double score_percolation_mult = 1;
-    double score_min_support_ratio_mult = 1;
+    double score_min_support_ratio_mult = 2;
     double score_center_of_mass_z_mult = 0;
     uint32_t score_normalization_height = 2200;
 };
