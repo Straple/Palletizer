@@ -57,20 +57,16 @@ def build_color_map(df: pd.DataFrame, color_by: str) -> Dict[str, str]:
     return {sku: "#1f77b4" for sku in skus}
 
 
-def box_vertices(row, offset: float = 0.0) -> List[Tuple[float, float, float]]:
-    """
-    Возвращает 8 вершин коробки.
-    offset > 0 расширяет коробку наружу (для рёбер, чтобы избежать z-fighting).
-    """
+def box_vertices(row) -> List[Tuple[float, float, float]]:
     x, y, z, X, Y, Z = row["x"], row["y"], row["z"], row["X"], row["Y"], row["Z"]
-    v0 = (x - offset, y - offset, z - offset)
-    v1 = (X + offset, y - offset, z - offset)
-    v2 = (X + offset, Y + offset, z - offset)
-    v3 = (x - offset, Y + offset, z - offset)
-    v4 = (x - offset, y - offset, Z + offset)
-    v5 = (X + offset, y - offset, Z + offset)
-    v6 = (X + offset, Y + offset, Z + offset)
-    v7 = (x - offset, Y + offset, Z + offset)
+    v0 = (x, y, z)
+    v1 = (X, y, z)
+    v2 = (X, Y, z)
+    v3 = (x, Y, z)
+    v4 = (x, y, Z)
+    v5 = (X, y, Z)
+    v6 = (X, Y, Z)
+    v7 = (x, Y, Z)
     return [v0, v1, v2, v3, v4, v5, v6, v7]
 
 
@@ -82,19 +78,12 @@ def box_edges(vertices) -> List[Tuple[int, int]]:
     ]
 
 
-# Небольшой offset для рёбер, чтобы они рисовались "поверх" граней и не было z-fighting
-EDGE_OFFSET = 0.5
-
-
 def add_box_traces(fig: go.Figure, row, sku_color: str, sku: str,
                    first_of_sku: bool, mode: str,
                    mesh_opacity: float,
                    edge_mode: str, edge_color_single: str,
                    edge_width: float, edge_opacity: float) -> Tuple[Optional[int], int]:
-    # Вершины для граней (без смещения)
-    verts = np.array(box_vertices(row, offset=0.0))
-    # Вершины для рёбер (с небольшим смещением наружу для избежания z-fighting)
-    verts_edges = np.array(box_vertices(row, offset=EDGE_OFFSET))
+    verts = np.array(box_vertices(row))
 
     # Mesh (грани) — только если mode == "meshes"
     mesh_idx: Optional[int] = None
@@ -124,12 +113,12 @@ def add_box_traces(fig: go.Figure, row, sku_color: str, sku: str,
         ))
         mesh_idx = len(fig.data) - 1
 
-    # Рёбра (один трейс на коробку) - используем verts_edges для избежания z-fighting
+    # Рёбра (один трейс на коробку)
     x_all, y_all, z_all = [], [], []
-    for a, b in box_edges(verts_edges):
-        x_all += [verts_edges[a][0], verts_edges[b][0], None]
-        y_all += [verts_edges[a][1], verts_edges[b][1], None]
-        z_all += [verts_edges[a][2], verts_edges[b][2], None]
+    for a, b in box_edges(verts):
+        x_all += [verts[a][0], verts[b][0], None]
+        y_all += [verts[a][1], verts[b][1], None]
+        z_all += [verts[a][2], verts[b][2], None]
 
     # Цвет рёбер: по SKU или единый
     line_color = sku_color if edge_mode == "sku" else edge_color_single
@@ -144,7 +133,7 @@ def add_box_traces(fig: go.Figure, row, sku_color: str, sku: str,
         mode="lines",
         name=f"SKU {sku}",
         line=dict(color=line_color, width=edge_width),
-        opacity=edge_opacity,
+        opacity=1,
         hoverinfo="skip",
         showlegend=showlegend,
         legendgroup=sku if edge_mode == "sku" else None,
