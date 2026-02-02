@@ -592,7 +592,7 @@ for rect in rects_sorted:
     if width > 50 and height > 30:
         ax.text(
             x + width/2, y + height/2,
-            str(h),
+            "",#str(h),
             ha='center', va='center',
             fontsize=7,
             color='white' if norm_h > 0.5 else 'black'
@@ -613,7 +613,7 @@ sm.set_array([])
 cbar = plt.colorbar(sm, ax=ax, label='Height (h)')
 
 plt.tight_layout()
-plt.savefig('height_map.png', dpi=150)
+plt.savefig('height_map.pdf', dpi=150)
 plt.show()
 
 print(f"Всего прямоугольников: {len(rects)}")
