@@ -1,5 +1,310 @@
 \section{Разработка программного решения для анализа массива данных}
 
 \AKHworries{АХ: для описания алгоритмов используем  algorithm2e с параметрами linesnumbered,ruled,vlined. При этом внутри псевдокода все на английском. Описание алгоритма технически корректным языком. Третируем русский и английский текст.  }
+\subsection{Алгоритм обратного восстановления исходного набора коробок}
+
+В данном разделе представлен алгоритм обратного восстановления исходного набора коробок по результату их размещения на паллете. В качестве входных данных алгоритм принимает файл, содержащий идентификатор коробки (sku) и координаты ее расположения на паллете (левый нижний угол и правый верхний). Также предусмотрено добавление дополнительных атрибутов: вес и тип коробки. Псевдокод алгоритма приведён в алгоритме~\ref{alg:reverse_reconstruct}.
+
+Геометрические параметры коробок восстанавливаются по разностям координат вдоль осей $x$, $y$ и $z$, что при предположении ортогональной ориентации и отсутствии деформаций однозначно определяет длину, ширину и высоту. Все вычисления проводятся в целочисленном формате, ввиду предположения, что все координаты являются целыми числами.
+
+Алгоритм реализует два режима работы. В базовом режиме каждая размещённая коробка обрабатывается как отдельный объект, что обеспечивает прямую обратимость преобразования. В режиме агрегации выполняется объединение идентичных коробок с формированием компактного представления исходного заказа.
+
+Агрегация коробок производится только в случае полного совпадения всех атрибутов. Для эффективного выявления идентичных коробок используется хэш-таблица с составным ключом, процедура вычисления которого описана в алгоритме~\ref{alg:reverse_key_hash}. Поскольку вес коробок задан в граммах и является целочисленным, он включается в ключ без дополнительного преобразования.
+
+Для каждой коробки вычисляется соответствующий ключ и выполняется проверка его наличия в хэш-таблице. При отсутствии ключа создаётся новая запись, в противном случае увеличивается счётчик коробок в существующей записи. Использование хэш-таблицы обеспечивает амортизированное константное время операций поиска и вставки, что приводит к линейной временной сложности алгоритма по числу входных данных.
+
+
+\begin{algorithm}[H]
+\caption{Reconstruct boxes from a pallet placement}
+\label{alg:reverse_reconstruct}
+\KwIn{$placement$ -- list of placed records; $useMerge$ -- aggregation flag}
+\KwOut{$boxes$ -- reconstructed list of box records}
+
+$boxes \leftarrow \emptyset$\;
+\If{$useMerge$}{
+    $index \leftarrow$ empty hash table\;
+}
+
+\ForEach{$r \in placement$}{
+    $(L,W,H) \leftarrow$ \textnormal{ExtractDimensions}$(r)$\;
+    $(weight,aisle) \leftarrow$ \textnormal{ExtractAttributes}$(r)$\;
+
+    \If{not $useMerge$}{
+        append $(r.sku, L, W, H, weight, aisle, 1)$ to $boxes$\;
+    }
+    \Else{
+        $key \leftarrow (r.sku, L, W, H, aisle, weight)$\;
+        \If{$key \notin index$}{
+            append $(r.sku, L, W, H, weight, aisle, 1)$ to $boxes$\;
+            $index[key] \leftarrow |boxes|-1$\;
+        }
+        \Else{
+            $j \leftarrow index[key]$\;
+            $boxes[j].quantity \leftarrow boxes[j].quantity + 1$\;
+        }
+    }
+}
+
+\Return{$boxes$}\;
+\end{algorithm}
+
+
+
+\begin{algorithm}[H]
+\caption{Hash computation for a composite key}
+\label{alg:reverse_key_hash}
+\KwIn{$key$ -- tuple $(sku, L, W, H, aisle, weight)$}
+\KwOut{$h$ -- hash value of type \texttt{size\_t}}
+$h \leftarrow 1469598103934665603$\;
+\ForEach{$v \in [sku, L, W, H, aisle, weight]$}{
+    $h \leftarrow h \oplus \Big( cast(v) + 0x9b97f4a7c15 + (h \ll 6) + (h \gg 2) \Big)$\;
+}
+\Return{$h$}\;
+\end{algorithm}
+
+\subsection{Программный анализ геометрии и устойчивости паллетной укладки}
+
+В рамках проекта разработан программный модуль анализа результатов паллетной укладки, основанный на геометрическом представлении размещённых коробок. Общая схема работы модуля приведена в алгоритме~\ref{alg:pallet_analysis}. На вход модуль принимает набор коробок с заданными координатами размещения и геометрические параметры основания паллеты, формируя совокупность количественных метрик, характеризующих качество и устойчивость укладки.
+
+На первом этапе выполняется вычисление глобальных характеристик паллеты: итоговой высоты, суммарного объёма груза и коэффициента объёмного заполнения. Одновременно проводятся проверки геометрической корректности размещения, включая выход коробок за границы основания паллеты и наличие некорректных размеров. Кроме того, вычисляется центр масс паллеты в горизонтальной плоскости на основе координат центров коробок и их весов.
+
+На следующем этапе анализируется корректность взаимного расположения коробок. Для каждой пары коробок проверяется наличие пересечения в трёхмерном пространстве, что позволяет выявлять недопустимые конфигурации укладки. Данная процедура имеет квадратичную вычислительную сложность $O(n^2)$, где $n$ — число коробок.
+
+Ключевым этапом анализа является вычисление коэффициента опоры коробок (алгоритм~\ref{alg:support_ratio}). Для коробок, размещённых непосредственно на основании паллеты, коэффициент опоры полагается равным единице. Для остальных коробок определяется множество опорных коробок нижнего уровня, находящихся с ними в контакте по высоте. Площадь опоры вычисляется как площадь объединения областей пересечения верхних проекций опорных коробок с основанием анализируемой коробки.
+
+Задача вычисления площади опоры сводится к нахождению площади объединения прямоугольников на плоскости. Для этого область контакта разбивается по одной из горизонтальных координат, после чего для каждого интервала вычисляется длина объединения отрезков по второй координате, а итоговая площадь определяется суммированием вкладов всех интервалов.
+
+Вычисление коэффициентов опоры для всех коробок имеет сложность $O(n \cdot k^2)$, где $n$ — общее число коробок, а $k \ll n$ — среднее число опорных коробок. На основе полученных значений формируются агрегированные метрики устойчивости укладки, включая среднее и минимальное значения коэффициента опоры, долю коробок, удовлетворяющих заданному порогу устойчивости, а также число коробок, не имеющих опоры при ненулевой высоте размещения.
+
+Разработанный модуль анализа позволяет перейти от геометрического описания паллетной укладки к формализованному набору количественных показателей, что обеспечивает автоматизированное сравнение алгоритмов паллетизации и использование модуля в составе вычислительных экспериментов.
+
+\begin{algorithm}[H]
+\caption{Support ratio computation for a box}
+\label{alg:support_ratio}
+\KwIn{$A$ -- target box; $P$ -- placed boxes}
+\KwOut{$r$ -- support ratio}
+
+\If{$A.z_1 = 0$}{
+    \Return{$1$}
+}
+
+$R \leftarrow$ find boxes $B \in P$ such that $B.z_2 = A.z_1$\;
+$C \leftarrow$ compute contact areas between $A$ and boxes in $R$\;
+$supportedArea \leftarrow$ \textnormal{UnionContactArea}$(C)$\;
+
+$r \leftarrow supportedArea/\textnormal{BaseArea}(A)$\;
+$r \leftarrow \min(1,\max(0,r))$\;
+
+\Return{$r$}\;
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Pallet analysis and metric computation}
+\label{alg:pallet_analysis}
+\KwIn{$P$ -- list of placed boxes; $L,W$ -- pallet base dimensions; $s_{\min}$ -- support threshold}
+\KwOut{$M$ -- pallet-level metrics; $support[i]$ -- per-box support ratios}
+
+$maxHeight \leftarrow 0$\;
+$totalVolume \leftarrow 0$\;
+
+\ForEach{$b \in P$}{
+    $maxHeight \leftarrow \max(maxHeight, b.z_2)$\;
+    $totalVolume \leftarrow totalVolume + \textnormal{Volume}(b)$\;
+}
+
+$overlapPairs \leftarrow$ \textnormal{CountOverlaps3D}$(P)$\;
+
+$floating \leftarrow 0$; $goodSupport \leftarrow 0$\;
+\For{$i \leftarrow 1$ \KwTo $|P|$}{
+    $support[i] \leftarrow$ \textnormal{SupportRatio}$(P[i], P)$\;
+    \If{$P[i].z_1 > 0$ \textbf{and} $support[i] = 0$}{
+        $floating \leftarrow floating + 1$\;
+    }
+    \If{$support[i] \ge s_{\min}$}{
+        $goodSupport \leftarrow goodSupport + 1$\;
+    }
+}
+
+$M.maxHeight \leftarrow maxHeight$\;
+$M.fillRatio \leftarrow totalVolume/(L\cdot W\cdot maxHeight)$\;
+$M.goodSupportFraction \leftarrow goodSupport/|P|$\;
+$M.floatingBoxes \leftarrow floating$\;
+$M.overlapPairs \leftarrow overlapPairs$\;
+
+\Return{$M, support$}\;
+\end{algorithm}
+
+
+
+\begin{algorithm}[H]
+\caption{Union area computation of contact regions}
+\label{alg:union_area}
+\KwIn{$C$ -- set of rectangular contact regions}
+\KwOut{$A$ -- total contact area}
+
+$A \leftarrow 0$\;
+split $C$ into disjoint vertical intervals\;
+\ForEach{interval}{
+    compute union length along the second coordinate\;
+    add interval contribution to $A$\;
+}
+\Return{$A$}\;
+\end{algorithm}
+
+\subsection{Построение алгоритма укладки паллеты}
+В качестве базового решения в работе рассматривается слоевой жадный алгоритм укладки паллеты, основанный на эвристике \textit{Candidate Heights}, формально описанной в алгоритме~\ref{alg:candidate_heights}. Алгоритм используется как тестовое решение для оценки производительности и качества укладки, а также для последующего сравнения с более сложными методами.
+
+Алгоритм реализует слоевой подход: на каждом шаге выбирается фиксированная высота слоя, после чего выполняется двумерная укладка коробок в его пределах с использованием эвристики \textit{MaxRects} с критерием максимального заполнения площади и разрешением поворота коробок в плоскости основания. Коробки обрабатываются в фиксированном порядке, определяемом площадью основания и высотой.
+
+Для определения высоты слоя формируется множество потенциальных значений на основе высот неразмещённых коробок. Для каждого кандидата выполняется пробная двумерная укладка коробок с высотой, не превышающей выбранное значение кандидата. Для каждой укладки вычисляется коэффициент объёмного заполнения. В качестве итоговой высоты слоя выбирается значение, соответствующее максимальному коэффициенту заполнения.
+
+После выбора высоты производится фактическая укладка коробок с фиксацией координат, после чего алгоритм переходит к следующему слою и повторяет процедуру до размещения всех коробок либо невозможности дальнейшей укладки.
+
+Рассматриваемый алгоритм не учитывает условия устойчивости укладки, включая площадь опоры, характер контакта с нижележащими коробками и положение центра масс. В связи с этим он ориентирован исключительно на геометрическое заполнение объёма и используется в работе в качестве базового сравнительного метода.
+
+В таблице~\ref{tab:candidate_heights_results} приведены экспериментальные результаты работы алгоритма в зависимости от числа кандидатных высот $k$, включая среднее время выполнения и коэффициент объёмного заполнения паллеты.
+
+\begin{algorithm}[H]
+\caption{Layer-based palletization with Candidate Heights}
+\label{alg:candidate_heights}
+\KwIn{$B$ -- list of boxes; $K$ -- number of candidate heights}
+\KwOut{$placement$ -- list of box placements}
+
+sort $B$ by decreasing base area and height\;
+initialize empty pallet $P$\;
+
+\While{there exist unpacked boxes}{
+    $C \leftarrow$ \textnormal{SelectTopKHeights}$(B, K)$\;
+    $H^\star \leftarrow$ height from $C$ maximizing \textnormal{EvaluateLayerFill}$(B, H)$\;
+
+    start new layer of height $H^\star$\;
+    \ForEach{box $b \in B$}{
+        \If{$b$ is unpacked \textbf{and} $b.height \le H^\star$}{
+            \If{\textnormal{FitsInLayer}$(P, b)$}{
+                place $b$ in current layer using MaxRects\;
+                mark $b$ as packed\;
+            }
+        }
+    }
+}
+
+\Return{$placement$}\;
+\end{algorithm}
+
+
+\begin{table}[H]
+\centering
+\caption{Performance of the Candidate Heights algorithm for different values of $k$}
+\label{tab:candidate_heights_results}
+\begin{tabular}{|c|c|c|}
+\hline
+Number of candidates $k$ & Average time (ms) & Percolation \\ \hline
+10 & 67 & 0.7655 \\ \hline
+50 & 277 & 0.7866 \\ \hline
+100 & 536 & 0.7944 \\ \hline
+200 & 1006 & 0.8009 \\ \hline
+500 & 1134 & 0.8025 \\ \hline
+\end{tabular}
+\end{table}
+
+На основе базового слоевого подхода был рассмотрен альтернативный алгоритм \emph{height-map palletization}, в котором поверхность паллеты представляется в виде разбиения основания на непересекающиеся прямоугольные плитки (tiles), каждая из которых характеризуется собственной высотой $z$ и флагом блокировки. В отличие от классической слоевой схемы, данный подход явно моделирует неоднородную поверхность и позволяет целенаправленно обрабатывать локальные области с пониженной высотой.
+
+На каждой итерации определяется текущий уровень слоя $L_0$ как максимальная высота среди незаблокированных плиток, после чего выполняется двухэтапная обработка поверхности. Сначала заполняются плитки с $z < L_0$ («провалы»): для выбранной плитки подбирается коробка, полностью помещающаяся в её область (с возможным поворотом). В зависимости от доли покрытия основания плитки коробка либо размещается с подъёмом всей плитки, либо выполняется локальное размещение с ограниченным числом попыток, после чего оставшиеся области могут быть заблокированы. Такой механизм предотвращает зацикливание на сильно фрагментированных участках.
+
+После обработки «провалов» выполняется укладка на верхних областях (плитки на высоте $z = L_0$). На этих регионах применяется двумерная упаковка в сочетании с эвристикой \textit{Candidate Heights}, что позволяет выбирать высоту, наиболее эффективную для текущей конфигурации поверхности. Если верхняя поверхность оказывается слишком раздробленной и размещение становится невозможным, выполняется операция \emph{flattening}, при которой все доступные плитки поднимаются до общего уровня и сливаются, после чего укладка повторяется.
+
+Основным недостатком алгоритма является то, что он не гарантирует размещение всех коробок. По мере формирования неоднородной поверхности и последовательного разбиения плиток часть оставшихся коробок перестаёт помещаться внутрь доступных прямоугольных областей. В результате алгоритм завершается преждевременно с неполной упаковкой, что ограничивает его применимость для некоторых заказов. Псевдокод алгоритма представлен в алгоритме~\ref{alg:heightmap_palletization}.
+
+\begin{algorithm}[H]
+\caption{Height-map palletization}
+\label{alg:heightmap_palletization}
+\KwIn{$B$ -- list of boxes; pallet base $(L,W)$}
+\KwOut{$P$ -- list of placed boxes}
+
+sort $B$ by decreasing base area and height\;
+$T \leftarrow \{(0,0,L,W,z{=}0,\textnormal{blocked}{=}\textnormal{false})\}$\;
+$P \leftarrow \emptyset$\;
+
+\While{there exist unpacked boxes}{
+    $L_0 \leftarrow \max\{t.z \mid t\in T,\ \neg t.\textnormal{blocked}\}$\;
+
+    \While{exists non-blocked tile $t\in T$ with $t.z<L_0$}{
+        place one fitting box inside $t$ (rotation allowed)\;
+        update $T$ by splitting and changing tile heights\;
+        add placed box to $P$\;
+        \If{no box fits in any hole tile}{
+            mark remaining hole tiles as \textnormal{blocked}\;
+            \textbf{break}\;
+        }
+    }
+
+    $R \leftarrow \{t \in T \mid \neg t.\textnormal{blocked} \ \wedge\ t.z=L_0\}$\;
+    $H^\star \leftarrow \arg\max_H \textnormal{EvalHeight}(B,R,H)$\;
+    $placed \leftarrow \textnormal{MaxRectsPackAndUpdateTiles}(B,T,R,L_0,H^\star)$\;
+
+    \If{$\neg placed$}{
+        flatten all non-blocked tiles to the current maximum height and merge\;
+        $L_0 \leftarrow \max\{t.z \mid t\in T,\ \neg t.\textnormal{blocked}\}$\;
+        $R \leftarrow \{t \in T \mid \neg t.\textnormal{blocked} \ \wedge\ t.z=L_0\}$\;
+        $placed \leftarrow \textnormal{MaxRectsPackAndUpdateTiles}(B,T,R,L_0,H^\star)$\;
+    }
+
+    \If{$\neg placed$}{\textbf{break}\;}
+}
+\Return{$P$}\;
+\end{algorithm}
+
+
+В качестве альтернативы слоевому подходу был разработан алгоритм укладки, основанный на размещении коробок в трёхмерном пространстве по набору кандидатных позиций. При каждой успешной постановке коробки определяется ограниченное множество перспективных точек размещения, соответствующих правым и верхним граням уже размещённых коробок по осям $x$, $y$ и $z$. Такой подход существенно сокращает пространство поиска по сравнению с непрерывным перебором и при этом сохраняет возможность формирования плотных укладок.
+
+В начале алгоритма производится упорядочивание коробок по их площади основания и высоте. В процессе алгоритма коробки обрабатываются в данном порядке. Для каждой коробки перебираются две ориентации в плоскости основания (поворот на $90^\circ$) и набор кандидатных позиций. Каждая кандидатная постановка проверяется на корректность: коробка должна полностью помещаться в пределах основания паллеты, не пересекаться с уже размещёнными коробками и удовлетворять ограничению устойчивости.
+
+Проверка устойчивости реализована эвристически. Для коробок, размещаемых на основании паллеты, дополнительных условий не требуется. Для коробок, устанавливаемых выше, оценивается доля площади опоры как отношение площади пересечения основания новой коробки с верхними гранями коробок нижнего уровня. Дополнительно проверяется, что проекция центра основания, используемая как приближение центра масс, лежит в области контакта хотя бы с одной опорной коробкой. В финальном критерии допускается малая опора (не менее $10\%$) при обязательной поддержке центра масс.
+
+Выбор наилучшей позиции осуществляется с использованием лексикографической функции качества, минимизирующей высоту размещения $z$ и затем координаты $x$ и $y$, с дополнительным поощрением большей доли опоры. После размещения коробки множество кандидатных позиций расширяется точками, соответствующими её граням, а также, при ограниченном размере пространства, комбинациями ранее встречавшихся значений координат. Такой механизм обеспечивает компромисс между качеством поиска и вычислительной сложностью алгоритма.
+
+На рисунке~\ref{rs_153.png} показан пример визуализации результата укладки, полученного описанным алгоритмом, иллюстрирующий структуру слоёв и распределение коробок по высоте паллеты.
+
+\begin{algorithm}[H]
+\caption{3D candidate-position palletization with stability check}
+\label{alg:candidate_positions_3d}
+\KwIn{$B$ -- list of box specifications; pallet base $(L,W)$}
+\KwOut{$P$ -- list of placed boxes with coordinates}
+
+expand quantities in $B$ into individual boxes; sort $B$ by decreasing base area, weight, height\;
+$P \leftarrow \emptyset$, $C \leftarrow \{(0,0,0)\}$ \tcp*{placed boxes, candidate positions}
+
+\ForEach{box $b \in B$}{
+    $best \leftarrow \textnormal{None}$, $bestScore \leftarrow +\infty$\;
+    $C' \leftarrow \textnormal{BuildCandidateSet}(C,P)$\;
+
+    \ForEach{$(o_L,o_W) \in \{(b.L,b.W),(b.W,b.L)\}$}{
+        \ForEach{$(x,y,z) \in C'$}{
+            $(X,Y,Z) \leftarrow (x+o_L,\; y+o_W,\; z+b.H)$\;
+            \If{not \textnormal{InsidePallet}$(x,y,X,Y)$
+                or \textnormal{IntersectsAny}$(P,x,y,z,X,Y,Z)$
+                or not \textnormal{StableOnSupport}$(P,x,y,z,X,Y)$}{continue}
+
+            $s \leftarrow \textnormal{SupportRatio}(P,x,y,z,X,Y)$\;
+            \If{\textnormal{PlacementScore}(x,y,z,s) < bestScore}{
+                $best \leftarrow (b.sku,x,y,z,X,Y,Z,b.weight)$\;
+            }
+        }
+    }
+
+    \If{$best \neq \textnormal{None}$}{
+        append $best$ to $P$; update $C \leftarrow C \cup \textnormal{NewCandidatesFromPlacement}(best)$\;
+    }
+}
+\Return{$P$}\;
+\end{algorithm}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{figures/rs_153.png}
+\caption{Пример визуализации результата укладки, полученного алгоритмом 3D candidate-position}
+\label{rs_153.png}
+\end{figure}
+
 
 \AKHworries{АХ:  алгоритм Романа.  }
