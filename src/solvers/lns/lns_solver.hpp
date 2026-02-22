@@ -18,8 +18,6 @@ struct MutableParams {
     std::vector<uint32_t> weights = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100};//{80, 100, 70, 130, 90, 60, 128, 110, 90, 70, 100, 150, 122};//{100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100};//{100, 100, 140, 0, 190, 60, 80, 70, 80, 130, 133, 97, 120};
 };
 
-std::tuple<Answer, Metrics, double> simulate(const TestData &test_data, const std::vector<BoxMeta> &order);
-
 class LNSSolver : public Solver {
 public:
     MutableParams mutable_params;

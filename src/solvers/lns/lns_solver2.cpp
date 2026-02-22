@@ -1,4 +1,4 @@
-#include <solvers/lns/lns_solver.hpp>
+#include <solvers/lns/lns_solver2.hpp>
 
 #include <solvers/height_handler_rects.hpp>
 #include <utils/assert.hpp>
@@ -235,9 +235,9 @@ namespace {
 
     SimulationResult simulate(const TestData &test_data, const SimulationParams &params) {
         SimulationResult result;
-        HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
+        // HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
 
-        auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
+        /*auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
             uint32_t h = height_handler.get_h(x, y, x + length - 1, y + width - 1);
             if (h == 0) return 1.0;
             uint64_t supported = height_handler.get_area(x, y, x + length - 1, y + width - 1);
@@ -281,9 +281,20 @@ namespace {
                              dist_func(x + length - 1, y),
                              dist_func(x, y + width - 1),
                              dist_func(x + length - 1, y + width - 1)});
-        };
+        };*/
+
+        // отсортирован по высоте
+        std::vector<HeightRect> height_rects;
+        height_rects.push_back(HeightRect{0, 0, test_data.header.length - 1, test_data.header.width - 1});
 
         auto set_box = [&](BoxMeta box_meta) {
+            // TODO: перебрать HeightRect из height_rect
+            // пытаемся поставить коробку сверху этого HeightRect
+            // ставим в первое подходящее место
+            // поставили его на высоту h
+            // значит нужно удалить все HeightRect, которые ниже этой высоты
+            // получается как бы проход с окном
+            // таким образом должно гораздо быстрее работать решение
             auto box = test_data.boxes[box_meta.box_id];
 
             double best_score = 1e300;
@@ -348,7 +359,7 @@ namespace {
             };
             result.answer.positions.push_back(pos);
 
-            height_handler.add_rect(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1, h + best_height);
+            // height_handler.add_rect(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1, h + best_height);
             return true;
         };
 
@@ -359,16 +370,17 @@ namespace {
         result.metrics = calc_metrics(test_data, result.answer);
         return result;
     }
+
 }// namespace
 
-LNSSolver::LNSSolver(TestData test_data) : Solver(test_data) {
+LNSSolver2::LNSSolver2(TestData test_data) : Solver(test_data) {
 }
 
-LNSSolver::LNSSolver(TestData test_data, MutableParams params)
+LNSSolver2::LNSSolver2(TestData test_data, MutableParams params)
     : Solver(test_data), mutable_params(std::move(params)) {
 }
 
-Answer LNSSolver::solve(TimePoint end_time) {
+Answer LNSSolver2::solve(TimePoint end_time) {
     Randomizer rnd;
 
     SimulationParams params;

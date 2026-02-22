@@ -2,6 +2,7 @@
 #include <solvers/greedy/greedy_solver.hpp>
 #include <solvers/lns/genetic_solver.hpp>
 #include <solvers/lns/lns_solver.hpp>
+#include <solvers/lns/lns_solver2.hpp>
 #include <solvers/solver.hpp>
 #include <utils/assert.hpp>
 #include <utils/tools.hpp>
@@ -28,7 +29,7 @@
  * com_z_rel_min,com_z_rel_ci_low,com_z_rel_avg,com_z_rel_ci_high,com_z_rel_max
  */
 
-constexpr uint32_t TIMELIMIT = 100'000;
+constexpr uint32_t TIMELIMIT = 5'000;
 
 // Структура для агрегированной статистики с доверительным интервалом
 struct AggregatedStats {
@@ -339,7 +340,7 @@ void launch_solvers(const std::string &algorithm_name) {
 }
 
 int main() {
-    launch_solvers<LNSSolver>("LNSSolver");
+    launch_solvers<LNSSolver2>("LNSSolver2");
     return 0;
 
     Metrics m = launch_one_solver<LNSSolver>(228);
