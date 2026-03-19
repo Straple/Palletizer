@@ -1,4 +1,5 @@
 #include <objects/metrics.hpp>
+#include <objects/test_data.hpp>
 #include <solvers/greedy/greedy_solver.hpp>
 #include <solvers/lns/genetic_solver.hpp>
 #include <solvers/lns/lns_solver.hpp>
@@ -10,6 +11,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -95,6 +97,64 @@ Metrics launch_one_solver(uint32_t test) {
     return metrics;
 }
 
+namespace {
+
+    namespace fs = std::filesystem;
+
+    std::vector<int> discover_multitest_ids(const std::string &root_dir) {
+        std::vector<int> ids;
+        std::error_code ec;
+        if (!fs::exists(root_dir, ec)) {
+            return ids;
+        }
+        for (const auto &entry: fs::directory_iterator(root_dir, ec)) {
+            if (ec || !entry.is_directory()) {
+                continue;
+            }
+            const std::string name = entry.path().filename().string();
+            int id = 0;
+            try {
+                id = std::stoi(name);
+            } catch (...) {
+                continue;
+            }
+            bool has_csv = false;
+            for (const auto &f: fs::directory_iterator(entry.path(), ec)) {
+                if (ec) {
+                    break;
+                }
+                if (f.is_regular_file() && f.path().extension() == ".csv") {
+                    has_csv = true;
+                    break;
+                }
+            }
+            if (has_csv) {
+                ids.push_back(id);
+            }
+        }
+        std::sort(ids.begin(), ids.end());
+        return ids;
+    }
+
+}// namespace
+
+template<typename SolverType>
+Metrics launch_one_multitest_solver(int multitest_id, const std::string &multitests_root = "multitests") {
+    const std::string dir = multitests_root + "/" + std::to_string(multitest_id);
+    TestData test_data = load_multitest_combined(dir);
+
+    SolverType solver(test_data);
+    Answer answer = solver.solve(get_now() + Milliseconds(TIMELIMIT));
+
+    std::filesystem::create_directories("answers/multitests");
+    std::ofstream output("answers/multitests/" + std::to_string(multitest_id) + ".csv");
+    output << answer;
+
+    Metrics metrics = calc_metrics(test_data, answer);
+    metrics.pallets_computed = solver.get_pallets_computed();
+    return metrics;
+}
+
 // Красивый вывод таблицы
 void print_separator(int width = 75) {
     std::cout << std::string(width, '=') << "\n";
@@ -122,6 +182,204 @@ void print_table_row_int(const std::string &name, const AggregatedStats &stats, 
               << std::setw(12) << (int64_t) ci_high
               << std::setw(12) << (int64_t) stats.max_val()
               << "\n";
+}
+
+template<typename SolverType>
+void launch_multitests_benchmark(const std::string &algorithm_name, const std::string &multitests_root = "multitests") {
+    const std::vector<int> multitest_ids = discover_multitest_ids(multitests_root);
+    if (multitest_ids.empty()) {
+        std::cout << "\n[multitests] No multitest directories under \"" << multitests_root
+                  << "\" (expected " << multitests_root << "/<id>/*.csv). Skipping.\n\n";
+        return;
+    }
+
+    Timer timer;
+    TestDataHeader header;
+
+    AggregatedStats percolation_stats;
+    AggregatedStats boxes_stats;
+    AggregatedStats height_stats;
+    AggregatedStats height_balance_stats;
+    AggregatedStats pallets_stats;
+    AggregatedStats min_support_ratio_stats;
+    AggregatedStats com_x_stats;
+    AggregatedStats com_y_stats;
+    AggregatedStats com_z_stats;
+    AggregatedStats com_x_rel_stats;
+    AggregatedStats com_y_rel_stats;
+    AggregatedStats com_z_rel_stats;
+
+    const size_t n = multitest_ids.size();
+    std::vector<std::atomic<bool>> visited(n);
+    for (size_t i = 0; i < n; i++) {
+        visited[i] = false;
+    }
+    std::mutex mutex;
+    std::vector<Metrics> multitests_metrics(n);
+    std::atomic<int> completed{0};
+
+    std::cout << "\n";
+    print_separator();
+    std::cout << "              PALLETIZER MULTITESTS BENCHMARK (" << multitests_root << ")\n";
+    print_separator();
+    std::cout << "Multitests: " << n << ", Threads: " << THREADS_NUM << ", Time limit: " << TIMELIMIT << "ms\n\n";
+    std::cout << "Progress:\n";
+
+    double sum_time_per_test = 0;
+
+    launch_threads(THREADS_NUM, [&](uint32_t /*thr*/) {
+        for (size_t idx = 0; idx < n; idx++) {
+            bool expected = false;
+            if (!visited[idx].compare_exchange_strong(expected, true)) {
+                continue;
+            }
+            Timer t;
+            int mid = multitest_ids[idx];
+            Metrics metrics = launch_one_multitest_solver<SolverType>(mid, multitests_root);
+            double time_ms = t.get_ms();
+            multitests_metrics[idx] = metrics;
+
+            int done = ++completed;
+            {
+                std::unique_lock locker(mutex);
+                sum_time_per_test += time_ms;
+                percolation_stats.add(metrics.percolation);
+                boxes_stats.add(metrics.boxes);
+                height_stats.add(metrics.height);
+                height_balance_stats.add(metrics.height_balance);
+                pallets_stats.add(metrics.pallets_computed);
+                min_support_ratio_stats.add(metrics.min_support_ratio);
+                com_x_stats.add(metrics.center_of_mass.x);
+                com_y_stats.add(metrics.center_of_mass.y);
+                com_z_stats.add(metrics.center_of_mass.z);
+                com_x_rel_stats.add(metrics.relative_center_of_mass.x);
+                com_y_rel_stats.add(metrics.relative_center_of_mass.y);
+                com_z_rel_stats.add(metrics.relative_center_of_mass.z);
+
+                std::cout << "  Multitest " << std::setw(4) << mid
+                          << ": perc=" << std::fixed << std::setprecision(4) << metrics.percolation
+                          << ", h_bal=" << std::setprecision(3) << metrics.height_balance
+                          << ", boxes=" << std::setw(4) << metrics.boxes
+                          << ", height=" << std::setw(5) << metrics.height
+                          << ", min_sup=" << std::setprecision(3) << metrics.min_support_ratio
+                          << " [" << done << "/" << n << "]\n";
+            }
+        }
+    });
+
+    std::filesystem::create_directories("answers");
+    std::ofstream metrics_output("answers/multitests_metrics.csv");
+    metrics_output << "multitest_id,boxes_num,length,width,height,height_balance,boxes_volume,pallet_volume,percolation,"
+                   << "min_support_ratio,supported_area,total_area,"
+                   << "center_of_mass_x,center_of_mass_y,center_of_mass_z,total_weight,"
+                   << "center_of_mass_z_relative,pallets_computed\n";
+
+    for (size_t idx = 0; idx < n; idx++) {
+        auto &m = multitests_metrics[idx];
+        int mid = multitest_ids[idx];
+        metrics_output << mid << ',' << m.boxes << ',' << m.length << ',' << m.width << ',' << m.height << ','
+                       << m.height_balance << ',' << m.boxes_volume << ',' << m.pallet_volume << ',' << m.percolation
+                       << ',' << m.min_support_ratio << ',' << m.supported_area << ',' << m.total_area << ','
+                       << m.center_of_mass.x << ',' << m.center_of_mass.y << ',' << m.center_of_mass.z << ','
+                       << m.total_weight << ',' << m.relative_center_of_mass.z << ',' << m.pallets_computed << '\n';
+    }
+
+    constexpr double CI_PERCENT = 90.0;
+
+    std::cout << "\n";
+    print_separator(80);
+    std::cout << "                   MULTITESTS SUMMARY (CI " << CI_PERCENT << "%)\n";
+    print_separator(80);
+
+    std::cout << std::left << std::setw(20) << "Metric"
+              << std::right << std::setw(12) << "Min"
+              << std::setw(12) << "CI_Low"
+              << std::setw(12) << "Avg"
+              << std::setw(12) << "CI_High"
+              << std::setw(12) << "Max"
+              << "\n";
+    std::cout << std::string(80, '-') << "\n";
+
+    print_table_row("Percolation", percolation_stats, CI_PERCENT);
+    print_table_row("Height balance", height_balance_stats, CI_PERCENT);
+    print_table_row_int("Boxes", boxes_stats, CI_PERCENT);
+    print_table_row_int("Height", height_stats, CI_PERCENT);
+    print_table_row("Min support ratio", min_support_ratio_stats, CI_PERCENT);
+    print_table_row_int("Pallets computed", pallets_stats, CI_PERCENT);
+
+    std::cout << std::string(80, '-') << "\n";
+    std::cout << "Center of Mass:\n";
+    print_table_row("  CoM X", com_x_stats, CI_PERCENT);
+    print_table_row("  CoM Y", com_y_stats, CI_PERCENT);
+    print_table_row("  CoM Z", com_z_stats, CI_PERCENT);
+    std::cout << "Relative Center of Mass:\n";
+    print_table_row("  CoM X rel", com_x_rel_stats, CI_PERCENT);
+    print_table_row("  CoM Y rel", com_y_rel_stats, CI_PERCENT);
+    print_table_row("  CoM Z rel", com_z_rel_stats, CI_PERCENT);
+
+    std::cout << std::string(80, '-') << "\n";
+
+    std::cout << "\nTotal multitests: " << n << "\n";
+    std::cout << "Total time:       " << timer << "\n";
+    std::cout << "Avg time/run:     " << std::fixed << std::setprecision(1)
+              << (n > 0 ? timer.get_ms() / static_cast<double>(n) : 0.0) << " ms\n";
+
+    print_separator();
+
+    auto [perc_ci_low, perc_ci_high] = percolation_stats.confidence_interval(CI_PERCENT);
+    auto [hb_ci_low, hb_ci_high] = height_balance_stats.confidence_interval(CI_PERCENT);
+    auto [msr_ci_low, msr_ci_high] = min_support_ratio_stats.confidence_interval(CI_PERCENT);
+    auto [h_ci_low, h_ci_high] = height_stats.confidence_interval(CI_PERCENT);
+    auto [comz_ci_low, comz_ci_high] = com_z_rel_stats.confidence_interval(CI_PERCENT);
+    auto [pallets_stats_ci_low, pallets_stats_ci_high] = pallets_stats.confidence_interval(CI_PERCENT);
+
+    double avg_time_per_test_ms = n > 0 ? sum_time_per_test / static_cast<double>(n) : 0.0;
+
+    std::cout << "\nMULTITESTS_BENCHMARK_CSV_LINE:\n";
+    std::cout << algorithm_name << "_multitests,"
+              << TIMELIMIT << ","
+              << std::fixed << std::setprecision(1) << avg_time_per_test_ms << ","
+              << header.length << ","
+              << header.width << ","
+              << header.score_normalization_height << ","
+              << header.available_rotations << ","
+              << header.score_percolation_mult << ","
+              << header.score_min_support_ratio_mult << ","
+              << header.score_center_of_mass_z_mult << ","
+              << std::setprecision(4)
+              << pallets_stats.min_val() << ","
+              << pallets_stats_ci_low << ","
+              << pallets_stats.avg() << ","
+              << pallets_stats_ci_high << ","
+              << pallets_stats.max_val() << ","
+              << percolation_stats.min_val() << ","
+              << perc_ci_low << ","
+              << percolation_stats.avg() << ","
+              << perc_ci_high << ","
+              << percolation_stats.max_val() << ","
+              << min_support_ratio_stats.min_val() << ","
+              << msr_ci_low << ","
+              << min_support_ratio_stats.avg() << ","
+              << msr_ci_high << ","
+              << min_support_ratio_stats.max_val() << ","
+              << std::setprecision(1)
+              << height_stats.min_val() << ","
+              << h_ci_low << ","
+              << height_stats.avg() << ","
+              << h_ci_high << ","
+              << height_stats.max_val() << ","
+              << std::setprecision(4)
+              << com_z_rel_stats.min_val() << ","
+              << comz_ci_low << ","
+              << com_z_rel_stats.avg() << ","
+              << comz_ci_high << ","
+              << com_z_rel_stats.max_val() << ","
+              << height_balance_stats.min_val() << ","
+              << hb_ci_low << ","
+              << height_balance_stats.avg() << ","
+              << hb_ci_high << ","
+              << height_balance_stats.max_val()
+              << "\n\n";
 }
 
 template<typename SolverType>
@@ -342,6 +600,7 @@ void launch_solvers(const std::string &algorithm_name) {
 
 int main() {
     launch_solvers<LNSSolver>("LNSSolver");
+    launch_multitests_benchmark<LNSSolver>("LNSSolver");
     return 0;
 
     Metrics m = launch_one_solver<LNSSolver>(228);
