@@ -193,7 +193,7 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
     }
 
     // validate collision boxes
-    /*for (uint32_t i = 0; i < answer.positions.size(); i++) {
+    for (uint32_t i = 0; i < answer.positions.size(); i++) {
         for (uint32_t j = i + 1; j < answer.positions.size(); j++) {
             auto pos1 = answer.positions[i];
             auto pos2 = answer.positions[j];
@@ -207,7 +207,7 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
                      is_intersect(pos1.z, pos1.Z, pos2.z, pos2.Z)),
                    "boxes intersects");
         }
-    }*/
+    }
 
     return metrics;
 }
