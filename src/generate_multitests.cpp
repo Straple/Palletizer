@@ -11,21 +11,10 @@
 
 namespace fs = std::filesystem;
 
-int main(int argc, char **argv) {
+int main() {
     uint64_t seed = 12345;
     std::string tests_dir = "tests";
     std::string out_root = "multitests";
-
-    for (int i = 1; i < argc; i++) {
-        std::string a = argv[i];
-        if (a == "--seed" && i + 1 < argc) {
-            seed = std::stoull(argv[++i]);
-        } else if (a == "--tests" && i + 1 < argc) {
-            tests_dir = argv[++i];
-        } else if (a == "--out" && i + 1 < argc) {
-            out_root = argv[++i];
-        }
-    }
 
     std::vector<uint32_t> test_ids;
     ASSERT(fs::is_directory(tests_dir), "tests directory missing: " + tests_dir);
@@ -42,8 +31,8 @@ int main(int argc, char **argv) {
     }
     ASSERT(!test_ids.empty(), "no tests/*.csv found");
     std::sort(test_ids.begin(), test_ids.end());
-    const uint32_t num_tests = static_cast<uint32_t>(test_ids.size());
-    const uint32_t max_k = std::min<uint32_t>(6, num_tests);
+    const auto num_tests = static_cast<uint32_t>(test_ids.size());
+    const auto max_k = std::min<uint32_t>(6, num_tests);
 
     fs::create_directories(out_root);
 
@@ -70,7 +59,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    std::cout << "Generated multitests in " << out_root << " for " << num_tests << " multitest folders (seed=" << seed
+    std::cout << "Generated multitests in >" << out_root << "< for " << num_tests << " folders (seed=" << seed
               << ").\n";
     return 0;
 }

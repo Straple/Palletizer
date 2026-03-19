@@ -1,4 +1,4 @@
-#include <solvers/greedy/ffd_greedy_solver.hpp>
+#include <solvers/greedy/ffd_solver.hpp>
 
 #include <solvers/height_handler_rects.hpp>
 #include <utils/assert.hpp>

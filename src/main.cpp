@@ -2,6 +2,8 @@
 #include <solvers/greedy/greedy_solver.hpp>
 #include <solvers/lns/genetic_solver.hpp>
 #include <solvers/lns/lns_solver.hpp>
+#include <solvers/greedy/dblf_solver.hpp>
+#include <solvers/greedy/ffd_solver.hpp>
 #include <solvers/solver.hpp>
 #include <utils/assert.hpp>
 #include <utils/tools.hpp>
