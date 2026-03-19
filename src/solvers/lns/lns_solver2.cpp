@@ -4,6 +4,7 @@
 #include <utils/assert.hpp>
 #include <utils/randomizer.hpp>
 
+#include <algorithm>
 #include <map>
 
 namespace {
@@ -235,32 +236,68 @@ namespace {
 
     SimulationResult simulate(const TestData &test_data, const SimulationParams &params) {
         SimulationResult result;
-        // HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
 
-        /*auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
-            uint32_t h = height_handler.get_h(x, y, x + length - 1, y + width - 1);
-            if (h == 0) return 1.0;
-            uint64_t supported = height_handler.get_area(x, y, x + length - 1, y + width - 1);
+        // Same invariants as HeightHandlerRects: sorted by h descending; get_h / get_area match that class.
+        std::vector<HeightRect> height_rects;
+        height_rects.push_back(
+                HeightRect{0, 0, test_data.header.length - 1, test_data.header.width - 1, 0});
+
+        auto get_h = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y) -> uint32_t {
+            for (const auto &rect: height_rects) {
+                if (rect.x <= X && x <= rect.X && rect.y <= Y && y <= rect.Y) {
+                    return rect.h;
+                }
+            }
+            return 0;
+        };
+
+        auto get_area = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y) -> uint64_t {
+            uint64_t area = 0;
+            uint32_t max_height = 0;
+            bool found_max = false;
+            for (const auto &rect: height_rects) {
+                if (rect.x <= X && x <= rect.X && rect.y <= Y && y <= rect.Y) {
+                    if (!found_max) {
+                        max_height = rect.h;
+                        found_max = true;
+                    }
+                    if (rect.h == max_height) {
+                        uint32_t ix = std::max(x, rect.x);
+                        uint32_t iX = std::min(X, rect.X);
+                        uint32_t iy = std::max(y, rect.y);
+                        uint32_t iY = std::min(Y, rect.Y);
+                        area += static_cast<uint64_t>(iX - ix + 1) * (iY - iy + 1);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            return area;
+        };
+
+        auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
+            uint32_t hh = get_h(x, y, x + length - 1, y + width - 1);
+            if (hh == 0) {
+                return 1.0;
+            }
+            uint64_t supported = get_area(x, y, x + length - 1, y + width - 1);
             uint64_t total = static_cast<uint64_t>(length) * width;
             return total > 0 ? static_cast<double>(supported) / total : 0.0;
         };
 
         auto is_center_of_mass_supported = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> bool {
-            uint32_t h = height_handler.get_h(x, y, x + length - 1, y + width - 1);
-            if (h == 0) return true;
-
+            uint32_t hh = get_h(x, y, x + length - 1, y + width - 1);
+            if (hh == 0) {
+                return true;
+            }
             uint32_t com_x = x + length / 2;
             uint32_t com_y = y + width / 2;
-
-            uint32_t h_at_com = height_handler.get_h(com_x, com_y, com_x, com_y);
-            return h_at_com == h;
+            uint32_t h_at_com = get_h(com_x, com_y, com_x, com_y);
+            return h_at_com == hh;
         };
 
         auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
-            return height_handler.get_h(x, y, X, Y) + box_height;
-            // double support_ratio = calc_support_ratio(x, y, X - x, Y - y);
-            // return (height_handler.get_h(x, y, X, Y) + box_height) / test_data.header.score_normalization_height * test_data.header.score_percolation_mult +
-            // (support_ratio < params.support_threshold ? params.support_threshold - support_ratio * 100 : 0) * test_data.header.score_min_support_ratio_mult;
+            return get_h(x, y, X, Y) + box_height;
         };
 
         auto get_position_dist = [&](uint32_t position, uint32_t x, uint32_t y, uint32_t length, uint32_t width, uint32_t height) {
@@ -281,20 +318,50 @@ namespace {
                              dist_func(x + length - 1, y),
                              dist_func(x, y + width - 1),
                              dist_func(x + length - 1, y + width - 1)});
-        };*/
+        };
 
-        // отсортирован по высоте
-        std::vector<HeightRect> height_rects;
-        height_rects.push_back(HeightRect{0, 0, test_data.header.length - 1, test_data.header.width - 1});
+        auto get_dots_for_rect = [&](const TestDataHeader &header, const BoxSize &box,
+                                     const HeightRect &rect) -> std::vector<std::pair<uint32_t, uint32_t>> {
+            std::vector<std::pair<uint32_t, uint32_t>> out;
+            std::vector<std::pair<uint32_t, uint32_t>> dots = {
+                    {rect.x, rect.y},
+                    {rect.x, rect.Y + 1},
+                    {rect.X + 1, rect.y},
+                    {rect.X + 1, rect.Y + 1},
+                    {rect.X - box.length + 1, rect.y},
+                    {rect.x, rect.Y - box.width + 1},
+                    {rect.X - box.length + 1, rect.Y - box.width + 1},
+                    {rect.x - box.length, rect.y},
+                    {rect.x, rect.y - box.width},
+                    {rect.x - box.length, rect.y - box.width},
+                    {rect.X + 1 - box.length, rect.Y + 1},
+                    {rect.X + 1 - box.length, rect.y - box.width},
+            };
+            for (auto &[px, py]: dots) {
+                if (std::max(px, px + box.length) <= header.length &&
+                    std::max(py, py + box.width) <= header.width) {
+                    out.emplace_back(px, py);
+                }
+            }
+            return out;
+        };
+
+        auto add_rect_sorted = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t h) {
+            HeightRect nr{x, y, X, Y, h};
+            if (!nr.is_valid()) {
+                return;
+            }
+            height_rects.push_back(nr);
+            for (size_t i = height_rects.size() - 1; i > 0; --i) {
+                if (height_rects[i].h > height_rects[i - 1].h) {
+                    std::swap(height_rects[i], height_rects[i - 1]);
+                } else {
+                    break;
+                }
+            }
+        };
 
         auto set_box = [&](BoxMeta box_meta) {
-            // TODO: перебрать HeightRect из height_rect
-            // пытаемся поставить коробку сверху этого HeightRect
-            // ставим в первое подходящее место
-            // поставили его на высоту h
-            // значит нужно удалить все HeightRect, которые ниже этой высоты
-            // получается как бы проход с окном
-            // таким образом должно гораздо быстрее работать решение
             auto box = test_data.boxes[box_meta.box_id];
 
             double best_score = 1e300;
@@ -312,33 +379,38 @@ namespace {
                     continue;
                 }
 
-                auto dots = height_handler.get_dots(test_data.header, rotated_box);
-                for (auto [x, y]: dots) {
-                    // если центр масс этой коробки висит, то скипаем
-                    // увеличивает min_support_ratio до 0.3
-                    if (!is_center_of_mass_supported(x, y, rotated_box.length, rotated_box.width)) continue;
+                for (const auto &base_rect: height_rects) {
+                    auto dots = get_dots_for_rect(test_data.header, rotated_box, base_rect);
+                    for (auto [x, y]: dots) {
+                        if (!is_center_of_mass_supported(x, y, rotated_box.length, rotated_box.width)) {
+                            continue;
+                        }
 
-                    double support = calc_support_ratio(x, y, rotated_box.length, rotated_box.width);
-                    if (support < params.support_threshold) continue;
+                        double support = calc_support_ratio(x, y, rotated_box.length, rotated_box.width);
+                        if (support < params.support_threshold) {
+                            continue;
+                        }
 
-                    auto score = get_score(x, y, x + rotated_box.length - 1, y + rotated_box.width - 1, rotated_box.height);
+                        auto score =
+                                get_score(x, y, x + rotated_box.length - 1, y + rotated_box.width - 1, rotated_box.height);
 
-                    if (score < best_score ||
-                        (score == best_score && get_position_dist(box_meta.position, x, y, rotated_box.length, rotated_box.width, rotated_box.height) <
-                                                        get_position_dist(box_meta.position, best_x, best_y, best_length, best_width, best_height))) {
-                        best_score = score;
-                        best_x = x;
-                        best_y = y;
-                        best_length = rotated_box.length;
-                        best_width = rotated_box.width;
-                        best_height = rotated_box.height;
-                        best_rotation = rotated_box.rotation;
+                        if (score < best_score ||
+                            (score == best_score &&
+                             get_position_dist(box_meta.position, x, y, rotated_box.length, rotated_box.width, rotated_box.height) <
+                                     get_position_dist(box_meta.position, best_x, best_y, best_length, best_width, best_height))) {
+                            best_score = score;
+                            best_x = x;
+                            best_y = y;
+                            best_length = rotated_box.length;
+                            best_width = rotated_box.width;
+                            best_height = rotated_box.height;
+                            best_rotation = rotated_box.rotation;
+                        }
                     }
                 }
             }
 
             if (best_score > 1e100) {
-                // ASSERT(false, "kek");
                 result.per_box_support.push_back(0);
                 return false;
             }
@@ -346,7 +418,8 @@ namespace {
             double best_support = calc_support_ratio(best_x, best_y, best_length, best_width);
             result.per_box_support.push_back(best_support);
 
-            uint32_t h = height_handler.get_h(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1);
+            uint32_t h = get_h(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1);
+            uint32_t h_top = h + best_height;
 
             Position pos = {
                     box.sku,
@@ -355,11 +428,25 @@ namespace {
                     h,
                     best_x + best_length,
                     best_y + best_width,
-                    h + best_height,
+                    h_top,
             };
             result.answer.positions.push_back(pos);
 
-            // height_handler.add_rect(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1, h + best_height);
+            add_rect_sorted(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1, h_top);
+
+            const uint32_t fx0 = best_x;
+            const uint32_t fy0 = best_y;
+            const uint32_t fX = best_x + best_length - 1;
+            const uint32_t fY = best_y + best_width - 1;
+            height_rects.erase(std::remove_if(height_rects.begin(), height_rects.end(),
+                                              [&](const HeightRect &r) {
+                                                  if (r.h >= h_top) {
+                                                      return false;
+                                                  }
+                                                  return r.x >= fx0 && r.X <= fX && r.y >= fy0 && r.Y <= fY;
+                                              }),
+                               height_rects.end());
+
             return true;
         };
 
