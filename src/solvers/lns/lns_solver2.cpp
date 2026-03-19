@@ -320,6 +320,20 @@ namespace {
                              dist_func(x + length - 1, y + width - 1)});
         };
 
+        auto interval_overlap = [](uint32_t a1, uint32_t a2, uint32_t b1, uint32_t b2) -> bool {
+            return a1 < b2 && b1 < a2;
+        };
+
+        auto collides_placed = [&](uint32_t x, uint32_t y, uint32_t L, uint32_t W, uint32_t z0, uint32_t z1) -> bool {
+            for (const auto &p: result.answer.positions) {
+                if (interval_overlap(x, x + L, p.x, p.X) && interval_overlap(y, y + W, p.y, p.Y) &&
+                    interval_overlap(z0, z1, p.z, p.Z)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         auto get_dots_for_rect = [&](const TestDataHeader &header, const BoxSize &box,
                                      const HeightRect &rect) -> std::vector<std::pair<uint32_t, uint32_t>> {
             std::vector<std::pair<uint32_t, uint32_t>> out;
@@ -379,15 +393,49 @@ namespace {
                     continue;
                 }
 
-                for (const auto &base_rect: height_rects) {
+                std::vector<const HeightRect *> rects_by_h;
+                rects_by_h.reserve(height_rects.size());
+                for (const auto &r: height_rects) {
+                    rects_by_h.push_back(&r);
+                }
+                std::sort(rects_by_h.begin(), rects_by_h.end(), [](const HeightRect *a, const HeightRect *b) {
+                    if (a->h != b->h) {
+                        return a->h < b->h;
+                    }
+                    if (a->x != b->x) {
+                        return a->x < b->x;
+                    }
+                    if (a->y != b->y) {
+                        return a->y < b->y;
+                    }
+                    if (a->X != b->X) {
+                        return a->X < b->X;
+                    }
+                    return a->Y < b->Y;
+                });
+
+                for (const HeightRect *base_ptr: rects_by_h) {
+                    const HeightRect &base_rect = *base_ptr;
                     auto dots = get_dots_for_rect(test_data.header, rotated_box, base_rect);
                     for (auto [x, y]: dots) {
+                        uint32_t support_h =
+                                get_h(x, y, x + rotated_box.length - 1, y + rotated_box.width - 1);
+                        if (support_h != base_rect.h) {
+                            continue;
+                        }
+
                         if (!is_center_of_mass_supported(x, y, rotated_box.length, rotated_box.width)) {
                             continue;
                         }
 
                         double support = calc_support_ratio(x, y, rotated_box.length, rotated_box.width);
                         if (support < params.support_threshold) {
+                            continue;
+                        }
+
+                        uint32_t z0 = support_h;
+                        uint32_t z1 = support_h + rotated_box.height;
+                        if (collides_placed(x, y, rotated_box.length, rotated_box.width, z0, z1)) {
                             continue;
                         }
 
@@ -434,17 +482,8 @@ namespace {
 
             add_rect_sorted(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1, h_top);
 
-            const uint32_t fx0 = best_x;
-            const uint32_t fy0 = best_y;
-            const uint32_t fX = best_x + best_length - 1;
-            const uint32_t fY = best_y + best_width - 1;
             height_rects.erase(std::remove_if(height_rects.begin(), height_rects.end(),
-                                              [&](const HeightRect &r) {
-                                                  if (r.h >= h_top) {
-                                                      return false;
-                                                  }
-                                                  return r.x >= fx0 && r.X <= fX && r.y >= fy0 && r.Y <= fY;
-                                              }),
+                                              [&](const HeightRect &r) { return r.h < h; }),
                                height_rects.end());
 
             return true;
