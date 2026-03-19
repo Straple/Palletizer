@@ -15,7 +15,8 @@ struct Position {
 };
 
 struct Answer {
-    std::vector<Position> positions;
+    // One vector of placements per physical pallet (same XY frame per pallet).
+    std::vector<std::vector<Position>> pallets;
 };
 
 std::ostream &operator<<(std::ostream &output, const Answer &answer);

@@ -1,4 +1,4 @@
-#include <solvers/greedy/greedy_solver.hpp>
+#include <solvers/greedy/dblf_solver.hpp>
 
 #include <solvers/height_handler_rects.hpp>
 #include <utils/assert.hpp>
@@ -6,10 +6,10 @@
 #include <tuple>
 #include <vector>
 
-GreedySolver::GreedySolver(TestData test_data) : Solver(std::move(test_data)) {
+DblfSolver::DblfSolver(TestData test_data) : Solver(std::move(test_data)) {
 }
 
-Answer GreedySolver::solve(TimePoint /*end_time*/) {
+Answer DblfSolver::solve(TimePoint /*end_time*/) {
     Answer answer;
     const uint32_t pc = test_data.pallet_count;
     ASSERT(pc >= 1, "pallet_count");
@@ -48,58 +48,55 @@ Answer GreedySolver::solve(TimePoint /*end_time*/) {
             if (h == 0) {
                 return true;
             }
-
             uint32_t com_x = x + length / 2;
             uint32_t com_y = y + width / 2;
-
             uint32_t h_at_com = height_handler.get_h(com_x, com_y, com_x, com_y);
             return h_at_com == h;
         };
 
         while (!order.empty()) {
-            uint32_t best_score = static_cast<uint32_t>(-1);
             uint32_t best_i = static_cast<uint32_t>(-1);
-            uint32_t best_x = static_cast<uint32_t>(-1);
-            uint32_t best_y = static_cast<uint32_t>(-1);
-            uint32_t best_length = static_cast<uint32_t>(-1);
-            uint32_t best_width = static_cast<uint32_t>(-1);
-            uint32_t best_height = static_cast<uint32_t>(-1);
-            {
-                uint32_t i = 0;
-                uint32_t box_id = order[i].first;
-                auto box = test_data.boxes[box_id];
+            uint32_t best_x = 0;
+            uint32_t best_y = 0;
+            uint32_t best_length = 0;
+            uint32_t best_width = 0;
+            uint32_t best_height = 0;
+            uint32_t best_h0 = static_cast<uint32_t>(-1);
+            uint32_t best_top = static_cast<uint32_t>(-1);
+            bool have = false;
 
-                auto get_score = [&](uint32_t x, uint32_t y, uint32_t X, uint32_t Y, uint32_t box_height) {
-                    return height_handler.get_h(x, y, X, Y) + box_height;
-                };
+            uint32_t i = 0;
+            uint32_t box_id = order[i].first;
+            auto box = test_data.boxes[box_id];
 
-                auto available_boxes = get_available_boxes(test_data.header, box);
-                for (const auto &ab: available_boxes) {
-                    auto dots = height_handler.get_dots(test_data.header, ab);
-                    for (auto [x, y]: dots) {
-                        if (!is_center_of_mass_supported(x, y, ab.length, ab.width)) {
-                            continue;
-                        }
-
-                        uint32_t score = get_score(x, y, x + ab.length - 1, y + ab.width - 1, ab.height);
-                        if (std::tie(score, x, y) < std::tie(best_score, best_x, best_y)) {
-                            best_score = score;
-                            best_i = i;
-                            best_x = x;
-                            best_y = y;
-                            best_length = ab.length;
-                            best_width = ab.width;
-                            best_height = ab.height;
-                        }
+            auto available_boxes = get_available_boxes(test_data.header, box);
+            for (const auto &ab: available_boxes) {
+                auto dots = height_handler.get_dots(test_data.header, ab);
+                for (auto [x, y]: dots) {
+                    if (!is_center_of_mass_supported(x, y, ab.length, ab.width)) {
+                        continue;
+                    }
+                    uint32_t h0 = height_handler.get_h(x, y, x + ab.length - 1, y + ab.width - 1);
+                    uint32_t top = h0 + ab.height;
+                    if (!have || std::tie(h0, x, y, top) < std::tie(best_h0, best_x, best_y, best_top)) {
+                        have = true;
+                        best_i = i;
+                        best_x = x;
+                        best_y = y;
+                        best_length = ab.length;
+                        best_width = ab.width;
+                        best_height = ab.height;
+                        best_h0 = h0;
+                        best_top = top;
                     }
                 }
             }
-            ASSERT(best_i != static_cast<uint32_t>(-1), "unable to put box");
-            auto box = test_data.boxes[order[best_i].first];
 
+            ASSERT(have, "unable to put box");
+            auto box2 = test_data.boxes[order[best_i].first];
             uint32_t best_h = height_handler.get_h(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1);
             Position pos = {
-                    box.sku,
+                    box2.sku,
                     best_x,
                     best_y,
                     best_h,

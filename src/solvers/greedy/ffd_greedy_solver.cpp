@@ -1,4 +1,4 @@
-#include <solvers/greedy/greedy_solver.hpp>
+#include <solvers/greedy/ffd_greedy_solver.hpp>
 
 #include <solvers/height_handler_rects.hpp>
 #include <utils/assert.hpp>
@@ -6,10 +6,10 @@
 #include <tuple>
 #include <vector>
 
-GreedySolver::GreedySolver(TestData test_data) : Solver(std::move(test_data)) {
+FfdGreedySolver::FfdGreedySolver(TestData test_data) : Solver(std::move(test_data)) {
 }
 
-Answer GreedySolver::solve(TimePoint /*end_time*/) {
+Answer FfdGreedySolver::solve(TimePoint /*end_time*/) {
     Answer answer;
     const uint32_t pc = test_data.pallet_count;
     ASSERT(pc >= 1, "pallet_count");
@@ -21,6 +21,14 @@ Answer GreedySolver::solve(TimePoint /*end_time*/) {
             instances.push_back(i);
         }
     }
+    std::stable_sort(instances.begin(), instances.end(), [&](uint32_t a, uint32_t b) {
+        const auto &ba = test_data.boxes[a];
+        const auto &bb = test_data.boxes[b];
+        uint64_t va = static_cast<uint64_t>(ba.length) * ba.width * ba.height;
+        uint64_t vb = static_cast<uint64_t>(bb.length) * bb.width * bb.height;
+        return va > vb;
+    });
+
     const uint32_t n = static_cast<uint32_t>(instances.size());
     const uint32_t base = n / pc;
     const uint32_t rem = n % pc;
@@ -48,10 +56,8 @@ Answer GreedySolver::solve(TimePoint /*end_time*/) {
             if (h == 0) {
                 return true;
             }
-
             uint32_t com_x = x + length / 2;
             uint32_t com_y = y + width / 2;
-
             uint32_t h_at_com = height_handler.get_h(com_x, com_y, com_x, com_y);
             return h_at_com == h;
         };
@@ -80,7 +86,6 @@ Answer GreedySolver::solve(TimePoint /*end_time*/) {
                         if (!is_center_of_mass_supported(x, y, ab.length, ab.width)) {
                             continue;
                         }
-
                         uint32_t score = get_score(x, y, x + ab.length - 1, y + ab.width - 1, ab.height);
                         if (std::tie(score, x, y) < std::tie(best_score, best_x, best_y)) {
                             best_score = score;

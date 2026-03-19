@@ -43,3 +43,5 @@ target_link_libraries(test_height_handler Threads::Threads)
 
 add_executable(train_lns_solver_mutations src/train_lns_solver_mutations.cpp ${SOURCES})
 target_link_libraries(train_lns_solver_mutations Threads::Threads)
+
+add_executable(generate_multitests src/generate_multitests.cpp src/utils/assert.cpp)

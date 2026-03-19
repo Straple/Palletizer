@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <istream>
+#include <string>
 #include <vector>
 
 struct Box {
@@ -27,12 +28,15 @@ struct TestDataHeader {
     double score_percolation_mult = 1;
     double score_min_support_ratio_mult = 2;
     double score_center_of_mass_z_mult = 0;
+    double score_height_balance_mult = 0;
     uint32_t score_normalization_height = 2200;
 };
 
 struct TestData {
     TestDataHeader header;
     std::vector<Box> boxes;
+    // How many pallets this instance should be packed into (>= 1).
+    uint32_t pallet_count = 1;
 };
 
 struct BoxSize {
@@ -46,3 +50,9 @@ struct BoxSize {
 std::vector<BoxSize> get_available_boxes(const TestDataHeader &header, const Box &box);
 
 std::istream &operator>>(std::istream &input, TestData &test_data);
+
+// Concatenate boxes and pallet budgets; headers must match on packing parameters.
+TestData operator+(const TestData &a, const TestData &b);
+
+// Склеивает все *.csv из каталога (например multitests/3/) в один TestData через operator+.
+TestData load_multitest_combined(const std::string &directory_path);

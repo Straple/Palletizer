@@ -86,11 +86,6 @@ CenterOfMass calc_center_of_mass(const TestData &test_data, const Answer &answer
     CenterOfMass result;
     total_weight = 0;
 
-    if (answer.positions.empty()) {
-        return result;
-    }
-
-    // Создаём map SKU -> Box для быстрого поиска веса
     std::map<uint32_t, const Box *> sku_to_box;
     for (const auto &box: test_data.boxes) {
         sku_to_box[box.sku] = &box;
@@ -98,20 +93,21 @@ CenterOfMass calc_center_of_mass(const TestData &test_data, const Answer &answer
 
     double weighted_x = 0, weighted_y = 0, weighted_z = 0;
 
-    for (const auto &pos: answer.positions) {
-        auto it = sku_to_box.find(pos.sku);
-        ASSERT(it != sku_to_box.end(), "invalid SKU");
-        double weight = static_cast<double>(it->second->weight);
+    for (const auto &pallet: answer.pallets) {
+        for (const auto &pos: pallet) {
+            auto it = sku_to_box.find(pos.sku);
+            ASSERT(it != sku_to_box.end(), "invalid SKU");
+            double weight = static_cast<double>(it->second->weight);
 
-        // Центр коробки
-        double center_x = (pos.x + pos.X) / 2.0;
-        double center_y = (pos.y + pos.Y) / 2.0;
-        double center_z = (pos.z + pos.Z) / 2.0;
+            double center_x = (pos.x + pos.X) / 2.0;
+            double center_y = (pos.y + pos.Y) / 2.0;
+            double center_z = (pos.z + pos.Z) / 2.0;
 
-        weighted_x += center_x * weight;
-        weighted_y += center_y * weight;
-        weighted_z += center_z * weight;
-        total_weight += it->second->weight;
+            weighted_x += center_x * weight;
+            weighted_y += center_y * weight;
+            weighted_z += center_z * weight;
+            total_weight += it->second->weight;
+        }
     }
 
     if (total_weight > 0) {
@@ -126,7 +122,6 @@ CenterOfMass calc_center_of_mass(const TestData &test_data, const Answer &answer
 Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
     Metrics metrics;
 
-    metrics.boxes = answer.positions.size();
     metrics.length = test_data.header.length;
     metrics.width = test_data.header.width;
 
@@ -137,75 +132,108 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
         expected_boxes += test_data.boxes[i].quantity;
     }
 
-    for (auto pos: answer.positions) {
-        ASSERT(sku_to_index.contains(pos.sku), "sku does not contains");
-        auto box = test_data.boxes[sku_to_index.at(pos.sku)];
-        metrics.height = std::max(metrics.height, pos.Z);
-        metrics.boxes_volume += box.length * static_cast<uint64_t>(box.width) * box.height;
+    for (const auto &pallet: answer.pallets) {
+        metrics.boxes += static_cast<uint32_t>(pallet.size());
+        for (const auto &pos: pallet) {
+            ASSERT(sku_to_index.contains(pos.sku), "sku does not contains");
+            auto box = test_data.boxes[sku_to_index.at(pos.sku)];
+            metrics.boxes_volume += box.length * static_cast<uint64_t>(box.width) * box.height;
+        }
     }
-    metrics.pallet_volume = metrics.length * static_cast<uint64_t>(metrics.width) * metrics.height;
-    metrics.percolation = static_cast<double>(metrics.boxes_volume) / metrics.pallet_volume;
 
-    // Количество коробок, которые не удалось разместить
+    std::vector<uint32_t> pallet_max_z;
+    uint64_t total_bounding_volume = 0;
+    for (const auto &pallet: answer.pallets) {
+        uint32_t mz = 0;
+        for (const auto &pos: pallet) {
+            mz = std::max(mz, pos.Z);
+        }
+        pallet_max_z.push_back(mz);
+        total_bounding_volume += metrics.length * static_cast<uint64_t>(metrics.width) * mz;
+    }
+
+    for (uint32_t h: pallet_max_z) {
+        metrics.height = std::max(metrics.height, h);
+    }
+
+    if (pallet_max_z.size() >= 2) {
+        double sum = 0;
+        for (uint32_t h: pallet_max_z) {
+            sum += static_cast<double>(h);
+        }
+        double mean = sum / static_cast<double>(pallet_max_z.size());
+        double var = 0;
+        for (uint32_t h: pallet_max_z) {
+            double d = static_cast<double>(h) - mean;
+            var += d * d;
+        }
+        var /= static_cast<double>(pallet_max_z.size());
+        double std_dev = std::sqrt(var);
+        metrics.height_balance = (mean > 1e-9) ? std::max(0.0, 1.0 - std_dev / mean) : 0.0;
+    } else {
+        metrics.height_balance = 1.0;
+    }
+
+    metrics.pallet_volume = total_bounding_volume;
+    if (total_bounding_volume > 0) {
+        metrics.percolation = static_cast<double>(metrics.boxes_volume) / static_cast<double>(total_bounding_volume);
+    } else {
+        metrics.percolation = 0;
+    }
+
     metrics.unable_to_put_boxes = expected_boxes - metrics.boxes;
 
-    // === Расчёт метрик устойчивости ===
-
-    if (answer.positions.empty()) {
+    if (metrics.boxes == 0) {
         return metrics;
     }
 
-    // Рассчитываем центр тяжести
     metrics.center_of_mass = calc_center_of_mass(test_data, answer, metrics.total_weight);
 
-    // Рассчитываем относительный центр масс
     metrics.relative_center_of_mass.x = std::abs(metrics.center_of_mass.x / metrics.length - 0.5);
     metrics.relative_center_of_mass.y = std::abs(metrics.center_of_mass.y / metrics.width - 0.5);
-    metrics.relative_center_of_mass.z = metrics.center_of_mass.z / metrics.height;
-    
-    // Нормализованный центр масс Z для скора отжига
+    if (metrics.height > 0) {
+        metrics.relative_center_of_mass.z = metrics.center_of_mass.z / static_cast<double>(metrics.height);
+    }
     metrics.com_z_normalized = metrics.center_of_mass.z / test_data.header.score_normalization_height;
 
-    // Рассчитываем min_support_ratio с помощью HeightHandler
-    HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
+    for (const auto &pallet: answer.pallets) {
+        HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
 
-    for (const auto &pos: answer.positions) {
-        uint32_t width = pos.X - pos.x;
-        uint32_t length = pos.Y - pos.y;
-        uint64_t area = static_cast<uint64_t>(width) * length;
+        for (const auto &pos: pallet) {
+            uint32_t width = pos.X - pos.x;
+            uint32_t length = pos.Y - pos.y;
+            uint64_t area = static_cast<uint64_t>(width) * length;
 
-        metrics.total_area += area;
+            metrics.total_area += area;
 
-        uint64_t supported_cells = height_handler.get_area(pos.x, pos.y, pos.X - 1, pos.Y - 1);
+            uint64_t supported_cells = height_handler.get_area(pos.x, pos.y, pos.X - 1, pos.Y - 1);
 
-        metrics.supported_area += supported_cells;
+            metrics.supported_area += supported_cells;
 
-        // Расчёт метрик для отдельных коробок (только для коробок не на полу)
-        if (pos.z > 0) {
-            double box_support_ratio = (area > 0) ? static_cast<double>(supported_cells) / area : 0.0;
+            if (pos.z > 0) {
+                double box_support_ratio = (area > 0) ? static_cast<double>(supported_cells) / area : 0.0;
+                metrics.min_support_ratio = std::min(metrics.min_support_ratio, box_support_ratio);
+            }
 
-            // Обновляем минимальный коэффициент опоры
-            metrics.min_support_ratio = std::min(metrics.min_support_ratio, box_support_ratio);
+            height_handler.add_rect(pos.x, pos.y, pos.X - 1, pos.Y - 1, pos.Z);
         }
-
-        // Добавляем коробку в HeightHandler для следующих итераций
-        height_handler.add_rect(pos.x, pos.y, pos.X - 1, pos.Y - 1, pos.Z);
     }
 
-    // validate collision boxes
-    for (uint32_t i = 0; i < answer.positions.size(); i++) {
-        for (uint32_t j = i + 1; j < answer.positions.size(); j++) {
-            auto pos1 = answer.positions[i];
-            auto pos2 = answer.positions[j];
+    for (const auto &pallet: answer.pallets) {
+        for (uint32_t i = 0; i < pallet.size(); i++) {
+            for (uint32_t j = i + 1; j < pallet.size(); j++) {
+                auto pos1 = pallet[i];
+                auto pos2 = pallet[j];
 
-            auto is_intersect = [&](uint32_t x, uint32_t X, uint32_t y, uint32_t Y) {
-                return !(Y <= x || X <= y);
-            };
+                auto is_intersect = [&](uint32_t x, uint32_t X, uint32_t y, uint32_t Y) {
+                    return !(Y <= x || X <= y);
+                };
 
-            ASSERT(!(is_intersect(pos1.x, pos1.X, pos2.x, pos2.X) &&
-                     is_intersect(pos1.y, pos1.Y, pos2.y, pos2.Y) &&
-                     is_intersect(pos1.z, pos1.Z, pos2.z, pos2.Z)),
-                   "boxes intersects");
+                ASSERT(!(is_intersect(pos1.x, pos1.X, pos2.x, pos2.X) &&
+                         is_intersect(pos1.y, pos1.Y, pos2.y, pos2.Y) &&
+                         is_intersect(pos1.z, pos1.Z, pos2.z, pos2.Z)),
+                       "boxes intersects");
+            }
         }
     }
 

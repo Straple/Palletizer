@@ -5,6 +5,17 @@
 * 60 тест очень плохо упакован
 * 270 тест очень странно упакован для min_support_ratio
 
+### Справочник по алгоритмам и статьям
+
+Подробная таблица: какой солвер что делает, какие классические методы из литературы соответствуют, ключи BibTeX из `papers_general/pallete.bib` — в **[papers_general/ALGORITHMS.md](papers_general/ALGORITHMS.md)**. Обзор источников также в `papers_general/3-Obzor.tex`.
+
+### Multi-pallet / multitests
+* В `TestData` поле `pallet_count` задаёт число паллет; ответ `Answer` хранит `pallets[p]` — список коробок на каждой паллете. CSV ответа: колонка `Pallet` (индекс с нуля), затем `SKU,x,y,z,X,Y,Z`.
+* Склейка сцен: `TestData operator+(a, b)` объединяет коробки и суммирует `pallet_count`; заголовки упаковки должны совпадать.
+* Каталоги `multitests/X/*.csv`: в папке `X` лежат копии файлов из `tests/` с теми же именами (`3.csv`, `7.csv`, …). Загрузка: `load_multitest_combined("multitests/3")` — файлы сортируются по **числовому** id, затем склеиваются через `+`.
+* Генератор: `bin/generate_multitests [--seed N] [--tests dir] [--out dir]` создаёт для каждого id теста из `tests/` подпапку в `multitests/` со случайным набором исходных CSV (от 2 до 6 штук).
+* Метрика `height_balance` ∈ [0,1]: чем ближе высоты паллет к друг другу, тем выше. В скоре LNSSolver/Genetic: `score_height_balance_mult * height_balance`.
+
 ### Структуры
 * Box: хранит информацию о коробках: SKU (уникальный идентификатор), quantity (количество коробок), length (длина коробки), width (ширина коробки), height (высота коробки), weight (вес коробки), strength (сила коробки), aisle, caustic
 * TestDataHeader: хранит length и width паллеты, а также можно ли поворачивать коробки и итоговое количество поворотов

@@ -4,6 +4,12 @@
 #include <utils/tools.hpp>
 
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
+#include <string>
+#include <vector>
+
+namespace fs = std::filesystem;
 
 std::vector<BoxSize> get_available_boxes(const TestDataHeader &header, const Box &box) {
     std::vector<BoxSize> result;
@@ -55,4 +61,52 @@ std::istream &operator>>(std::istream &input, TestData &test_data) {
         return get_area(lhs) > get_area(rhs);
     });
     return input;
+}
+
+static bool headers_packing_equal(const TestDataHeader &a, const TestDataHeader &b) {
+    return a.length == b.length && a.width == b.width && a.can_swap_length_width == b.can_swap_length_width &&
+           a.can_swap_width_height == b.can_swap_width_height && a.available_rotations == b.available_rotations;
+}
+
+TestData operator+(const TestData &a, const TestData &b) {
+    ASSERT(headers_packing_equal(a.header, b.header), "TestData+: incompatible headers");
+    TestData c;
+    c.header = a.header;
+    c.boxes = a.boxes;
+    c.boxes.insert(c.boxes.end(), b.boxes.begin(), b.boxes.end());
+    c.pallet_count = a.pallet_count + b.pallet_count;
+    return c;
+}
+
+TestData load_multitest_combined(const std::string &directory_path) {
+    namespace fs = std::filesystem;
+    std::vector<fs::path> files;
+    ASSERT(fs::is_directory(directory_path), "multitest: not a directory");
+    for (const auto &entry: fs::directory_iterator(directory_path)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".csv") {
+            files.push_back(entry.path());
+        }
+    }
+    ASSERT(!files.empty(), "multitest: no csv files");
+    std::sort(files.begin(), files.end(), [](const fs::path &a, const fs::path &b) {
+        uint32_t na = static_cast<uint32_t>(std::stoul(a.stem().string()));
+        uint32_t nb = static_cast<uint32_t>(std::stoul(b.stem().string()));
+        return na < nb;
+    });
+
+    TestData combined;
+    bool first = true;
+    for (const auto &path: files) {
+        std::ifstream input(path);
+        ASSERT(input, "multitest: cannot open file");
+        TestData part;
+        input >> part;
+        if (first) {
+            combined = std::move(part);
+            first = false;
+        } else {
+            combined = combined + part;
+        }
+    }
+    return combined;
 }

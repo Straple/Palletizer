@@ -2,7 +2,6 @@
 #include <solvers/greedy/greedy_solver.hpp>
 #include <solvers/lns/genetic_solver.hpp>
 #include <solvers/lns/lns_solver.hpp>
-#include <solvers/lns/lns_solver2.hpp>
 #include <solvers/solver.hpp>
 #include <utils/assert.hpp>
 #include <utils/tools.hpp>
@@ -340,7 +339,7 @@ void launch_solvers(const std::string &algorithm_name) {
 }
 
 int main() {
-    launch_solvers<LNSSolver2>("LNSSolver2");
+    launch_solvers<LNSSolver>("LNSSolver");
     return 0;
 
     Metrics m = launch_one_solver<LNSSolver>(228);
