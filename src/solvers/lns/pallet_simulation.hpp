@@ -17,7 +17,6 @@ struct MutableParams {
     std::vector<uint32_t> weights = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100};
 };
 
-// Декодированное решение: геометрия (answer) + агрегированные и по-паллетные метрики (в т.ч. опоры в metrics).
 struct Pallet {
     Answer answer;
     Metrics metrics;
@@ -29,7 +28,6 @@ struct Pallet {
     std::pair<uint32_t, uint32_t> flat_to_pallet_local(uint32_t flat) const;
 };
 
-// Кодировка (order, support_threshold) + кэш симуляции и инкрементальный пересчёт паллет.
 class GenomHandler {
 public:
     explicit GenomHandler(const TestData &test_data);
@@ -41,7 +39,6 @@ public:
     [[nodiscard]] const Pallet &pallet() const { return pallet_; }
     [[nodiscard]] Pallet pallet_copy() const { return pallet_; }
 
-    // pallet_dirty: если не nullptr, размер order.size(); помечаются паллеты для пересчёта.
     void mutate(Randomizer &rnd, const Pallet &last_pallet, const MutableParams &mp,
                 std::vector<bool> *pallet_dirty = nullptr);
 

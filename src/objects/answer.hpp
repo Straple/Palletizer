@@ -15,7 +15,7 @@ struct Position {
 };
 
 struct Answer {
-    // One vector of placements per physical pallet (same XY frame per pallet).
+    // Для каждой физической паллеты - список размещённых коробок
     std::vector<std::vector<Position>> pallets;
 };
 

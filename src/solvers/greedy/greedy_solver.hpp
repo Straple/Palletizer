@@ -3,8 +3,6 @@
 #include <solvers/solver.hpp>
 
 class GreedySolver : public Solver {
-protected:
-
 public:
 
     explicit GreedySolver(TestData test_data);

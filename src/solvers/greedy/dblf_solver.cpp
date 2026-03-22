@@ -6,10 +6,10 @@
 #include <tuple>
 #include <vector>
 
-DblfSolver::DblfSolver(TestData test_data) : Solver(std::move(test_data)) {
+DBLFSolver::DBLFSolver(TestData test_data) : Solver(std::move(test_data)) {
 }
 
-Answer DblfSolver::solve(TimePoint /*end_time*/) {
+Answer DBLFSolver::solve(TimePoint /*end_time*/) {
     Answer answer;
     const uint32_t pc = test_data.pallet_count;
     ASSERT(pc >= 1, "pallet_count");
