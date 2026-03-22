@@ -33,7 +33,7 @@
  * height_balance_min,height_balance_ci_low,height_balance_avg,height_balance_ci_high,height_balance_max
  */
 
-constexpr uint32_t TIMELIMIT = 500;
+constexpr uint32_t TIMELIMIT = 60'000;
 
 // Структура для агрегированной статистики с доверительным интервалом
 struct AggregatedStats {
@@ -625,8 +625,8 @@ void launch_solvers(const std::string &algorithm_name) {
 }
 
 int main() {
-    launch_solvers<LNSSolver>("LNSSolver");
-    launch_multitests_benchmark<LNSSolver>("LNSSolver");
+    launch_solvers<GeneticSolver>("GeneticSolver");
+    launch_multitests_benchmark<GeneticSolver>("GeneticSolver");
     return 0;
 }
 

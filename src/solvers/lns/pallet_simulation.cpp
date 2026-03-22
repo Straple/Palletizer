@@ -161,7 +161,7 @@ namespace {
                     }
 
                     double support = calc_support_ratio(x, y, rotated_box.length, rotated_box.width);
-                    if (support < support_threshold) {
+                    if (require_center_of_mass_support && support < support_threshold) {
                         continue;
                     }
 
@@ -226,6 +226,9 @@ namespace {
             if (auto r = find_placement(sequence[i], false)) {
                 apply(i, r->first);
                 ratio_slot[i] = r->second;
+            }
+            else{
+                ASSERT(false, "pizda");
             }
         }
 
