@@ -121,13 +121,13 @@ CenterOfMass calc_center_of_mass(const TestData &test_data, const Answer &answer
 
 Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
     Metrics metrics;
+    PalletMetrics &t = metrics.total;
 
     const uint32_t n_pallets = static_cast<uint32_t>(answer.pallets.size());
     metrics.pallet_metrics.assign(n_pallets, PalletMetrics{});
-    metrics.box_footprint_support_ratios.clear();
 
-    metrics.length = test_data.header.length;
-    metrics.width = test_data.header.width;
+    t.length = test_data.header.length;
+    t.width = test_data.header.width;
 
     uint32_t expected_boxes = 0;
     std::unordered_map<uint32_t, uint32_t> sku_to_index;
@@ -142,8 +142,10 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
     for (uint32_t pi = 0; pi < n_pallets; pi++) {
         PalletMetrics &pm = metrics.pallet_metrics[pi];
         const auto &pallet = answer.pallets[pi];
+        pm.length = t.length;
+        pm.width = t.width;
         pm.boxes = static_cast<uint32_t>(pallet.size());
-        metrics.boxes += pm.boxes;
+        t.boxes += pm.boxes;
 
         uint32_t mz = 0;
         for (const auto &pos: pallet) {
@@ -151,17 +153,20 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
             const auto &box = test_data.boxes[sku_to_index.at(pos.sku)];
             uint64_t vol = box.length * static_cast<uint64_t>(box.width) * box.height;
             pm.boxes_volume += vol;
-            metrics.boxes_volume += vol;
+            t.boxes_volume += vol;
             mz = std::max(mz, pos.Z);
         }
         pm.height = mz;
         pallet_max_z.push_back(mz);
-        pm.pallet_volume = metrics.length * static_cast<uint64_t>(metrics.width) * mz;
-        metrics.pallet_volume += pm.pallet_volume;
+        pm.pallet_volume = t.length * static_cast<uint64_t>(t.width) * mz;
+        t.pallet_volume += pm.pallet_volume;
+        if (pm.pallet_volume > 0) {
+            pm.percolation = static_cast<double>(pm.boxes_volume) / static_cast<double>(pm.pallet_volume);
+        }
     }
 
     for (uint32_t h: pallet_max_z) {
-        metrics.height = std::max(metrics.height, h);
+        t.height = std::max(t.height, h);
     }
 
     if (pallet_max_z.size() >= 2) {
@@ -182,30 +187,29 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
         metrics.height_balance = 1.0;
     }
 
-    if (metrics.pallet_volume > 0) {
-        metrics.percolation = static_cast<double>(metrics.boxes_volume) / static_cast<double>(metrics.pallet_volume);
+    if (t.pallet_volume > 0) {
+        t.percolation = static_cast<double>(t.boxes_volume) / static_cast<double>(t.pallet_volume);
     } else {
-        metrics.percolation = 0;
+        t.percolation = 0;
     }
 
-    metrics.unable_to_put_boxes = expected_boxes - metrics.boxes;
+    t.unable_to_put_boxes = expected_boxes - t.boxes;
 
-    if (metrics.boxes == 0) {
+    if (t.boxes == 0) {
         return metrics;
     }
 
-    metrics.center_of_mass = calc_center_of_mass(test_data, answer, metrics.total_weight);
+    t.center_of_mass = calc_center_of_mass(test_data, answer, t.total_weight);
 
-    metrics.relative_center_of_mass.x = std::abs(metrics.center_of_mass.x / metrics.length - 0.5);
-    metrics.relative_center_of_mass.y = std::abs(metrics.center_of_mass.y / metrics.width - 0.5);
-    if (metrics.height > 0) {
-        metrics.relative_center_of_mass.z = metrics.center_of_mass.z / static_cast<double>(metrics.height);
+    t.relative_center_of_mass.x = std::abs(t.center_of_mass.x / t.length - 0.5);
+    t.relative_center_of_mass.y = std::abs(t.center_of_mass.y / t.width - 0.5);
+    if (t.height > 0) {
+        t.relative_center_of_mass.z = t.center_of_mass.z / static_cast<double>(t.height);
     }
-    metrics.com_z_normalized = metrics.center_of_mass.z / test_data.header.score_normalization_height;
 
-    metrics.min_support_ratio = 1.0;
-    metrics.supported_area = 0;
-    metrics.total_area = 0;
+    t.min_support_ratio = 1.0;
+    t.supported_area = 0;
+    t.total_area = 0;
 
     std::map<uint32_t, const Box *> sku_to_box;
     for (const auto &box: test_data.boxes) {
@@ -251,9 +255,9 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
             pallet_weight += it->second->weight;
         }
 
-        metrics.total_area += pm.total_area;
-        metrics.supported_area += pm.supported_area;
-        metrics.min_support_ratio = std::min(metrics.min_support_ratio, pm.min_support_ratio);
+        t.total_area += pm.total_area;
+        t.supported_area += pm.supported_area;
+        t.min_support_ratio = std::min(t.min_support_ratio, pm.min_support_ratio);
 
         if (pallet_weight > 0) {
             double pw = static_cast<double>(pallet_weight);
@@ -263,8 +267,8 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
         }
         pm.total_weight = pallet_weight;
 
-        pm.relative_center_of_mass.x = std::abs(pm.center_of_mass.x / metrics.length - 0.5);
-        pm.relative_center_of_mass.y = std::abs(pm.center_of_mass.y / metrics.width - 0.5);
+        pm.relative_center_of_mass.x = std::abs(pm.center_of_mass.x / t.length - 0.5);
+        pm.relative_center_of_mass.y = std::abs(pm.center_of_mass.y / t.width - 0.5);
         if (pm.height > 0) {
             pm.relative_center_of_mass.z = pm.center_of_mass.z / static_cast<double>(pm.height);
         }

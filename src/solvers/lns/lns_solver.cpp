@@ -37,7 +37,7 @@ Answer LNSSolver::solve(TimePoint end_time) {
             best = std::move(trial);
         }
     }
-    ASSERT(best.pallet().metrics.unable_to_put_boxes == 0,
-           "unable to put some boxes: " + std::to_string(best.pallet().metrics.unable_to_put_boxes));
+    ASSERT(best.pallet().metrics.total.unable_to_put_boxes == 0,
+           "unable to put some boxes: " + std::to_string(best.pallet().metrics.total.unable_to_put_boxes));
     return best.pallet().answer;
 }

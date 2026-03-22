@@ -60,9 +60,9 @@ double evaluate_params(const std::vector<TestData> &test_data_list,
         Metrics metrics = calc_metrics(test_data, answer);
         const auto &header = test_data.header;
         double score = 0;
-        score += header.score_percolation_mult * metrics.percolation;
-        score += header.score_min_support_ratio_mult * metrics.min_support_ratio;
-        score += header.score_center_of_mass_z_mult * (1 - metrics.com_z_normalized);
+        score += header.score_percolation_mult * metrics.total.percolation;
+        score += header.score_min_support_ratio_mult * metrics.total.min_support_ratio;
+        score += header.score_center_of_mass_z_mult * (1 - metrics.total.relative_center_of_mass.z);
         score += header.score_height_balance_mult * metrics.height_balance;
         total_score += score;
     }

@@ -8,27 +8,30 @@
 #include <tuple>
 
 double Pallet::get_score(const TestDataHeader &header) const {
-    if (metrics.unable_to_put_boxes) {
+    if (metrics.total.unable_to_put_boxes) {
         return -1e9;
     }
     double score = 0;
-    score += header.score_percolation_mult * metrics.percolation;
-    score += header.score_min_support_ratio_mult * metrics.min_support_ratio;
-    score += header.score_center_of_mass_z_mult * (1 - metrics.com_z_normalized);
+    score += header.score_percolation_mult * metrics.total.percolation;
+    score += header.score_min_support_ratio_mult * metrics.total.min_support_ratio;
+    score += header.score_center_of_mass_z_mult * (1 - metrics.total.relative_center_of_mass.z);
     score += header.score_height_balance_mult * metrics.height_balance;
     return score;
 }
 
 uint32_t Pallet::get_worst_flat_idx() const {
-    if (metrics.box_footprint_support_ratios.empty()) {
-        return 0;
-    }
+    uint32_t flat = 0;
     uint32_t worst_idx = 0;
-    double worst_support = metrics.box_footprint_support_ratios[0];
-    for (uint32_t i = 1; i < metrics.box_footprint_support_ratios.size(); i++) {
-        if (metrics.box_footprint_support_ratios[i] < worst_support) {
-            worst_support = metrics.box_footprint_support_ratios[i];
-            worst_idx = i;
+    double worst_support = 1.0;
+    bool any = false;
+    for (const auto &pm: metrics.pallet_metrics) {
+        for (double v: pm.box_support_ratio) {
+            if (!any || v < worst_support) {
+                worst_support = v;
+                worst_idx = flat;
+                any = true;
+            }
+            ++flat;
         }
     }
     return worst_idx;
@@ -75,9 +78,9 @@ namespace {
     }
 
     void simulate_one_pallet(const TestData &test_data, double support_threshold, const std::vector<BoxMeta> &sequence,
-                             std::vector<Position> &out_positions, std::vector<double> &out_support) {
+                             std::vector<Position> &out_positions, std::vector<double> &out_box_support_ratio) {
         out_positions.clear();
-        out_support.clear();
+        out_box_support_ratio.clear();
         HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
 
         auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
@@ -172,12 +175,12 @@ namespace {
             }
 
             if (best_score > 1e100) {
-                out_support.push_back(0);
+                out_box_support_ratio.push_back(0);
                 return false;
             }
 
             double best_support = calc_support_ratio(best_x, best_y, best_length, best_width);
-            out_support.push_back(best_support);
+            out_box_support_ratio.push_back(best_support);
 
             uint32_t h = height_handler.get_h(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1);
 
@@ -209,8 +212,6 @@ GenomHandler::GenomHandler(const TestData &test_data) : test_data_(&test_data) {
     order.assign(pc, {});
     pallet_.answer.pallets.assign(pc, {});
     pallet_.metrics.pallet_metrics.assign(pc, PalletMetrics{});
-    pallet_.metrics.box_footprint_support_ratios.clear();
-
     std::vector<BoxMeta> flat;
     for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
         for (uint32_t q = 0; q < test_data.boxes[i].quantity; q++) {
@@ -501,25 +502,19 @@ void GenomHandler::run_single_pallet(uint32_t pallet_idx) {
     ASSERT(pallet_idx < test_data_->pallet_count, "pallet_idx");
     ASSERT(pallet_idx < order.size(), "order");
     simulate_one_pallet(*test_data_, support_threshold, order[pallet_idx], pallet_.answer.pallets[pallet_idx],
-                        pallet_.metrics.pallet_metrics[pallet_idx].footprint_support_ratios);
+                        pallet_.metrics.pallet_metrics[pallet_idx].box_support_ratio);
 }
 
 void GenomHandler::flatten_support_and_metrics() {
     std::vector<std::vector<double>> fp_saved;
     fp_saved.reserve(pallet_.metrics.pallet_metrics.size());
     for (auto &pm: pallet_.metrics.pallet_metrics) {
-        fp_saved.push_back(std::move(pm.footprint_support_ratios));
+        fp_saved.push_back(std::move(pm.box_support_ratio));
     }
     Metrics agg = calc_metrics(*test_data_, pallet_.answer);
     ASSERT(agg.pallet_metrics.size() == fp_saved.size(), "pallet_metrics size");
     for (size_t p = 0; p < fp_saved.size(); ++p) {
-        agg.pallet_metrics[p].footprint_support_ratios = std::move(fp_saved[p]);
-    }
-    agg.box_footprint_support_ratios.clear();
-    for (const auto &pm: agg.pallet_metrics) {
-        for (double v: pm.footprint_support_ratios) {
-            agg.box_footprint_support_ratios.push_back(v);
-        }
+        agg.pallet_metrics[p].box_support_ratio = std::move(fp_saved[p]);
     }
     pallet_.metrics = std::move(agg);
 }
@@ -529,7 +524,6 @@ void GenomHandler::rebuild_all() {
     ASSERT(order.size() == pc, "order/pallet_count mismatch");
     pallet_.answer.pallets.assign(pc, {});
     pallet_.metrics.pallet_metrics.assign(pc, PalletMetrics{});
-    pallet_.metrics.box_footprint_support_ratios.clear();
     for (uint32_t p = 0; p < pc; ++p) {
         run_single_pallet(p);
     }

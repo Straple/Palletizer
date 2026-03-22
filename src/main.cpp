@@ -243,25 +243,25 @@ void launch_multitests_benchmark(const std::string &algorithm_name, const std::s
             {
                 std::unique_lock locker(mutex);
                 sum_time_per_test += time_ms;
-                percolation_stats.add(metrics.percolation);
-                boxes_stats.add(metrics.boxes);
-                height_stats.add(metrics.height);
+                percolation_stats.add(metrics.total.percolation);
+                boxes_stats.add(metrics.total.boxes);
+                height_stats.add(metrics.total.height);
                 height_balance_stats.add(metrics.height_balance);
                 pallets_stats.add(metrics.pallets_computed);
-                min_support_ratio_stats.add(metrics.min_support_ratio);
-                com_x_stats.add(metrics.center_of_mass.x);
-                com_y_stats.add(metrics.center_of_mass.y);
-                com_z_stats.add(metrics.center_of_mass.z);
-                com_x_rel_stats.add(metrics.relative_center_of_mass.x);
-                com_y_rel_stats.add(metrics.relative_center_of_mass.y);
-                com_z_rel_stats.add(metrics.relative_center_of_mass.z);
+                min_support_ratio_stats.add(metrics.total.min_support_ratio);
+                com_x_stats.add(metrics.total.center_of_mass.x);
+                com_y_stats.add(metrics.total.center_of_mass.y);
+                com_z_stats.add(metrics.total.center_of_mass.z);
+                com_x_rel_stats.add(metrics.total.relative_center_of_mass.x);
+                com_y_rel_stats.add(metrics.total.relative_center_of_mass.y);
+                com_z_rel_stats.add(metrics.total.relative_center_of_mass.z);
 
                 std::cout << "  Multitest " << std::setw(4) << mid
-                          << ": percolation=" << std::fixed << std::setprecision(4) << metrics.percolation
+                          << ": percolation=" << std::fixed << std::setprecision(4) << metrics.total.percolation
                           << ", height_balance=" << std::setprecision(3) << metrics.height_balance
-                          << ", boxes=" << std::setw(4) << metrics.boxes
-                          << ", height=" << std::setw(5) << metrics.height
-                          << ", min_support_ratio=" << std::setprecision(3) << metrics.min_support_ratio
+                          << ", boxes=" << std::setw(4) << metrics.total.boxes
+                          << ", height=" << std::setw(5) << metrics.total.height
+                          << ", min_support_ratio=" << std::setprecision(3) << metrics.total.min_support_ratio
                           << " [" << done << "/" << n << "]\n";
             }
         }
@@ -277,11 +277,16 @@ void launch_multitests_benchmark(const std::string &algorithm_name, const std::s
     for (size_t idx = 0; idx < n; idx++) {
         auto &m = multitests_metrics[idx];
         int mid = multitest_ids[idx];
-        metrics_output << mid << ',' << m.boxes << ',' << m.length << ',' << m.width << ',' << m.height << ','
-                       << m.height_balance << ',' << m.boxes_volume << ',' << m.pallet_volume << ',' << m.percolation
-                       << ',' << m.min_support_ratio << ',' << m.supported_area << ',' << m.total_area << ','
-                       << m.center_of_mass.x << ',' << m.center_of_mass.y << ',' << m.center_of_mass.z << ','
-                       << m.total_weight << ',' << m.relative_center_of_mass.z << ',' << m.pallets_computed << '\n';
+        metrics_output << mid << ',' << m.total.boxes << ',' << m.total.length << ',' << m.total.width << ','
+                       << m.total.height << ','
+                       << m.height_balance << ',' << m.total.boxes_volume << ',' << m.total.pallet_volume << ','
+                       << m.total.percolation
+                       << ',' << m.total.min_support_ratio << ',' << m.total.supported_area << ',' << m.total.total_area
+                       << ','
+                       << m.total.center_of_mass.x << ',' << m.total.center_of_mass.y << ',' << m.total.center_of_mass.z
+                       << ','
+                       << m.total.total_weight << ',' << m.total.relative_center_of_mass.z << ',' << m.pallets_computed
+                       << '\n';
     }
 
     constexpr double CI_PERCENT = 90.0;
@@ -448,27 +453,27 @@ void launch_solvers(const std::string &algorithm_name) {
                 sum_time_per_test += time;
 
                 // Обновляем статистики
-                percolation_stats.add(metrics.percolation);
-                boxes_stats.add(metrics.boxes);
-                height_stats.add(metrics.height);
+                percolation_stats.add(metrics.total.percolation);
+                boxes_stats.add(metrics.total.boxes);
+                height_stats.add(metrics.total.height);
                 pallets_stats.add(metrics.pallets_computed);
-                min_support_ratio_stats.add(metrics.min_support_ratio);
+                min_support_ratio_stats.add(metrics.total.min_support_ratio);
 
                 // Center of mass
-                com_x_stats.add(metrics.center_of_mass.x);
-                com_y_stats.add(metrics.center_of_mass.y);
-                com_z_stats.add(metrics.center_of_mass.z);
+                com_x_stats.add(metrics.total.center_of_mass.x);
+                com_y_stats.add(metrics.total.center_of_mass.y);
+                com_z_stats.add(metrics.total.center_of_mass.z);
 
                 // Relative center of mass
-                com_x_rel_stats.add(metrics.relative_center_of_mass.x);
-                com_y_rel_stats.add(metrics.relative_center_of_mass.y);
-                com_z_rel_stats.add(metrics.relative_center_of_mass.z);
+                com_x_rel_stats.add(metrics.total.relative_center_of_mass.x);
+                com_y_rel_stats.add(metrics.total.relative_center_of_mass.y);
+                com_z_rel_stats.add(metrics.total.relative_center_of_mass.z);
 
                 std::cout << "  Test " << std::setw(3) << test
-                          << ": percolation=" << std::fixed << std::setprecision(4) << metrics.percolation
-                          << ", boxes=" << std::setw(3) << metrics.boxes
-                          << ", height=" << std::setw(5) << metrics.height
-                          << ", min_support_ratio=" << std::setprecision(3) << metrics.min_support_ratio
+                          << ": percolation=" << std::fixed << std::setprecision(4) << metrics.total.percolation
+                          << ", boxes=" << std::setw(3) << metrics.total.boxes
+                          << ", height=" << std::setw(5) << metrics.total.height
+                          << ", min_support_ratio=" << std::setprecision(3) << metrics.total.min_support_ratio
                           << " [" << done << "/" << tests.size() << "]\n";
             }
         }
@@ -484,17 +489,17 @@ void launch_solvers(const std::string &algorithm_name) {
     for (uint32_t test = 1; test < tests_metrics.size(); test++) {
         auto &m = tests_metrics[test];
 
-        metrics_output << test << ',' << m.boxes << ',' << m.length << ',' << m.width
-                       << ',' << m.height << ',' << m.boxes_volume << ',' << m.pallet_volume
-                       << ',' << m.percolation
-                       << ',' << m.min_support_ratio
-                       << ',' << m.supported_area
-                       << ',' << m.total_area
-                       << ',' << m.center_of_mass.x
-                       << ',' << m.center_of_mass.y
-                       << ',' << m.center_of_mass.z
-                       << ',' << m.total_weight
-                       << ',' << m.relative_center_of_mass.z
+        metrics_output << test << ',' << m.total.boxes << ',' << m.total.length << ',' << m.total.width
+                       << ',' << m.total.height << ',' << m.total.boxes_volume << ',' << m.total.pallet_volume
+                       << ',' << m.total.percolation
+                       << ',' << m.total.min_support_ratio
+                       << ',' << m.total.supported_area
+                       << ',' << m.total.total_area
+                       << ',' << m.total.center_of_mass.x
+                       << ',' << m.total.center_of_mass.y
+                       << ',' << m.total.center_of_mass.z
+                       << ',' << m.total.total_weight
+                       << ',' << m.total.relative_center_of_mass.z
                        << ',' << m.pallets_computed << '\n';
     }
 
@@ -604,10 +609,10 @@ int main() {
     return 0;
 
     Metrics m = launch_one_solver<LNSSolver>(228);
-    std::cout << "Height: " << m.height << std::endl;
-    std::cout << "Percolation: " << m.percolation << std::endl;
-    std::cout << "Center of mass Z: " << m.center_of_mass.z << std::endl;
-    std::cout << "min_support_ratio: " << m.min_support_ratio << std::endl;
+    std::cout << "Height: " << m.total.height << std::endl;
+    std::cout << "Percolation: " << m.total.percolation << std::endl;
+    std::cout << "Center of mass Z: " << m.total.center_of_mass.z << std::endl;
+    std::cout << "min_support_ratio: " << m.total.min_support_ratio << std::endl;
 }
 
 

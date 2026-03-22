@@ -71,7 +71,7 @@ Answer GeneticSolver::solve(TimePoint end_time) {
         }
     }
 
-    ASSERT(best.handler.pallet().metrics.unable_to_put_boxes == 0,
-           "unable to put some boxes: " + std::to_string(best.handler.pallet().metrics.unable_to_put_boxes));
+    ASSERT(best.handler.pallet().metrics.total.unable_to_put_boxes == 0,
+           "unable to put some boxes: " + std::to_string(best.handler.pallet().metrics.total.unable_to_put_boxes));
     return best.handler.pallet().answer;
 }

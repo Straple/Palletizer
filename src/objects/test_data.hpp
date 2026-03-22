@@ -18,7 +18,7 @@ struct Box {
 };
 
 struct TestDataHeader {
-    // TODO: or 1200x1000
+    // or 1200x1000
     uint32_t length = 1200;
     uint32_t width = 800;
     bool can_swap_length_width = true;
@@ -35,7 +35,7 @@ struct TestDataHeader {
 struct TestData {
     TestDataHeader header;
     std::vector<Box> boxes;
-    // How many pallets this instance should be packed into (>= 1).
+    // Сколько паллет использовать в этом тесте
     uint32_t pallet_count = 1;
 };
 
@@ -51,8 +51,9 @@ std::vector<BoxSize> get_available_boxes(const TestDataHeader &header, const Box
 
 std::istream &operator>>(std::istream &input, TestData &test_data);
 
-// Concatenate boxes and pallet budgets; headers must match on packing parameters.
+// Сложение тестов: объединение коробок и бюджетов паллет
+// заголовки должны совпадать по параметрам укладки.
 TestData operator+(const TestData &a, const TestData &b);
 
-// Склеивает все *.csv из каталога (например multitests/3/) в один TestData через operator+.
+// Читает все файлы с расширением csv из каталога (например multitests/3/) и склеивает через operator+.
 TestData load_multitest_combined(const std::string &directory_path);
