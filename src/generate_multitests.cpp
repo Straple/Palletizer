@@ -1,5 +1,6 @@
 #include <utils/assert.hpp>
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
