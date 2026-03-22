@@ -42,10 +42,16 @@ struct PalletMetrics {
     uint32_t boxes = 0;
     // Суммарный объём коробок
     uint64_t boxes_volume = 0;
+
+    uint32_t length = 0;
+    uint32_t width = 0;
+
     // Высота паллеты
     uint32_t height = 0;
     // Объем паллеты
     uint64_t pallet_volume = 0;
+    // boxes_volume / pallet_volume
+    double percolation = 0;
 
     // Сумма площадей опирающихся ячеек оснований
     double supported_area = 0;
@@ -61,56 +67,22 @@ struct PalletMetrics {
     // Суммарный вес коробок
     uint64_t total_weight = 0;
 
-    std::vector<double> footprint_support_ratios;
+    // Доля опоры нижней грани
+    std::vector<double> box_support_ratio;
+
+    // Ожидаемое число коробок минус размещённые
+    uint32_t unable_to_put_boxes = 0;
 };
 
 struct Metrics {
     // Показатели по каждой паллете
     std::vector<PalletMetrics> pallet_metrics;
-    // Склейка footprint_support_ratios по паллетам подряд; индекс как в мутациях LNS.
-    std::vector<double> box_footprint_support_ratios;
 
-    // Сводка по всем паллетам (согласована с суммами и минимумами по pallet_metrics).
-
-    // Всего размещённых коробок.
-    uint32_t boxes = 0;
-
-    // Габариты поддона из теста, мм (общие для всех паллет).
-    uint32_t length = 0;
-    uint32_t width = 0;
-
-    // Максимум из полей height по паллетам.
-    uint32_t height = 0;
-
-    // Суммарный объём коробок, мм в кубе.
-    uint64_t boxes_volume = 0;
-    // Сумма объёмов слотов паллет (сумма pallet_metrics.pallet_volume), знаменатель перколяции.
-    uint64_t pallet_volume = 0;
-
-    // Отношение boxes_volume к pallet_volume: насколько объём коробок заполняет суммарный объём под паллеты.
-    double percolation = 0;
+    PalletMetrics total;
 
     // Близость высот штабелей: 1 если все одинаковые; меньше при разбросе (среднее и СКО по высотам).
     double height_balance = 1.0;
 
-    // Сумма supported_area по паллетам.
-    double supported_area = 0;
-    // Сумма total_area по паллетам.
-    double total_area = 0;
-    // Минимум min_support_ratio по паллетам для коробок не на полу.
-    double min_support_ratio = 1.0;
-
-    // Центр масс всех размещённых коробок, мм.
-    CenterOfMass center_of_mass;
-    // Относительный центр масс: x,y к половине поддона; z к глобальному height
-    RelativeCenterOfMass relative_center_of_mass;
-    // z центра масс / score_normalization_height из заголовка; вклад в целевой скор отжига и ГА
-    double com_z_normalized = 0;
-    // Суммарный вес размещённых коробок
-    uint64_t total_weight = 0;
-
-    // Ожидаемое число коробок минус размещённые
-    uint32_t unable_to_put_boxes = 0;
     // Счётчик прогонов паллет у солвера; calc_metrics не трогает, задаётся снаружи
     uint64_t pallets_computed = 1;
 };
