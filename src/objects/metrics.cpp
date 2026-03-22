@@ -122,6 +122,10 @@ CenterOfMass calc_center_of_mass(const TestData &test_data, const Answer &answer
 Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
     Metrics metrics;
 
+    const uint32_t n_pallets = static_cast<uint32_t>(answer.pallets.size());
+    metrics.pallet_metrics.assign(n_pallets, PalletMetrics{});
+    metrics.box_footprint_support_ratios.clear();
+
     metrics.length = test_data.header.length;
     metrics.width = test_data.header.width;
 
@@ -132,24 +136,28 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
         expected_boxes += test_data.boxes[i].quantity;
     }
 
-    for (const auto &pallet: answer.pallets) {
-        metrics.boxes += static_cast<uint32_t>(pallet.size());
-        for (const auto &pos: pallet) {
-            ASSERT(sku_to_index.contains(pos.sku), "sku does not contains");
-            auto box = test_data.boxes[sku_to_index.at(pos.sku)];
-            metrics.boxes_volume += box.length * static_cast<uint64_t>(box.width) * box.height;
-        }
-    }
-
     std::vector<uint32_t> pallet_max_z;
-    uint64_t total_bounding_volume = 0;
-    for (const auto &pallet: answer.pallets) {
+    pallet_max_z.reserve(n_pallets);
+
+    for (uint32_t pi = 0; pi < n_pallets; pi++) {
+        PalletMetrics &pm = metrics.pallet_metrics[pi];
+        const auto &pallet = answer.pallets[pi];
+        pm.boxes = static_cast<uint32_t>(pallet.size());
+        metrics.boxes += pm.boxes;
+
         uint32_t mz = 0;
         for (const auto &pos: pallet) {
+            ASSERT(sku_to_index.contains(pos.sku), "sku does not contains");
+            const auto &box = test_data.boxes[sku_to_index.at(pos.sku)];
+            uint64_t vol = box.length * static_cast<uint64_t>(box.width) * box.height;
+            pm.boxes_volume += vol;
+            metrics.boxes_volume += vol;
             mz = std::max(mz, pos.Z);
         }
+        pm.height = mz;
         pallet_max_z.push_back(mz);
-        total_bounding_volume += metrics.length * static_cast<uint64_t>(metrics.width) * mz;
+        pm.pallet_volume = metrics.length * static_cast<uint64_t>(metrics.width) * mz;
+        metrics.pallet_volume += pm.pallet_volume;
     }
 
     for (uint32_t h: pallet_max_z) {
@@ -174,9 +182,8 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
         metrics.height_balance = 1.0;
     }
 
-    metrics.pallet_volume = total_bounding_volume;
-    if (total_bounding_volume > 0) {
-        metrics.percolation = static_cast<double>(metrics.boxes_volume) / static_cast<double>(total_bounding_volume);
+    if (metrics.pallet_volume > 0) {
+        metrics.percolation = static_cast<double>(metrics.boxes_volume) / static_cast<double>(metrics.pallet_volume);
     } else {
         metrics.percolation = 0;
     }
@@ -196,26 +203,70 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
     }
     metrics.com_z_normalized = metrics.center_of_mass.z / test_data.header.score_normalization_height;
 
-    for (const auto &pallet: answer.pallets) {
+    metrics.min_support_ratio = 1.0;
+    metrics.supported_area = 0;
+    metrics.total_area = 0;
+
+    std::map<uint32_t, const Box *> sku_to_box;
+    for (const auto &box: test_data.boxes) {
+        sku_to_box[box.sku] = &box;
+    }
+
+    for (uint32_t pi = 0; pi < n_pallets; pi++) {
+        PalletMetrics &pm = metrics.pallet_metrics[pi];
+        const auto &pallet = answer.pallets[pi];
         HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
 
-        for (const auto &pos: pallet) {
-            uint32_t width = pos.X - pos.x;
-            uint32_t length = pos.Y - pos.y;
-            uint64_t area = static_cast<uint64_t>(width) * length;
+        double weighted_x = 0;
+        double weighted_y = 0;
+        double weighted_z = 0;
+        uint64_t pallet_weight = 0;
 
-            metrics.total_area += area;
+        for (const auto &pos: pallet) {
+            uint32_t w = pos.X - pos.x;
+            uint32_t len = pos.Y - pos.y;
+            uint64_t area = static_cast<uint64_t>(w) * len;
+
+            pm.total_area += static_cast<double>(area);
 
             uint64_t supported_cells = height_handler.get_area(pos.x, pos.y, pos.X - 1, pos.Y - 1);
-
-            metrics.supported_area += supported_cells;
+            pm.supported_area += static_cast<double>(supported_cells);
 
             if (pos.z > 0) {
                 double box_support_ratio = (area > 0) ? static_cast<double>(supported_cells) / area : 0.0;
-                metrics.min_support_ratio = std::min(metrics.min_support_ratio, box_support_ratio);
+                pm.min_support_ratio = std::min(pm.min_support_ratio, box_support_ratio);
             }
 
             height_handler.add_rect(pos.x, pos.y, pos.X - 1, pos.Y - 1, pos.Z);
+
+            auto it = sku_to_box.find(pos.sku);
+            ASSERT(it != sku_to_box.end(), "invalid SKU");
+            double wt = static_cast<double>(it->second->weight);
+            double cx = (pos.x + pos.X) / 2.0;
+            double cy = (pos.y + pos.Y) / 2.0;
+            double cz = (pos.z + pos.Z) / 2.0;
+            weighted_x += cx * wt;
+            weighted_y += cy * wt;
+            weighted_z += cz * wt;
+            pallet_weight += it->second->weight;
+        }
+
+        metrics.total_area += pm.total_area;
+        metrics.supported_area += pm.supported_area;
+        metrics.min_support_ratio = std::min(metrics.min_support_ratio, pm.min_support_ratio);
+
+        if (pallet_weight > 0) {
+            double pw = static_cast<double>(pallet_weight);
+            pm.center_of_mass.x = weighted_x / pw;
+            pm.center_of_mass.y = weighted_y / pw;
+            pm.center_of_mass.z = weighted_z / pw;
+        }
+        pm.total_weight = pallet_weight;
+
+        pm.relative_center_of_mass.x = std::abs(pm.center_of_mass.x / metrics.length - 0.5);
+        pm.relative_center_of_mass.y = std::abs(pm.center_of_mass.y / metrics.width - 0.5);
+        if (pm.height > 0) {
+            pm.relative_center_of_mass.z = pm.center_of_mass.z / static_cast<double>(pm.height);
         }
     }
 
