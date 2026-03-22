@@ -23,6 +23,7 @@ struct Pallet {
 
     double get_score(const TestDataHeader &header) const;
 
+    // Index over all boxes (pallet-major order); UINT32_MAX if no support ratios.
     uint32_t get_worst_flat_idx() const;
 
     std::pair<uint32_t, uint32_t> flat_to_pallet_local(uint32_t flat) const;

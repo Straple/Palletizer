@@ -115,6 +115,6 @@ Answer GreedySolver::solve(TimePoint /*end_time*/) {
         }
     }
 
-    pallets_computed = 1;
+    pallets_computed = pc;
     return answer;
 }

@@ -5,12 +5,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
+#include <string>
 #include <tuple>
 
 double Pallet::get_score(const TestDataHeader &header) const {
-    if (metrics.total.unable_to_put_boxes) {
-        return -1e9;
-    }
     double score = 0;
     score += header.score_percolation_mult * metrics.total.percolation;
     score += header.score_min_support_ratio_mult * metrics.total.min_support_ratio;
@@ -34,6 +33,9 @@ uint32_t Pallet::get_worst_flat_idx() const {
             ++flat;
         }
     }
+    if (!any) {
+        return static_cast<uint32_t>(-1);
+    }
     return worst_idx;
 }
 
@@ -50,6 +52,11 @@ std::pair<uint32_t, uint32_t> Pallet::flat_to_pallet_local(uint32_t flat) const 
 }
 
 namespace {
+
+    struct SimulatedPallet {
+        std::vector<Position> positions;
+        std::vector<double> box_support_ratio;
+    };
 
     std::tuple<uint32_t, uint32_t, uint32_t> get_random_segment(Randomizer &rnd, std::vector<std::vector<BoxMeta>> &order) {
         if (order.empty()) {
@@ -77,10 +84,8 @@ namespace {
         return {0, 0, 0};
     }
 
-    void simulate_one_pallet(const TestData &test_data, double support_threshold, const std::vector<BoxMeta> &sequence,
-                             std::vector<Position> &out_positions, std::vector<double> &out_box_support_ratio) {
-        out_positions.clear();
-        out_box_support_ratio.clear();
+    SimulatedPallet simulate_one_pallet(const TestData &test_data, double support_threshold,
+                                        const std::vector<BoxMeta> &sequence) {
         HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
 
         auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
@@ -129,8 +134,10 @@ namespace {
                              dist_func(x + length - 1, y + width - 1)});
         };
 
-        auto set_box = [&](BoxMeta box_meta) -> bool {
-            auto box = test_data.boxes[box_meta.box_id];
+        // require_center_of_mass_support: true - как раньше; false - повторная попытка без проверки опоры ЦМ на ребре
+        auto find_placement = [&](BoxMeta box_meta, bool require_center_of_mass_support)
+                -> std::optional<std::pair<Position, double>> {
+            const auto &box = test_data.boxes[box_meta.box_id];
 
             double best_score = 1e300;
             uint32_t best_x = static_cast<uint32_t>(-1);
@@ -148,7 +155,8 @@ namespace {
 
                 auto dots = height_handler.get_dots(test_data.header, rotated_box);
                 for (auto [x, y]: dots) {
-                    if (!is_center_of_mass_supported(x, y, rotated_box.length, rotated_box.width)) {
+                    if (require_center_of_mass_support &&
+                        !is_center_of_mass_supported(x, y, rotated_box.length, rotated_box.width)) {
                         continue;
                     }
 
@@ -157,14 +165,16 @@ namespace {
                         continue;
                     }
 
-                    auto score =
+                    auto placement_score =
                             get_score(x, y, x + rotated_box.length - 1, y + rotated_box.width - 1, rotated_box.height);
 
-                    if (score < best_score ||
-                        (score == best_score &&
-                         get_position_dist(box_meta.position, x, y, rotated_box.length, rotated_box.width, rotated_box.height) <
-                                 get_position_dist(box_meta.position, best_x, best_y, best_length, best_width, best_height))) {
-                        best_score = score;
+                    if (placement_score < best_score ||
+                        (placement_score == best_score &&
+                         get_position_dist(box_meta.position, x, y, rotated_box.length, rotated_box.width,
+                                           rotated_box.height) <
+                                 get_position_dist(box_meta.position, best_x, best_y, best_length, best_width,
+                                                   best_height))) {
+                        best_score = placement_score;
                         best_x = x;
                         best_y = y;
                         best_length = rotated_box.length;
@@ -175,15 +185,11 @@ namespace {
             }
 
             if (best_score > 1e100) {
-                out_box_support_ratio.push_back(0);
-                return false;
+                return std::nullopt;
             }
 
             double best_support = calc_support_ratio(best_x, best_y, best_length, best_width);
-            out_box_support_ratio.push_back(best_support);
-
             uint32_t h = height_handler.get_h(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1);
-
             Position pos = {
                     box.sku,
                     best_x,
@@ -193,15 +199,42 @@ namespace {
                     best_y + best_width,
                     h + best_height,
             };
-            out_positions.push_back(pos);
-
-            height_handler.add_rect(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1, h + best_height);
-            return true;
+            return std::make_pair(pos, best_support);
         };
 
-        for (auto box_meta: sequence) {
-            set_box(box_meta);
+        const size_t n = sequence.size();
+        std::vector<bool> placed(n, false);
+        std::vector<Position> slot_pos(n);
+        std::vector<double> ratio_slot(n, 0.0);
+
+        auto apply = [&](size_t idx, const Position &pos) {
+            height_handler.add_rect(pos.x, pos.y, pos.X - 1, pos.Y - 1, pos.Z);
+            placed[idx] = true;
+            slot_pos[idx] = pos;
+        };
+
+        for (size_t i = 0; i < n; ++i) {
+            if (auto r = find_placement(sequence[i], true)) {
+                apply(i, r->first);
+                ratio_slot[i] = r->second;
+            }
         }
+        for (size_t i = 0; i < n; ++i) {
+            if (placed[i]) {
+                continue;
+            }
+            if (auto r = find_placement(sequence[i], false)) {
+                apply(i, r->first);
+                ratio_slot[i] = r->second;
+            }
+        }
+
+        for (size_t i = 0; i < n; ++i) {
+            ASSERT(placed[i],
+                   "simulate_one_pallet: box not placed after both passes, sequence index " + std::to_string(i));
+        }
+
+        return SimulatedPallet{std::move(slot_pos), std::move(ratio_slot)};
     }
 
 }// namespace
@@ -438,6 +471,9 @@ void GenomHandler::mutate_cluster_one_sku(Randomizer &rnd, std::vector<bool> *pa
 void GenomHandler::mutate_move_low_support_box_earlier(Randomizer &rnd, const Pallet &last_pallet,
                                                        std::vector<bool> *pallet_dirty) {
     uint32_t from_flat = last_pallet.get_worst_flat_idx();
+    if (from_flat == static_cast<uint32_t>(-1)) {
+        return;
+    }
     auto [from_p, from_i] = last_pallet.flat_to_pallet_local(from_flat);
     if (from_i == 0) {
         return;
@@ -501,8 +537,9 @@ void GenomHandler::mutate(Randomizer &rnd, const Pallet &last_pallet, const Muta
 void GenomHandler::run_single_pallet(uint32_t pallet_idx) {
     ASSERT(pallet_idx < test_data_->pallet_count, "pallet_idx");
     ASSERT(pallet_idx < order.size(), "order");
-    simulate_one_pallet(*test_data_, support_threshold, order[pallet_idx], pallet_.answer.pallets[pallet_idx],
-                        pallet_.metrics.pallet_metrics[pallet_idx].box_support_ratio);
+    auto sim = simulate_one_pallet(*test_data_, support_threshold, order[pallet_idx]);
+    pallet_.answer.pallets[pallet_idx] = std::move(sim.positions);
+    pallet_.metrics.pallet_metrics[pallet_idx].box_support_ratio = std::move(sim.box_support_ratio);
 }
 
 void GenomHandler::flatten_support_and_metrics() {

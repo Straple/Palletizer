@@ -69,9 +69,6 @@ struct PalletMetrics {
 
     // Доля опоры нижней грани
     std::vector<double> box_support_ratio;
-
-    // Ожидаемое число коробок минус размещённые
-    uint32_t unable_to_put_boxes = 0;
 };
 
 struct Metrics {

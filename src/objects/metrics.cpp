@@ -129,11 +129,9 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
     t.length = test_data.header.length;
     t.width = test_data.header.width;
 
-    uint32_t expected_boxes = 0;
     std::unordered_map<uint32_t, uint32_t> sku_to_index;
     for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
         sku_to_index[test_data.boxes[i].sku] = i;
-        expected_boxes += test_data.boxes[i].quantity;
     }
 
     std::vector<uint32_t> pallet_max_z;
@@ -149,7 +147,7 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
 
         uint32_t mz = 0;
         for (const auto &pos: pallet) {
-            ASSERT(sku_to_index.contains(pos.sku), "sku does not contains");
+            ASSERT(sku_to_index.contains(pos.sku), "sku not found in test data");
             const auto &box = test_data.boxes[sku_to_index.at(pos.sku)];
             uint64_t vol = box.length * static_cast<uint64_t>(box.width) * box.height;
             pm.boxes_volume += vol;
@@ -192,8 +190,6 @@ Metrics calc_metrics(const TestData &test_data, const Answer &answer) {
     } else {
         t.percolation = 0;
     }
-
-    t.unable_to_put_boxes = expected_boxes - t.boxes;
 
     if (t.boxes == 0) {
         return metrics;

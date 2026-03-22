@@ -16,20 +16,21 @@
 #include <iomanip>
 #include <iostream>
 #include <mutex>
-#include <numeric>
 
 /*
- * CSV формат для записи результатов запуска бенчмарка:
- * 
+ * CSV формат агрегированной строки бенчмарка (одинаковый для tests/ и multitests/,
+ * префикс строки: "one" или "multi"):
+ *
  * BENCHMARK_CSV_HEADER:
- * algorithm,timelimit_ms,avg_time_per_test_ms,
+ * pallets,algorithm,timelimit_ms,avg_time_per_test_ms,
  * pallet_length,pallet_width,score_normalization_height,available_rotations,
  * score_percolation_mult,score_min_support_ratio_mult,score_center_of_mass_z_mult,
  * pallets_computed_min,pallets_computed_ci_low,pallets_computed_avg,pallets_computed_ci_high,pallets_computed_max,
  * percolation_min,percolation_ci_low,percolation_avg,percolation_ci_high,percolation_max,
  * min_support_ratio_min,min_support_ratio_ci_low,min_support_ratio_avg,min_support_ratio_ci_high,min_support_ratio_max,
  * height_min,height_ci_low,height_avg,height_ci_high,height_max,
- * com_z_rel_min,com_z_rel_ci_low,com_z_rel_avg,com_z_rel_ci_high,com_z_rel_max
+ * com_z_rel_min,com_z_rel_ci_low,com_z_rel_avg,com_z_rel_ci_high,com_z_rel_max,
+ * height_balance_min,height_balance_ci_low,height_balance_avg,height_balance_ci_high,height_balance_max
  */
 
 constexpr uint32_t TIMELIMIT = 500;
@@ -88,6 +89,7 @@ Metrics launch_one_solver(uint32_t test) {
     SolverType solver(test_data);
     Answer answer = solver.solve(get_now() + Milliseconds(TIMELIMIT));
 
+    std::filesystem::create_directories("answers");
     std::ofstream output("answers/" + std::to_string(test) + ".csv");
     output << answer;
 
@@ -397,6 +399,7 @@ void launch_solvers(const std::string &algorithm_name) {
     AggregatedStats percolation_stats;
     AggregatedStats boxes_stats;
     AggregatedStats height_stats;
+    AggregatedStats height_balance_stats;
     AggregatedStats pallets_stats;
     AggregatedStats min_support_ratio_stats;
     AggregatedStats com_x_stats;
@@ -418,6 +421,11 @@ void launch_solvers(const std::string &algorithm_name) {
         }
     }
 
+    if (tests.empty()) {
+        std::cout << "\n[benchmark] No files found at tests/1.csv, tests/2.csv, ... Skipping.\n\n";
+        return;
+    }
+
     std::vector<std::atomic<bool>> visited(tests.size() + 1);
     std::mutex mutex;
     std::vector<Metrics> tests_metrics(tests.size() + 1);
@@ -433,7 +441,7 @@ void launch_solvers(const std::string &algorithm_name) {
 
     double sum_time_per_test = 0;
 
-    launch_threads(THREADS_NUM, [&](uint32_t thr) {
+    launch_threads(THREADS_NUM, [&](uint32_t /*thr*/) {
         for (uint32_t test = 1; test < visited.size(); test++) {
 
             bool expected = false;
@@ -457,6 +465,7 @@ void launch_solvers(const std::string &algorithm_name) {
                 percolation_stats.add(metrics.total.percolation);
                 boxes_stats.add(metrics.total.boxes);
                 height_stats.add(metrics.total.height);
+                height_balance_stats.add(metrics.height_balance);
                 pallets_stats.add(metrics.pallets_computed);
                 min_support_ratio_stats.add(metrics.total.min_support_ratio);
 
@@ -472,6 +481,7 @@ void launch_solvers(const std::string &algorithm_name) {
 
                 std::cout << "  Test " << std::setw(3) << test
                           << ": percolation=" << std::fixed << std::setprecision(4) << metrics.total.percolation
+                          << ", height_balance=" << std::setprecision(3) << metrics.height_balance
                           << ", boxes=" << std::setw(3) << metrics.total.boxes
                           << ", height=" << std::setw(5) << metrics.total.height
                           << ", min_support_ratio=" << std::setprecision(3) << metrics.total.min_support_ratio
@@ -481,8 +491,9 @@ void launch_solvers(const std::string &algorithm_name) {
     });
 
     // Сохраняем детальные метрики в CSV
+    std::filesystem::create_directories("answers");
     std::ofstream metrics_output("answers/metrics.csv");
-    metrics_output << "test,boxes_num,length,width,height,boxes_volume,pallet_volume,percolation,"
+    metrics_output << "test,boxes_num,length,width,height,height_balance,boxes_volume,pallet_volume,percolation,"
                    << "min_support_ratio,supported_area,total_area,"
                    << "center_of_mass_x,center_of_mass_y,center_of_mass_z,total_weight,"
                    << "center_of_mass_z_relative,pallets_computed" << std::endl;
@@ -491,7 +502,8 @@ void launch_solvers(const std::string &algorithm_name) {
         auto &m = tests_metrics[test];
 
         metrics_output << test << ',' << m.total.boxes << ',' << m.total.length << ',' << m.total.width
-                       << ',' << m.total.height << ',' << m.total.boxes_volume << ',' << m.total.pallet_volume
+                       << ',' << m.total.height << ',' << m.height_balance << ',' << m.total.boxes_volume << ','
+                       << m.total.pallet_volume
                        << ',' << m.total.percolation
                        << ',' << m.total.min_support_ratio
                        << ',' << m.total.supported_area
@@ -522,6 +534,7 @@ void launch_solvers(const std::string &algorithm_name) {
     std::cout << std::string(80, '-') << "\n";
 
     print_table_row("Percolation", percolation_stats, CI_PERCENT);
+    print_table_row("Height balance", height_balance_stats, CI_PERCENT);
     print_table_row_int("Boxes", boxes_stats, CI_PERCENT);
     print_table_row_int("Height", height_stats, CI_PERCENT);
     print_table_row("Min support ratio", min_support_ratio_stats, CI_PERCENT);
@@ -543,18 +556,19 @@ void launch_solvers(const std::string &algorithm_name) {
     std::cout << "\nTotal tests:      " << tests.size() << "\n";
     std::cout << "Total time:       " << timer << "\n";
     std::cout << "Avg time/test:    " << std::fixed << std::setprecision(1)
-              << timer.get_ms() / tests.size() << " ms\n";
+              << timer.get_ms() / static_cast<double>(tests.size()) << " ms\n";
 
     print_separator();
 
     // Выводим CSV строку для сбора результатов бенчмарка
     auto [perc_ci_low, perc_ci_high] = percolation_stats.confidence_interval(CI_PERCENT);
+    auto [hb_ci_low, hb_ci_high] = height_balance_stats.confidence_interval(CI_PERCENT);
     auto [msr_ci_low, msr_ci_high] = min_support_ratio_stats.confidence_interval(CI_PERCENT);
     auto [h_ci_low, h_ci_high] = height_stats.confidence_interval(CI_PERCENT);
     auto [comz_ci_low, comz_ci_high] = com_z_rel_stats.confidence_interval(CI_PERCENT);
     auto [pallets_stats_ci_low, pallets_stats_ci_high] = pallets_stats.confidence_interval(CI_PERCENT);
 
-    double avg_time_per_test_ms = sum_time_per_test / tests.size();
+    double avg_time_per_test_ms = sum_time_per_test / static_cast<double>(tests.size());
 
     std::cout << "\nBENCHMARK_CSV_LINE:\n";
     std::cout << "one" << ","
@@ -601,7 +615,12 @@ void launch_solvers(const std::string &algorithm_name) {
               << comz_ci_low << ","
               << com_z_rel_stats.avg() << ","
               << comz_ci_high << ","
-              << com_z_rel_stats.max_val()
+              << com_z_rel_stats.max_val() << ","
+              << height_balance_stats.min_val() << ","
+              << hb_ci_low << ","
+              << height_balance_stats.avg() << ","
+              << hb_ci_high << ","
+              << height_balance_stats.max_val()
               << "\n\n";
 }
 
@@ -609,12 +628,6 @@ int main() {
     launch_solvers<LNSSolver>("LNSSolver");
     launch_multitests_benchmark<LNSSolver>("LNSSolver");
     return 0;
-
-    Metrics m = launch_one_solver<LNSSolver>(228);
-    std::cout << "Height: " << m.total.height << std::endl;
-    std::cout << "Percolation: " << m.total.percolation << std::endl;
-    std::cout << "Center of mass Z: " << m.total.center_of_mass.z << std::endl;
-    std::cout << "min_support_ratio: " << m.total.min_support_ratio << std::endl;
 }
 
 

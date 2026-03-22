@@ -46,7 +46,7 @@ Answer GeneticSolver::solve(TimePoint end_time) {
 
     std::sort(population.begin(), population.end(), cmp);
     Evaluated best = population[0];
-    pallets_computed = kPop;
+    pallets_computed = static_cast<uint64_t>(kPop) * test_data.pallet_count;
 
     while (get_now() < end_time) {
         std::vector<Evaluated> next;
@@ -61,7 +61,7 @@ Answer GeneticSolver::solve(TimePoint end_time) {
             child.handler.rebuild_all();
             child.score = child.handler.pallet().get_score(test_data.header);
             next.push_back(std::move(child));
-            pallets_computed++;
+            pallets_computed += test_data.pallet_count;
         }
 
         population = std::move(next);
@@ -71,7 +71,5 @@ Answer GeneticSolver::solve(TimePoint end_time) {
         }
     }
 
-    ASSERT(best.handler.pallet().metrics.total.unable_to_put_boxes == 0,
-           "unable to put some boxes: " + std::to_string(best.handler.pallet().metrics.total.unable_to_put_boxes));
     return best.handler.pallet().answer;
 }
