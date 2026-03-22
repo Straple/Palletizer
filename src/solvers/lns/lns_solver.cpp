@@ -14,24 +14,30 @@ LNSSolver::LNSSolver(TestData test_data, MutableParams params)
 Answer LNSSolver::solve(TimePoint end_time) {
     Randomizer rnd;
 
-    SimulationParams params = make_initial_simulation_params(test_data);
-
-    pallets_computed = 1;
-    SimulationResult best_result = run_simulation(test_data, params);
+    GenomHandler best(test_data);
+    best.rebuild_all();
+    pallets_computed = test_data.pallet_count;
+    Pallet best_pallet = best.pallet_copy();
 
     while (get_now() < end_time) {
-        SimulationParams new_params = params;
-        new_params.mutate(rnd, test_data, best_result, mutable_params);
-
-        SimulationResult new_result = run_simulation(test_data, new_params);
-
-        if (new_result.get_score(test_data.header) + 1e-6 > best_result.get_score(test_data.header)) {
-            best_result = new_result;
-            params = new_params;
+        GenomHandler trial(best);
+        std::vector<bool> dirty;
+        trial.mutate(rnd, best_pallet, mutable_params, &dirty);
+        uint32_t n_dirty = 0;
+        for (bool b: dirty) {
+            if (b) {
+                ++n_dirty;
+            }
         }
-        pallets_computed++;
+        trial.recompute_with_mask(std::move(dirty));
+        pallets_computed += n_dirty;
+
+        if (trial.pallet().get_score(test_data.header) + 1e-6 > best_pallet.get_score(test_data.header)) {
+            best_pallet = trial.pallet_copy();
+            best = std::move(trial);
+        }
     }
-    ASSERT(best_result.metrics.unable_to_put_boxes == 0,
-           "unable to put some boxes: " + std::to_string(best_result.metrics.unable_to_put_boxes));
-    return best_result.answer;
+    ASSERT(best.pallet().metrics.unable_to_put_boxes == 0,
+           "unable to put some boxes: " + std::to_string(best.pallet().metrics.unable_to_put_boxes));
+    return best.pallet().answer;
 }

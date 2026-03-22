@@ -257,11 +257,11 @@ void launch_multitests_benchmark(const std::string &algorithm_name, const std::s
                 com_z_rel_stats.add(metrics.relative_center_of_mass.z);
 
                 std::cout << "  Multitest " << std::setw(4) << mid
-                          << ": perc=" << std::fixed << std::setprecision(4) << metrics.percolation
-                          << ", h_bal=" << std::setprecision(3) << metrics.height_balance
+                          << ": percolation=" << std::fixed << std::setprecision(4) << metrics.percolation
+                          << ", height_balance=" << std::setprecision(3) << metrics.height_balance
                           << ", boxes=" << std::setw(4) << metrics.boxes
                           << ", height=" << std::setw(5) << metrics.height
-                          << ", min_sup=" << std::setprecision(3) << metrics.min_support_ratio
+                          << ", min_support_ratio=" << std::setprecision(3) << metrics.min_support_ratio
                           << " [" << done << "/" << n << "]\n";
             }
         }
@@ -465,10 +465,10 @@ void launch_solvers(const std::string &algorithm_name) {
                 com_z_rel_stats.add(metrics.relative_center_of_mass.z);
 
                 std::cout << "  Test " << std::setw(3) << test
-                          << ": perc=" << std::fixed << std::setprecision(4) << metrics.percolation
+                          << ": percolation=" << std::fixed << std::setprecision(4) << metrics.percolation
                           << ", boxes=" << std::setw(3) << metrics.boxes
                           << ", height=" << std::setw(5) << metrics.height
-                          << ", min_support=" << std::setprecision(3) << metrics.min_support_ratio
+                          << ", min_support_ratio=" << std::setprecision(3) << metrics.min_support_ratio
                           << " [" << done << "/" << tests.size() << "]\n";
             }
         }

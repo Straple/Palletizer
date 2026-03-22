@@ -7,7 +7,7 @@
 #include <cmath>
 #include <tuple>
 
-double SimulationResult::get_score(const TestDataHeader &header) const {
+double Pallet::get_score(const TestDataHeader &header) const {
     if (metrics.unable_to_put_boxes) {
         return -1e9;
     }
@@ -19,22 +19,22 @@ double SimulationResult::get_score(const TestDataHeader &header) const {
     return score;
 }
 
-uint32_t SimulationResult::get_worst_flat_idx() const {
-    if (per_box_support.empty()) {
+uint32_t Pallet::get_worst_flat_idx() const {
+    if (metrics.box_footprint_support_ratios.empty()) {
         return 0;
     }
     uint32_t worst_idx = 0;
-    double worst_support = per_box_support[0];
-    for (uint32_t i = 1; i < per_box_support.size(); i++) {
-        if (per_box_support[i] < worst_support) {
-            worst_support = per_box_support[i];
+    double worst_support = metrics.box_footprint_support_ratios[0];
+    for (uint32_t i = 1; i < metrics.box_footprint_support_ratios.size(); i++) {
+        if (metrics.box_footprint_support_ratios[i] < worst_support) {
+            worst_support = metrics.box_footprint_support_ratios[i];
             worst_idx = i;
         }
     }
     return worst_idx;
 }
 
-std::pair<uint32_t, uint32_t> SimulationResult::flat_to_pallet_local(uint32_t flat) const {
+std::pair<uint32_t, uint32_t> Pallet::flat_to_pallet_local(uint32_t flat) const {
     uint32_t off = 0;
     for (uint32_t p = 0; p < answer.pallets.size(); ++p) {
         uint32_t sz = static_cast<uint32_t>(answer.pallets[p].size());
@@ -74,245 +74,10 @@ namespace {
         return {0, 0, 0};
     }
 
-}// namespace
-
-void SimulationParams::mutate(Randomizer &rnd, const TestData &test_data, const SimulationResult &last_result,
-                              const MutableParams &mp) {
-    uint32_t type = rnd.get(mp.weights);
-
-    switch (type) {
-        case 0: {
-            auto [p, l, r] = get_random_segment(rnd, order);
-            if (l >= r) {
-                break;
-            }
-            if (rnd.get_d() < 0.5) {
-                uint32_t new_position = rnd.get(0, 3);
-                for (uint32_t i = l; i < r; i++) {
-                    order[p][i].position = new_position;
-                }
-            } else {
-                int32_t new_rotation = rnd.get(-1, static_cast<int32_t>(test_data.header.available_rotations) - 1);
-                for (uint32_t i = l; i < r; i++) {
-                    order[p][i].rotation = static_cast<uint32_t>(new_rotation);
-                }
-            }
-            break;
-        }
-        case 1: {
-            auto [p, l, r] = get_random_segment(rnd, order);
-            if (l >= r) {
-                break;
-            }
-            for (uint32_t i = l; i < r; i++) {
-                if (rnd.get_d() < 0.5) {
-                    order[p][i].position = rnd.get(0, 3);
-                } else {
-                    order[p][i].rotation = static_cast<uint32_t>(
-                            rnd.get(-1, static_cast<int32_t>(test_data.header.available_rotations) - 1));
-                }
-            }
-            break;
-        }
-        case 2: {
-            auto [p, l, r] = get_random_segment(rnd, order);
-            if (l >= r) {
-                break;
-            }
-            std::reverse(order[p].begin() + static_cast<std::ptrdiff_t>(l),
-                         order[p].begin() + static_cast<std::ptrdiff_t>(r));
-            break;
-        }
-        case 3: {
-            auto [p, l, r] = get_random_segment(rnd, order);
-            if (l >= r) {
-                break;
-            }
-            std::shuffle(order[p].begin() + static_cast<std::ptrdiff_t>(l),
-                         order[p].begin() + static_cast<std::ptrdiff_t>(r), rnd.generator);
-            break;
-        }
-        case 4: {
-            if (order.empty()) {
-                break;
-            }
-            uint32_t p1 = rnd.get(0, static_cast<uint32_t>(order.size() - 1));
-            if (order[p1].empty()) {
-                break;
-            }
-            uint32_t p2 = rnd.get(0, static_cast<uint32_t>(order.size() - 1));
-            if (order[p2].empty()) {
-                break;
-            }
-            uint32_t a = rnd.get(0, static_cast<uint32_t>(order[p1].size() - 1));
-            uint32_t b = rnd.get(0, static_cast<uint32_t>(order[p2].size() - 1));
-            std::swap(order[p1][a], order[p2][b]);
-            break;
-        }
-        case 5: {
-            for (uint32_t attempt = 0; attempt < 32; ++attempt) {
-                if (order.empty()) {
-                    break;
-                }
-                uint32_t p = rnd.get(0, static_cast<uint32_t>(order.size() - 1));
-                if (order[p].size() < 2) {
-                    continue;
-                }
-                uint32_t idx = rnd.get(0, static_cast<uint32_t>(order[p].size() - 2));
-                std::swap(order[p][idx], order[p][idx + 1]);
-                break;
-            }
-            break;
-        }
-        case 6: {
-            auto [p, l, r] = get_random_segment(rnd, order);
-            if (l >= r) {
-                break;
-            }
-            std::stable_sort(order[p].begin() + static_cast<std::ptrdiff_t>(l),
-                             order[p].begin() + static_cast<std::ptrdiff_t>(r),
-                             [&](const BoxMeta &a, const BoxMeta &b) {
-                                 auto &ba = test_data.boxes[a.box_id];
-                                 auto &bb = test_data.boxes[b.box_id];
-                                 return ba.length * ba.width > bb.length * bb.width;
-                             });
-            break;
-        }
-        case 7: {
-            auto [p, l, r] = get_random_segment(rnd, order);
-            if (l >= r) {
-                break;
-            }
-            std::stable_sort(order[p].begin() + static_cast<std::ptrdiff_t>(l),
-                             order[p].begin() + static_cast<std::ptrdiff_t>(r),
-                             [&](const BoxMeta &a, const BoxMeta &b) {
-                                 auto &ba = test_data.boxes[a.box_id];
-                                 auto &bb = test_data.boxes[b.box_id];
-                                 return (uint64_t) ba.length * ba.width * ba.height >
-                                        (uint64_t) bb.length * bb.width * bb.height;
-                             });
-            break;
-        }
-        case 8: {
-            auto [p, l, r] = get_random_segment(rnd, order);
-            if (l >= r) {
-                break;
-            }
-            std::stable_sort(order[p].begin() + static_cast<std::ptrdiff_t>(l),
-                             order[p].begin() + static_cast<std::ptrdiff_t>(r),
-                             [&](const BoxMeta &a, const BoxMeta &b) {
-                                 return test_data.boxes[a.box_id].height > test_data.boxes[b.box_id].height;
-                             });
-            break;
-        }
-        case 9: {
-            auto [p, l, r] = get_random_segment(rnd, order);
-            if (l >= r) {
-                break;
-            }
-            std::stable_sort(order[p].begin() + static_cast<std::ptrdiff_t>(l),
-                             order[p].begin() + static_cast<std::ptrdiff_t>(r),
-                             [&](const BoxMeta &a, const BoxMeta &b) {
-                                 return test_data.boxes[a.box_id].weight > test_data.boxes[b.box_id].weight;
-                             });
-            break;
-        }
-        case 10:
-            support_threshold = rnd.get_d(0, 1);
-            break;
-        case 11: {
-            std::vector<BoxMeta> flat;
-            std::vector<uint32_t> sizes;
-            for (auto &row: order) {
-                sizes.push_back(static_cast<uint32_t>(row.size()));
-                for (auto &box: row) {
-                    flat.push_back(box);
-                }
-            }
-            if (flat.size() < 2) {
-                break;
-            }
-            uint32_t random_idx = rnd.get(0, static_cast<uint32_t>(flat.size() - 1));
-            uint32_t target_sku = test_data.boxes[flat[random_idx].box_id].sku;
-
-            std::vector<BoxMeta> same_sku;
-            std::vector<BoxMeta> others;
-            for (auto &box: flat) {
-                if (test_data.boxes[box.box_id].sku == target_sku) {
-                    same_sku.push_back(box);
-                } else {
-                    others.push_back(box);
-                }
-            }
-            if (others.empty()) {
-                break;
-            }
-            uint32_t insert_pos = rnd.get(0, static_cast<uint32_t>(others.size()));
-            std::vector<BoxMeta> new_flat;
-            for (uint32_t i = 0; i < insert_pos; i++) {
-                new_flat.push_back(others[i]);
-            }
-            for (auto &box: same_sku) {
-                new_flat.push_back(box);
-            }
-            for (uint32_t i = insert_pos; i < others.size(); i++) {
-                new_flat.push_back(others[i]);
-            }
-            uint32_t idx = 0;
-            for (uint32_t p = 0; p < order.size(); ++p) {
-                for (uint32_t k = 0; k < sizes[p]; ++k) {
-                    order[p][k] = new_flat[idx++];
-                }
-            }
-            break;
-        }
-        case 12: {
-            uint32_t from_flat = last_result.get_worst_flat_idx();
-            auto [from_p, from_i] = last_result.flat_to_pallet_local(from_flat);
-            if (from_i == 0) {
-                break;
-            }
-            uint32_t to_i = rnd.get(0, from_i - 1);
-            BoxMeta box = order[from_p][from_i];
-            order[from_p].erase(order[from_p].begin() + static_cast<std::ptrdiff_t>(from_i));
-            order[from_p].insert(order[from_p].begin() + static_cast<std::ptrdiff_t>(to_i), box);
-            break;
-        }
-    }
-}
-
-SimulationParams make_initial_simulation_params(const TestData &test_data) {
-    SimulationParams params;
-    const uint32_t pc = test_data.pallet_count;
-    ASSERT(pc >= 1, "pallet_count");
-    params.order.assign(pc, {});
-
-    std::vector<BoxMeta> flat;
-    for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
-        for (uint32_t q = 0; q < test_data.boxes[i].quantity; q++) {
-            flat.push_back(BoxMeta{i, static_cast<uint32_t>(-1), 0});
-        }
-    }
-    const uint32_t n = static_cast<uint32_t>(flat.size());
-    const uint32_t base = n / pc;
-    const uint32_t rem = n % pc;
-    uint32_t off = 0;
-    for (uint32_t p = 0; p < pc; ++p) {
-        const uint32_t sz = base + (p < rem ? 1u : 0u);
-        for (uint32_t k = 0; k < sz; ++k) {
-            params.order[p].push_back(flat[off++]);
-        }
-    }
-    return params;
-}
-
-SimulationResult run_simulation(const TestData &test_data, const SimulationParams &params) {
-    SimulationResult result;
-    const uint32_t pallet_count = test_data.pallet_count;
-    ASSERT(pallet_count >= 1, "pallet_count");
-    result.answer.pallets.assign(pallet_count, {});
-
-    auto run_pallet = [&](uint32_t pallet_idx, const std::vector<BoxMeta> &sequence) {
+    void simulate_one_pallet(const TestData &test_data, double support_threshold, const std::vector<BoxMeta> &sequence,
+                             std::vector<Position> &out_positions, std::vector<double> &out_support) {
+        out_positions.clear();
+        out_support.clear();
         HeightHandlerRects height_handler(test_data.header.length, test_data.header.width);
 
         auto calc_support_ratio = [&](uint32_t x, uint32_t y, uint32_t length, uint32_t width) -> double {
@@ -385,7 +150,7 @@ SimulationResult run_simulation(const TestData &test_data, const SimulationParam
                     }
 
                     double support = calc_support_ratio(x, y, rotated_box.length, rotated_box.width);
-                    if (support < params.support_threshold) {
+                    if (support < support_threshold) {
                         continue;
                     }
 
@@ -407,12 +172,12 @@ SimulationResult run_simulation(const TestData &test_data, const SimulationParam
             }
 
             if (best_score > 1e100) {
-                result.per_box_support.push_back(0);
+                out_support.push_back(0);
                 return false;
             }
 
             double best_support = calc_support_ratio(best_x, best_y, best_length, best_width);
-            result.per_box_support.push_back(best_support);
+            out_support.push_back(best_support);
 
             uint32_t h = height_handler.get_h(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1);
 
@@ -425,7 +190,7 @@ SimulationResult run_simulation(const TestData &test_data, const SimulationParam
                     best_y + best_width,
                     h + best_height,
             };
-            result.answer.pallets[pallet_idx].push_back(pos);
+            out_positions.push_back(pos);
 
             height_handler.add_rect(best_x, best_y, best_x + best_length - 1, best_y + best_width - 1, h + best_height);
             return true;
@@ -434,13 +199,353 @@ SimulationResult run_simulation(const TestData &test_data, const SimulationParam
         for (auto box_meta: sequence) {
             set_box(box_meta);
         }
-    };
-
-    ASSERT(params.order.size() == pallet_count, "order/pallet_count mismatch");
-    for (uint32_t p = 0; p < pallet_count; ++p) {
-        run_pallet(p, params.order[p]);
     }
 
-    result.metrics = calc_metrics(test_data, result.answer);
-    return result;
+}// namespace
+
+GenomHandler::GenomHandler(const TestData &test_data) : test_data_(&test_data) {
+    const uint32_t pc = test_data.pallet_count;
+    ASSERT(pc >= 1, "pallet_count");
+    order.assign(pc, {});
+    pallet_.answer.pallets.assign(pc, {});
+    pallet_.metrics.pallet_metrics.assign(pc, PalletMetrics{});
+    pallet_.metrics.box_footprint_support_ratios.clear();
+
+    std::vector<BoxMeta> flat;
+    for (uint32_t i = 0; i < test_data.boxes.size(); i++) {
+        for (uint32_t q = 0; q < test_data.boxes[i].quantity; q++) {
+            flat.push_back(BoxMeta{i, static_cast<uint32_t>(-1), 0});
+        }
+    }
+    const uint32_t n = static_cast<uint32_t>(flat.size());
+    const uint32_t base = n / pc;
+    const uint32_t rem = n % pc;
+    uint32_t off = 0;
+    for (uint32_t p = 0; p < pc; ++p) {
+        const uint32_t sz = base + (p < rem ? 1u : 0u);
+        for (uint32_t k = 0; k < sz; ++k) {
+            order[p].push_back(flat[off++]);
+        }
+    }
+}
+
+void GenomHandler::mark_pallet_dirty(std::vector<bool> *pallet_dirty, uint32_t p) const {
+    if (pallet_dirty && p < pallet_dirty->size()) {
+        (*pallet_dirty)[p] = true;
+    }
+}
+
+void GenomHandler::mark_all_pallets_dirty(std::vector<bool> *pallet_dirty) const {
+    if (pallet_dirty) {
+        pallet_dirty->assign(order.size(), true);
+    }
+}
+
+void GenomHandler::mutate_segment_uniform_meta(Randomizer &rnd, std::vector<bool> *pallet_dirty) {
+    auto [p, l, r] = get_random_segment(rnd, order);
+    if (l >= r) {
+        return;
+    }
+    if (rnd.get_d() < 0.5) {
+        uint32_t new_position = rnd.get(0, 3);
+        for (uint32_t i = l; i < r; i++) {
+            order[p][i].position = new_position;
+        }
+    } else {
+        int32_t new_rotation = rnd.get(-1, static_cast<int32_t>(test_data_->header.available_rotations) - 1);
+        for (uint32_t i = l; i < r; i++) {
+            order[p][i].rotation = static_cast<uint32_t>(new_rotation);
+        }
+    }
+    mark_pallet_dirty(pallet_dirty, p);
+}
+
+void GenomHandler::mutate_segment_random_meta_per_box(Randomizer &rnd, std::vector<bool> *pallet_dirty) {
+    auto [p, l, r] = get_random_segment(rnd, order);
+    if (l >= r) {
+        return;
+    }
+    for (uint32_t i = l; i < r; i++) {
+        if (rnd.get_d() < 0.5) {
+            order[p][i].position = rnd.get(0, 3);
+        } else {
+            order[p][i].rotation =
+                    static_cast<uint32_t>(rnd.get(-1, static_cast<int32_t>(test_data_->header.available_rotations) - 1));
+        }
+    }
+    mark_pallet_dirty(pallet_dirty, p);
+}
+
+void GenomHandler::mutate_segment_reverse(Randomizer &rnd, std::vector<bool> *pallet_dirty) {
+    auto [p, l, r] = get_random_segment(rnd, order);
+    if (l >= r) {
+        return;
+    }
+    std::reverse(order[p].begin() + static_cast<std::ptrdiff_t>(l), order[p].begin() + static_cast<std::ptrdiff_t>(r));
+    mark_pallet_dirty(pallet_dirty, p);
+}
+
+void GenomHandler::mutate_segment_shuffle(Randomizer &rnd, std::vector<bool> *pallet_dirty) {
+    auto [p, l, r] = get_random_segment(rnd, order);
+    if (l >= r) {
+        return;
+    }
+    std::shuffle(order[p].begin() + static_cast<std::ptrdiff_t>(l), order[p].begin() + static_cast<std::ptrdiff_t>(r),
+                 rnd.generator);
+    mark_pallet_dirty(pallet_dirty, p);
+}
+
+void GenomHandler::mutate_swap_boxes_across_pallets(Randomizer &rnd, std::vector<bool> *pallet_dirty) {
+    if (order.empty()) {
+        return;
+    }
+    uint32_t p1 = rnd.get(0, static_cast<uint32_t>(order.size() - 1));
+    if (order[p1].empty()) {
+        return;
+    }
+    uint32_t p2 = rnd.get(0, static_cast<uint32_t>(order.size() - 1));
+    if (order[p2].empty()) {
+        return;
+    }
+    uint32_t a = rnd.get(0, static_cast<uint32_t>(order[p1].size() - 1));
+    uint32_t b = rnd.get(0, static_cast<uint32_t>(order[p2].size() - 1));
+    std::swap(order[p1][a], order[p2][b]);
+    mark_pallet_dirty(pallet_dirty, p1);
+    mark_pallet_dirty(pallet_dirty, p2);
+}
+
+void GenomHandler::mutate_swap_adjacent_pair(Randomizer &rnd, std::vector<bool> *pallet_dirty) {
+    for (uint32_t attempt = 0; attempt < 32; ++attempt) {
+        if (order.empty()) {
+            break;
+        }
+        uint32_t p = rnd.get(0, static_cast<uint32_t>(order.size() - 1));
+        if (order[p].size() < 2) {
+            continue;
+        }
+        uint32_t idx = rnd.get(0, static_cast<uint32_t>(order[p].size() - 2));
+        std::swap(order[p][idx], order[p][idx + 1]);
+        mark_pallet_dirty(pallet_dirty, p);
+        break;
+    }
+}
+
+void GenomHandler::mutate_segment_sort_by_footprint(Randomizer &rnd, std::vector<bool> *pallet_dirty) {
+    auto [p, l, r] = get_random_segment(rnd, order);
+    if (l >= r) {
+        return;
+    }
+    std::stable_sort(order[p].begin() + static_cast<std::ptrdiff_t>(l), order[p].begin() + static_cast<std::ptrdiff_t>(r),
+                     [&](const BoxMeta &a, const BoxMeta &b) {
+                         auto &ba = test_data_->boxes[a.box_id];
+                         auto &bb = test_data_->boxes[b.box_id];
+                         return ba.length * ba.width > bb.length * bb.width;
+                     });
+    mark_pallet_dirty(pallet_dirty, p);
+}
+
+void GenomHandler::mutate_segment_sort_by_volume(Randomizer &rnd, std::vector<bool> *pallet_dirty) {
+    auto [p, l, r] = get_random_segment(rnd, order);
+    if (l >= r) {
+        return;
+    }
+    std::stable_sort(order[p].begin() + static_cast<std::ptrdiff_t>(l), order[p].begin() + static_cast<std::ptrdiff_t>(r),
+                     [&](const BoxMeta &a, const BoxMeta &b) {
+                         auto &ba = test_data_->boxes[a.box_id];
+                         auto &bb = test_data_->boxes[b.box_id];
+                         return (uint64_t) ba.length * ba.width * ba.height > (uint64_t) bb.length * bb.width * bb.height;
+                     });
+    mark_pallet_dirty(pallet_dirty, p);
+}
+
+void GenomHandler::mutate_segment_sort_by_height(Randomizer &rnd, std::vector<bool> *pallet_dirty) {
+    auto [p, l, r] = get_random_segment(rnd, order);
+    if (l >= r) {
+        return;
+    }
+    std::stable_sort(order[p].begin() + static_cast<std::ptrdiff_t>(l), order[p].begin() + static_cast<std::ptrdiff_t>(r),
+                     [&](const BoxMeta &a, const BoxMeta &b) {
+                         return test_data_->boxes[a.box_id].height > test_data_->boxes[b.box_id].height;
+                     });
+    mark_pallet_dirty(pallet_dirty, p);
+}
+
+void GenomHandler::mutate_segment_sort_by_weight(Randomizer &rnd, std::vector<bool> *pallet_dirty) {
+    auto [p, l, r] = get_random_segment(rnd, order);
+    if (l >= r) {
+        return;
+    }
+    std::stable_sort(order[p].begin() + static_cast<std::ptrdiff_t>(l), order[p].begin() + static_cast<std::ptrdiff_t>(r),
+                     [&](const BoxMeta &a, const BoxMeta &b) {
+                         return test_data_->boxes[a.box_id].weight > test_data_->boxes[b.box_id].weight;
+                     });
+    mark_pallet_dirty(pallet_dirty, p);
+}
+
+void GenomHandler::mutate_resample_support_threshold(Randomizer &rnd, std::vector<bool> *pallet_dirty) {
+    support_threshold = rnd.get_d(0, 1);
+    mark_all_pallets_dirty(pallet_dirty);
+}
+
+void GenomHandler::mutate_cluster_one_sku(Randomizer &rnd, std::vector<bool> *pallet_dirty) {
+    std::vector<BoxMeta> flat;
+    std::vector<uint32_t> sizes;
+    for (auto &row: order) {
+        sizes.push_back(static_cast<uint32_t>(row.size()));
+        for (auto &box: row) {
+            flat.push_back(box);
+        }
+    }
+    if (flat.size() < 2) {
+        return;
+    }
+    uint32_t random_idx = rnd.get(0, static_cast<uint32_t>(flat.size() - 1));
+    uint32_t target_sku = test_data_->boxes[flat[random_idx].box_id].sku;
+
+    std::vector<BoxMeta> same_sku;
+    std::vector<BoxMeta> others;
+    for (auto &box: flat) {
+        if (test_data_->boxes[box.box_id].sku == target_sku) {
+            same_sku.push_back(box);
+        } else {
+            others.push_back(box);
+        }
+    }
+    if (others.empty()) {
+        return;
+    }
+    uint32_t insert_pos = rnd.get(0, static_cast<uint32_t>(others.size()));
+    std::vector<BoxMeta> new_flat;
+    for (uint32_t i = 0; i < insert_pos; i++) {
+        new_flat.push_back(others[i]);
+    }
+    for (auto &box: same_sku) {
+        new_flat.push_back(box);
+    }
+    for (uint32_t i = insert_pos; i < others.size(); i++) {
+        new_flat.push_back(others[i]);
+    }
+    uint32_t idx = 0;
+    for (uint32_t p = 0; p < order.size(); ++p) {
+        for (uint32_t k = 0; k < sizes[p]; ++k) {
+            order[p][k] = new_flat[idx++];
+        }
+    }
+    mark_all_pallets_dirty(pallet_dirty);
+}
+
+void GenomHandler::mutate_move_low_support_box_earlier(Randomizer &rnd, const Pallet &last_pallet,
+                                                       std::vector<bool> *pallet_dirty) {
+    uint32_t from_flat = last_pallet.get_worst_flat_idx();
+    auto [from_p, from_i] = last_pallet.flat_to_pallet_local(from_flat);
+    if (from_i == 0) {
+        return;
+    }
+    uint32_t to_i = rnd.get(0, from_i - 1);
+    BoxMeta box = order[from_p][from_i];
+    order[from_p].erase(order[from_p].begin() + static_cast<std::ptrdiff_t>(from_i));
+    order[from_p].insert(order[from_p].begin() + static_cast<std::ptrdiff_t>(to_i), box);
+    mark_pallet_dirty(pallet_dirty, from_p);
+}
+
+void GenomHandler::mutate(Randomizer &rnd, const Pallet &last_pallet, const MutableParams &mp,
+                          std::vector<bool> *pallet_dirty) {
+    if (pallet_dirty) {
+        pallet_dirty->assign(order.size(), false);
+    }
+    uint32_t type = rnd.get(mp.weights);
+    switch (type) {
+        case 0:
+            mutate_segment_uniform_meta(rnd, pallet_dirty);
+            break;
+        case 1:
+            mutate_segment_random_meta_per_box(rnd, pallet_dirty);
+            break;
+        case 2:
+            mutate_segment_reverse(rnd, pallet_dirty);
+            break;
+        case 3:
+            mutate_segment_shuffle(rnd, pallet_dirty);
+            break;
+        case 4:
+            mutate_swap_boxes_across_pallets(rnd, pallet_dirty);
+            break;
+        case 5:
+            mutate_swap_adjacent_pair(rnd, pallet_dirty);
+            break;
+        case 6:
+            mutate_segment_sort_by_footprint(rnd, pallet_dirty);
+            break;
+        case 7:
+            mutate_segment_sort_by_volume(rnd, pallet_dirty);
+            break;
+        case 8:
+            mutate_segment_sort_by_height(rnd, pallet_dirty);
+            break;
+        case 9:
+            mutate_segment_sort_by_weight(rnd, pallet_dirty);
+            break;
+        case 10:
+            mutate_resample_support_threshold(rnd, pallet_dirty);
+            break;
+        case 11:
+            mutate_cluster_one_sku(rnd, pallet_dirty);
+            break;
+        case 12:
+            mutate_move_low_support_box_earlier(rnd, last_pallet, pallet_dirty);
+            break;
+    }
+}
+
+void GenomHandler::run_single_pallet(uint32_t pallet_idx) {
+    ASSERT(pallet_idx < test_data_->pallet_count, "pallet_idx");
+    ASSERT(pallet_idx < order.size(), "order");
+    simulate_one_pallet(*test_data_, support_threshold, order[pallet_idx], pallet_.answer.pallets[pallet_idx],
+                        pallet_.metrics.pallet_metrics[pallet_idx].footprint_support_ratios);
+}
+
+void GenomHandler::flatten_support_and_metrics() {
+    std::vector<std::vector<double>> fp_saved;
+    fp_saved.reserve(pallet_.metrics.pallet_metrics.size());
+    for (auto &pm: pallet_.metrics.pallet_metrics) {
+        fp_saved.push_back(std::move(pm.footprint_support_ratios));
+    }
+    Metrics agg = calc_metrics(*test_data_, pallet_.answer);
+    ASSERT(agg.pallet_metrics.size() == fp_saved.size(), "pallet_metrics size");
+    for (size_t p = 0; p < fp_saved.size(); ++p) {
+        agg.pallet_metrics[p].footprint_support_ratios = std::move(fp_saved[p]);
+    }
+    agg.box_footprint_support_ratios.clear();
+    for (const auto &pm: agg.pallet_metrics) {
+        for (double v: pm.footprint_support_ratios) {
+            agg.box_footprint_support_ratios.push_back(v);
+        }
+    }
+    pallet_.metrics = std::move(agg);
+}
+
+void GenomHandler::rebuild_all() {
+    const uint32_t pc = test_data_->pallet_count;
+    ASSERT(order.size() == pc, "order/pallet_count mismatch");
+    pallet_.answer.pallets.assign(pc, {});
+    pallet_.metrics.pallet_metrics.assign(pc, PalletMetrics{});
+    pallet_.metrics.box_footprint_support_ratios.clear();
+    for (uint32_t p = 0; p < pc; ++p) {
+        run_single_pallet(p);
+    }
+    flatten_support_and_metrics();
+}
+
+void GenomHandler::recompute_with_mask(std::vector<bool> pallet_dirty) {
+    ASSERT(pallet_dirty.size() == order.size(), "dirty mask size");
+    bool any = false;
+    for (uint32_t p = 0; p < pallet_dirty.size(); ++p) {
+        if (pallet_dirty[p]) {
+            run_single_pallet(p);
+            any = true;
+        }
+    }
+    if (any) {
+        flatten_support_and_metrics();
+    }
 }

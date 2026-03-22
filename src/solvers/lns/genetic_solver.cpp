@@ -11,9 +11,11 @@
 namespace {
 
     struct Evaluated {
-        SimulationParams params;
-        SimulationResult result;
+        GenomHandler handler;
         double score = 0;
+
+        explicit Evaluated(const TestData &test_data) : handler(test_data) {
+        }
     };
 
 }// namespace
@@ -30,14 +32,14 @@ Answer GeneticSolver::solve(TimePoint end_time) {
     constexpr uint32_t kPop = 24;
 
     std::vector<Evaluated> population;
-    population.resize(kPop);
+    population.reserve(kPop);
     for (uint32_t i = 0; i < kPop; i++) {
-        population[i].params = make_initial_simulation_params(test_data);
-        for (auto &row: population[i].params.order) {
+        population.emplace_back(test_data);
+        for (auto &row: population.back().handler.order) {
             std::shuffle(row.begin(), row.end(), rnd.generator);
         }
-        population[i].result = run_simulation(test_data, population[i].params);
-        population[i].score = population[i].result.get_score(test_data.header);
+        population.back().handler.rebuild_all();
+        population.back().score = population.back().handler.pallet().get_score(test_data.header);
     }
 
     auto cmp = [](const Evaluated &a, const Evaluated &b) { return a.score > b.score; };
@@ -54,11 +56,10 @@ Answer GeneticSolver::solve(TimePoint end_time) {
         while (next.size() < kPop) {
             uint32_t top = std::min<uint32_t>(8, static_cast<uint32_t>(population.size()));
             uint32_t pidx = rnd.get(0, top - 1);
-            Evaluated child;
-            child.params = population[pidx].params;
-            child.params.mutate(rnd, test_data, population[pidx].result, mutable_params);
-            child.result = run_simulation(test_data, child.params);
-            child.score = child.result.get_score(test_data.header);
+            Evaluated child(population[pidx]);
+            child.handler.mutate(rnd, population[pidx].handler.pallet(), mutable_params);
+            child.handler.rebuild_all();
+            child.score = child.handler.pallet().get_score(test_data.header);
             next.push_back(std::move(child));
             pallets_computed++;
         }
@@ -70,7 +71,7 @@ Answer GeneticSolver::solve(TimePoint end_time) {
         }
     }
 
-    ASSERT(best.result.metrics.unable_to_put_boxes == 0,
-           "unable to put some boxes: " + std::to_string(best.result.metrics.unable_to_put_boxes));
-    return best.result.answer;
+    ASSERT(best.handler.pallet().metrics.unable_to_put_boxes == 0,
+           "unable to put some boxes: " + std::to_string(best.handler.pallet().metrics.unable_to_put_boxes));
+    return best.handler.pallet().answer;
 }
