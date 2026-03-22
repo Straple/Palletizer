@@ -24,7 +24,7 @@
  * BENCHMARK_CSV_HEADER:
  * pallets,algorithm,timelimit_ms,avg_time_per_test_ms,
  * pallet_length,pallet_width,score_normalization_height,available_rotations,
- * score_percolation_mult,score_min_support_ratio_mult,score_center_of_mass_z_mult,
+ * score_percolation_mult,score_min_support_ratio_mult,score_center_of_mass_z_mult,score_height_balance_mult,
  * pallets_computed_min,pallets_computed_ci_low,pallets_computed_avg,pallets_computed_ci_high,pallets_computed_max,
  * percolation_min,percolation_ci_low,percolation_avg,percolation_ci_high,percolation_max,
  * min_support_ratio_min,min_support_ratio_ci_low,min_support_ratio_avg,min_support_ratio_ci_high,min_support_ratio_max,
@@ -33,7 +33,7 @@
  * height_balance_min,height_balance_ci_low,height_balance_avg,height_balance_ci_high,height_balance_max
  */
 
-constexpr uint32_t TIMELIMIT = 60'000;
+constexpr uint32_t TIMELIMIT = 10'000;
 
 // Структура для агрегированной статистики с доверительным интервалом
 struct AggregatedStats {
@@ -354,6 +354,7 @@ void launch_multitests_benchmark(const std::string &algorithm_name, const std::s
               << header.score_percolation_mult << ","
               << header.score_min_support_ratio_mult << ","
               << header.score_center_of_mass_z_mult << ","
+              << header.score_height_balance_mult << ","
               << std::setprecision(4)
               << pallets_stats.min_val() << ","
               << pallets_stats_ci_low << ","
@@ -583,6 +584,7 @@ void launch_solvers(const std::string &algorithm_name) {
               << header.score_percolation_mult << ","
               << header.score_min_support_ratio_mult << ","
               << header.score_center_of_mass_z_mult << ","
+              << header.score_height_balance_mult << ","
               << std::setprecision(4)
               // pallets computed
               << pallets_stats.min_val() << ","
@@ -625,8 +627,8 @@ void launch_solvers(const std::string &algorithm_name) {
 }
 
 int main() {
-    launch_solvers<GeneticSolver>("GeneticSolver");
-    launch_multitests_benchmark<GeneticSolver>("GeneticSolver");
+    launch_solvers<LNSSolver>("LNSSolver");
+    launch_multitests_benchmark<LNSSolver>("LNSSolver");
     return 0;
 }
 
