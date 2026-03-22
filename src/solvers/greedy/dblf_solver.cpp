@@ -73,9 +73,6 @@ Answer DBLFSolver::solve(TimePoint /*end_time*/) {
             for (const auto &ab: available_boxes) {
                 auto dots = height_handler.get_dots(test_data.header, ab);
                 for (auto [x, y]: dots) {
-                    if (!is_center_of_mass_supported(x, y, ab.length, ab.width)) {
-                        continue;
-                    }
                     uint32_t h0 = height_handler.get_h(x, y, x + ab.length - 1, y + ab.width - 1);
                     uint32_t top = h0 + ab.height;
                     if (!have || std::tie(h0, x, y, top) < std::tie(best_h0, best_x, best_y, best_top)) {

@@ -32,7 +32,7 @@
  * com_z_rel_min,com_z_rel_ci_low,com_z_rel_avg,com_z_rel_ci_high,com_z_rel_max
  */
 
-constexpr uint32_t TIMELIMIT = 5'000;
+constexpr uint32_t TIMELIMIT = 500;
 
 // Структура для агрегированной статистики с доверительным интервалом
 struct AggregatedStats {
@@ -341,7 +341,8 @@ void launch_multitests_benchmark(const std::string &algorithm_name, const std::s
     double avg_time_per_test_ms = n > 0 ? sum_time_per_test / static_cast<double>(n) : 0.0;
 
     std::cout << "\nMULTITESTS_BENCHMARK_CSV_LINE:\n";
-    std::cout << algorithm_name << "_multitests,"
+    std::cout << "multi" << ","
+              << algorithm_name << ","
               << TIMELIMIT << ","
               << std::fixed << std::setprecision(1) << avg_time_per_test_ms << ","
               << header.length << ","
@@ -556,7 +557,8 @@ void launch_solvers(const std::string &algorithm_name) {
     double avg_time_per_test_ms = sum_time_per_test / tests.size();
 
     std::cout << "\nBENCHMARK_CSV_LINE:\n";
-    std::cout << algorithm_name << ","
+    std::cout << "one" << ","
+              << algorithm_name << ","
               << TIMELIMIT << ","
               << std::fixed << std::setprecision(1) << avg_time_per_test_ms << ","
               // TestDataHeader params
@@ -604,8 +606,8 @@ void launch_solvers(const std::string &algorithm_name) {
 }
 
 int main() {
-    launch_solvers<GeneticSolver>("GeneticSolver");
-    launch_multitests_benchmark<GeneticSolver>("GeneticSolver");
+    launch_solvers<LNSSolver>("LNSSolver");
+    launch_multitests_benchmark<LNSSolver>("LNSSolver");
     return 0;
 
     Metrics m = launch_one_solver<LNSSolver>(228);

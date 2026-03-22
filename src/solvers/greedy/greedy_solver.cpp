@@ -77,11 +77,8 @@ Answer GreedySolver::solve(TimePoint /*end_time*/) {
                 for (const auto &ab: available_boxes) {
                     auto dots = height_handler.get_dots(test_data.header, ab);
                     for (auto [x, y]: dots) {
-                        if (!is_center_of_mass_supported(x, y, ab.length, ab.width)) {
-                            continue;
-                        }
-
                         uint32_t score = get_score(x, y, x + ab.length - 1, y + ab.width - 1, ab.height);
+                        score += !is_center_of_mass_supported(x, y, ab.length, ab.width) * 100'000;
                         if (std::tie(score, x, y) < std::tie(best_score, best_x, best_y)) {
                             best_score = score;
                             best_i = i;
