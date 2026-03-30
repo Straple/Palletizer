@@ -15,13 +15,13 @@ matplotlib.use('Agg')
 # Настройка для LaTeX-совместимых шрифтов
 plt.rcParams.update({
     'font.family': 'serif',
-    'font.size': 10,
-    'axes.labelsize': 11,
-    'axes.titlesize': 12,
-    'legend.fontsize': 9,
-    'xtick.labelsize': 9,
-    'ytick.labelsize': 9,
-    'figure.figsize': (8, 5),
+    'font.size': 14,
+    'axes.labelsize': 14,
+    'axes.titlesize': 14,
+    'legend.fontsize': 12,
+    'xtick.labelsize': 12,
+    'ytick.labelsize': 12,
+    'figure.figsize': (6.5, 4.5),
     'figure.dpi': 300,
 })
 
@@ -29,10 +29,11 @@ def main():
     # Читаем данные
     df = pd.read_csv('logs/results.csv')
     
-    # Фильтруем только LNSSolver с timelimit_ms=5000, w1=1.0 и разными w2
+    # Фильтруем только LNSSolver с timelimit_ms=10000, w1=1.0 и разными w2
     weight_data = df[
         (df['algorithm'] == 'LNSSolver') & 
-        (df['timelimit_ms'] == 5000) & 
+        (df['timelimit_ms'] == 10000) & 
+        (df['pallets'] == 'one') &
         (df['score_percolation_mult'] == 1.0)
     ].sort_values('score_min_support_ratio_mult')
     
@@ -84,7 +85,7 @@ def main():
     ax.legend(loc='lower right', framealpha=0.9)
     
     # Заголовок
-    ax.set_title('LNSSolver performance vs weight $w_2$ (time limit = 5s, $w_1=1$)')
+    ax.set_title('LNSSolver performance vs weight $w_2$ (time limit = 10s, $w_1=1$)')
     
     plt.tight_layout()
     

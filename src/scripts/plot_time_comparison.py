@@ -15,13 +15,13 @@ matplotlib.use('Agg')
 # Настройка для LaTeX-совместимых шрифтов
 plt.rcParams.update({
     'font.family': 'serif',
-    'font.size': 10,
-    'axes.labelsize': 11,
-    'axes.titlesize': 12,
-    'legend.fontsize': 9,
-    'xtick.labelsize': 9,
-    'ytick.labelsize': 9,
-    'figure.figsize': (8, 5),
+    'font.size': 14,
+    'axes.labelsize': 14,
+    'axes.titlesize': 14,
+    'legend.fontsize': 12,
+    'xtick.labelsize': 12,
+    'ytick.labelsize': 12,
+    'figure.figsize': (6.5, 4.5),
     'figure.dpi': 300,
 })
 
@@ -33,9 +33,12 @@ def main():
     # Строки с w1=1.0, w2=2.0 и разными timelimit_ms
     time_data = df[
         (df['algorithm'] == 'LNSSolver') & 
+        (df['pallets'] == 'one') &
         (df['score_percolation_mult'] == 1.0) & 
         (df['score_min_support_ratio_mult'] == 2.0)
     ].sort_values('timelimit_ms')
+    
+    time_data = time_data.drop_duplicates(subset=['timelimit_ms'])
     
     print(f"Найдено {len(time_data)} строк с данными по времени")
     print(time_data[['timelimit_ms', 'percolation_avg', 'min_support_ratio_avg']])
@@ -72,7 +75,7 @@ def main():
     ax.set_xlabel('Time limit (ms)')
     ax.set_ylabel('Value (%)')
     ax.set_xscale('log')
-    ax.set_xlim(400, 150000)
+    ax.set_xlim(400, 80000)
     ax.set_ylim(0, 100)
     
     # Сетка
@@ -83,8 +86,8 @@ def main():
     ax.legend(loc='lower right', framealpha=0.9)
     
     # Метки на оси X
-    ax.set_xticks([500, 1000, 2000, 5000, 10000, 30000, 100000])
-    ax.set_xticklabels(['0.5s', '1s', '2s', '5s', '10s', '30s', '100s'])
+    ax.set_xticks([500, 1000, 2000, 5000, 10000, 30000, 60000])
+    ax.set_xticklabels(['0.5s', '1s', '2s', '5s', '10s', '30s', '60s'])
     
     # Заголовок
     ax.set_title('LNSSolver performance vs time limit ($w_1=1$, $w_2=2$)')

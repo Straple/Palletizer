@@ -1,24 +1,14 @@
-% Также можно использовать \Referat, как в оригинале
 \chapter*{Реферат}
-ПАЛЛЕТИЗАЦИЯ, СКЛАДСКАЯ ЛОГИСТИКА, КОМБИНАТОРНАЯ ЗАДАЧА 
+ПАЛЛЕТИЗАЦИЯ, СКЛАДСКАЯ ЛОГИСТИКА, КОМБИНАТОРНАЯ ОПТИМИЗАЦИЯ, ТРЁХМЕРНАЯ УКЛАДКА, МЕТАЭВРИСТИКИ
 
-Целью данной курсовой является разработка алгоритма эффективной паллетизации складов, наполненных множеством коробок, имеющих свой размер. Актуальность данной исследования обуславливается достижением максимально компактного и приближенного к прямоугольной форме расположения грузов со склада в целях дальнейшей транспортировки, что позволит уменьшить затраты и сократить занимаемое пространство. В ходе исследования рассматриваются различные современные методы оптимизации данной задачи, включая эвристические, жадные и метаэвристические подходы. В результате данной работе мы получили прототип алгоритма, способного в автоматическом режиме генерировать план паллетизации, учитывая геометрические ограничения и готового к дальнейшему расширению за счет интеграции метаэвристик и дополнительных факторов и внедрения решения в глобальную систему управления складом. 
+Целью данной курсовой работы является разработка и программная реализация семейства алгоритмов трёхмерной укладки коробок на паллету, обеспечивающих максимальный коэффициент заполнения при контролируемой устойчивости размещения. Актуальность исследования определяется потребностью складской логистики в автоматизации процесса паллетизации: компактная и устойчивая укладка сокращает затраты на хранение, транспортировку и упаковочные материалы. В ходе работы разработаны пять алгоритмов: жадный алгоритм GreedySolver, эвристики Deepest Bottom Left Fill и First Fit Decreasing, метаэвристический алгоритм LNSSolver на основе поиска в большой окрестности с тринадцатью операторами мутации и генетический алгоритм GeneticSolver с популяционным подходом. Введены метрики качества: коэффициент заполнения, минимальный коэффициент опоры и баланс высот. Экспериментальное тестирование на 436 реальных задачах показало, что детерминированные эвристики достигают коэффициента заполнения 65--66\% при времени менее 10~мс, а метаэвристические алгоритмы обеспечивают баланс между заполнением (63--67\%) и устойчивостью (60--69\% минимальной опоры). Реализована поддержка мультипаллетного режима с метрикой баланса высот.
 
-Ключевые слова: паллетизация, алгоритм оптимизации, складская логистика, укладка коробок.  
+Ключевые слова: паллетизация, трёхмерная укладка, метаэвристический алгоритм, поиск в большой окрестности, генетический алгоритм, коэффициент заполнения, устойчивость укладки.
 
-
-% \AKHworries{АХ: Комментарии АХ} \YEYUworries{ЕЮ: Комментарии}  \AGworries{АГ: Комментарии} \RSworries{РС: Комментарии}  
-
-%В работе 32 страниц, 4 иллюстрации, 26 источников.
 
 \chapter*{Abstract}
-The purpose of this course work is to develop an algorithm for the effective palletization of warehouses filled with masses of boxes, determining their size. The relevance of this study is determined by achieving the most compact and nearly rectangular arrangement of cargo from the warehouse for further transportation, which will reduce costs and reduce the space occupied. The study examines various modern methods for optimization, including heuristic, greedy and metaheuristic approaches. As a result of this work, we obtained a prototype of an algorithm, which is capable of automatically generating a palletization plan, including geometric restrictions and ready for further expansion by integrating metaheuristics, additional factors and implementing the solution into a global warehouse management system.
+The purpose of this coursework is the development and software implementation of a family of algorithms for three-dimensional box packing on pallets, maximizing the fill rate while maintaining placement stability. Five algorithms were developed: a greedy algorithm (GreedySolver), Deepest Bottom Left Fill and First Fit Decreasing heuristics, a Large Neighborhood Search metaheuristic (LNSSolver) with thirteen mutation operators, and a population-based Genetic Algorithm (GeneticSolver). Quality metrics include fill rate (percolation), minimum support ratio, and height balance. Experimental evaluation on 436 real-world tasks demonstrated that deterministic heuristics achieve 65--66\% fill rate in under 10~ms, while metaheuristic algorithms provide a balance between fill rate (63--67\%) and stability (60--69\% minimum support ratio). Multi-pallet mode with a height balance metric is supported.
 
-Keywords: palletization, optimization algorithm, warehouse logistics, box packing
+Keywords: palletization, three-dimensional packing, metaheuristic algorithm, large neighborhood search, genetic algorithm, fill rate, packing stability.
 
-%The thesis consists of 32 pages, 4 illustrations, 26 references.
-\pagestyle{plain} % нумерация вкл.
-%%% Local Variables: 
-%%% mode: latex
-%%% TeX-master: "rpz"
-%%% End: 
+\pagestyle{plain}
