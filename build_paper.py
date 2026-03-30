@@ -17,6 +17,9 @@
 LaTeX: после установки MacTeX выполните в терминале:
     eval "$(/usr/libexec/path_helper)"
 или перезапустите терминал.
+
+Артефакты сборки (.aux, .log, .pdf, …) пишутся в papers_general/texbuild/
+(каталог в .gitignore).
 """
 
 import glob
@@ -28,6 +31,8 @@ import sys
 PAPER_DIR = os.path.join(os.path.dirname(__file__), "papers_general")
 SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "src", "scripts")
 TEX_MAIN = "2025-3Dpallette-HSE"
+# Относительно PAPER_DIR; см. .gitignore
+TEX_BUILD_SUBDIR = "texbuild"
 
 PLOT_SCRIPTS = [
     "plot_time_comparison.py",
@@ -290,17 +295,25 @@ def compile_latex():
         print_tex_install_help()
         return False
 
+    build_path = os.path.join(PAPER_DIR, TEX_BUILD_SUBDIR)
+    os.makedirs(build_path, exist_ok=True)
+
     bibtex = find_bibtex(pdflatex)
     if not bibtex:
         print("Предупреждение: bibtex не найден, шаг bibtex пропускается.\n")
 
+    # Все выходы pdflatex/bibtex — в texbuild/, исходники .tex остаются в papers_general/
+    out_dir_arg = f"-output-directory={TEX_BUILD_SUBDIR}"
     pdflatex_cmd = [
         pdflatex,
+        out_dir_arg,
         "-interaction=nonstopmode",
         "-halt-on-error",
         TEX_MAIN,
     ]
-    bibtex_cmd = [bibtex, TEX_MAIN] if bibtex else None
+    # .aux в texbuild/; jobname с путём для bibtex (TeX Live)
+    bib_job = f"{TEX_BUILD_SUBDIR}/{TEX_MAIN}".replace("\\", "/")
+    bibtex_cmd = [bibtex, bib_job] if bibtex else None
 
     steps = [
         ("pdflatex (1/3)", pdflatex_cmd),
@@ -319,7 +332,7 @@ def compile_latex():
                 continue
             return False
 
-    pdf_path = os.path.join(PAPER_DIR, f"{TEX_MAIN}.pdf")
+    pdf_path = os.path.join(build_path, f"{TEX_MAIN}.pdf")
     if os.path.exists(pdf_path):
         size_mb = os.path.getsize(pdf_path) / (1024 * 1024)
         print(f"\nГотово: {pdf_path} ({size_mb:.1f} МБ)")

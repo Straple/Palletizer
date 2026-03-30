@@ -72,7 +72,7 @@ def main():
     ax.fill_between(w2_values, supp_ci_low, supp_ci_high, color=color_supp, alpha=0.2, label='Min support ratio (90% CI)')
     
     # Настройка осей
-    ax.set_xlabel('Weight $w_2$ (min support ratio)')
+    ax.set_xlabel('$w_2$')
     ax.set_ylabel('Value (%)')
     ax.set_xlim(-0.2, 5.2)
     ax.set_ylim(0, 100)
@@ -83,9 +83,6 @@ def main():
     
     # Легенда
     ax.legend(loc='lower right', framealpha=0.9)
-    
-    # Заголовок
-    ax.set_title('LNSSolver performance vs weight $w_2$ (time limit = 10s, $w_1=1$)')
     
     plt.tight_layout()
     

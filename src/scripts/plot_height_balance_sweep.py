@@ -56,14 +56,13 @@ def main():
         ax.plot(w4, avg, f'{marker}-', color=color, label=f'{label} (avg)', linewidth=2, markersize=5)
         ax.fill_between(w4, ci_lo, ci_hi, color=color, alpha=0.15)
 
-    ax.set_xlabel('Weight $w_4$ (height balance)')
+    ax.set_xlabel('$w_4$')
     ax.set_ylabel('Value (%)')
     ax.set_xlim(-0.2, 10.5)
     ax.set_ylim(0, 105)
     ax.grid(True, alpha=0.3, linestyle='--')
     ax.set_axisbelow(True)
     ax.legend(loc='lower left', framealpha=0.9)
-    ax.set_title('Multi-pallet metrics vs height balance weight $w_4$ (LNSSolver, 10s)')
 
     plt.tight_layout()
 

@@ -68,7 +68,6 @@ def main():
                    label='Min support ratio', color='#ff7f0e', alpha=0.85, capsize=4)
 
     ax.set_ylabel('Value (%)')
-    ax.set_title('Algorithm comparison (single pallet, 5s time limit)')
     ax.set_xticks(x)
     ax.set_xticklabels(SHORT_NAMES)
     ax.set_ylim(0, 100)

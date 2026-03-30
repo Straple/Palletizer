@@ -40,9 +40,9 @@ def main():
     c_lns = '#1f77b4'
     c_gen = '#d62728'
 
-    for ax, metric, ylabel, title in [
-        (ax1, 'percolation', 'Percolation (%)', 'Percolation vs time limit'),
-        (ax2, 'min_support_ratio', 'Min support ratio (%)', 'Min support ratio vs time limit'),
+    for ax, metric, ylabel in [
+        (ax1, 'percolation', 'Percolation (%)'),
+        (ax2, 'min_support_ratio', 'Min support ratio (%)'),
     ]:
         for data, label, color, marker in [
             (lns, 'LNSSolver', c_lns, 'o'),
@@ -65,7 +65,6 @@ def main():
         ax.grid(True, alpha=0.3, linestyle='--')
         ax.set_axisbelow(True)
         ax.legend(loc='lower right', framealpha=0.9)
-        ax.set_title(title)
 
     plt.tight_layout()
 

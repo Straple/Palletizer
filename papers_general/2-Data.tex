@@ -118,7 +118,12 @@
 
 Все метрики объединяются в скалярную целевую функцию:
 \[
-\text{score} = w_1 \cdot \text{percolation} + w_2 \cdot \text{min\_support\_ratio} + w_3 \cdot (1 - \text{CoM}_z^{\text{rel}}) + w_4 \cdot \text{height\_balance},
+\begin{split}
+\text{score} = {}& w_1 \cdot \text{percolation}
+    + w_2 \cdot \text{min\_support\_ratio} \\
+&{}+ w_3 \cdot (1 - \text{CoM}_z^{\text{rel}})
+    + w_4 \cdot \text{height\_balance},
+\end{split}
 \]
 где $w_1, \ldots, w_4$ --- настраиваемые неотрицательные веса. Для задачи с одной паллетой типичными являются значения $w_1 = 1$, $w_2 = 2$, $w_3 = w_4 = 0$, подобранные экспериментально (см.~раздел~4).
 

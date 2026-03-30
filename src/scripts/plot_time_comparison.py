@@ -88,10 +88,7 @@ def main():
     # Метки на оси X
     ax.set_xticks([500, 1000, 2000, 5000, 10000, 30000, 60000])
     ax.set_xticklabels(['0.5s', '1s', '2s', '5s', '10s', '30s', '60s'])
-    
-    # Заголовок
-    ax.set_title('LNSSolver performance vs time limit ($w_1=1$, $w_2=2$)')
-    
+
     plt.tight_layout()
     
     # Сохраняем в PDF

@@ -25,6 +25,7 @@ citecolor=black, menucolor=black, filecolor=black,
     }
 
 \usepackage{graphicx}   % Пакет для включения рисунков
+\usepackage{adjustbox}  % Таблицы не шире \linewidth
 \usepackage{float}
 \usepackage{pdfpages}
 \usepackage{tabu}
@@ -61,3 +62,19 @@ citecolor=black, menucolor=black, filecolor=black,
 
 \usepackage{setspace}
  \usepackage{pdflscape}
+
+% Перенос длинных подписей к таблицам/рисункам (ГОСТ + узкие поля)
+\usepackage{caption}
+\captionsetup{
+    width=0.92\linewidth,
+    justification=raggedright,
+    font=small,
+    labelfont=bf,
+    singlelinecheck=false,
+}
+% Подпись к таблице не шире полосы набора (избегает вылета вправо)
+\captionsetup[table]{width=\linewidth}
+
+% Заголовки ячеек в две строки при узких столбцах
+\usepackage{makecell}
+\renewcommand\theadfont{\bfseries\normalsize}
