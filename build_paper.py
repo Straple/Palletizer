@@ -13,11 +13,17 @@
 
 Скрипты в src/scripts/ лучше запускать тем же интерпретатором:
     .venv/bin/python src/scripts/plot_time_comparison.py
+
+LaTeX: после установки MacTeX выполните в терминале:
+    eval "$(/usr/libexec/path_helper)"
+или перезапустите терминал.
 """
 
+import glob
+import os
+import shutil
 import subprocess
 import sys
-import os
 
 PAPER_DIR = os.path.join(os.path.dirname(__file__), "papers_general")
 SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "src", "scripts")
@@ -52,7 +58,6 @@ def ensure_plot_deps(py, root):
     )
     if r.returncode == 0:
         return True
-    req = os.path.join(root, "requirements.txt")
     print(
         "Нет pandas/matplotlib в текущем Python.\n"
         "Создайте окружение и установите зависимости:\n"
@@ -65,9 +70,195 @@ def ensure_plot_deps(py, root):
     return False
 
 
+def _tex_bin_dirs():
+    """Каталоги с бинарниками TeX на macOS (часто не в PATH у IDE)."""
+    dirs = []
+    if sys.platform != "darwin":
+        return dirs
+    dirs.append("/Library/TeX/texbin")
+    for pattern in (
+        "/usr/local/texlive/*/bin/*",
+        "/Library/TeX/texlive/*/bin/*",
+    ):
+        for d in sorted(glob.glob(pattern)):
+            if os.path.isdir(d):
+                dirs.append(d)
+    for p in ("/opt/homebrew/opt/texlive/bin", "/usr/local/opt/texlive/bin"):
+        if os.path.isdir(p):
+            dirs.append(p)
+    for pattern in ("/opt/homebrew/texlive/*/bin/*",):
+        for d in sorted(glob.glob(pattern)):
+            if os.path.isdir(d):
+                dirs.append(d)
+    for app in glob.glob("/Applications/TeX*.app/Contents/Resources/texbin"):
+        if os.path.isdir(app):
+            dirs.append(app)
+    seen = set()
+    out = []
+    for d in dirs:
+        if d not in seen and os.path.isdir(d):
+            seen.add(d)
+            out.append(d)
+    return out
+
+
+def _tex_search_path():
+    extra = _tex_bin_dirs()
+    return os.pathsep.join(extra + [os.environ.get("PATH", "")])
+
+
+def _tex_executable_path(p):
+    """
+    Абсолютный путь к бинарнику TeX для subprocess.
+    Нельзя использовать os.path.realpath: pdflatex — symlink на pdftex;
+    realpath даёт …/pdftex, argv0 становится pdftex и грузится plain TeX,
+    а не LaTeX (падает на \\documentclass).
+    """
+    return os.path.normpath(os.path.abspath(p))
+
+
+def _pdflatex_from_login_shell():
+    """Подхват PATH из login-интерактивного shell (~/.zshrc)."""
+    for argv in (
+        ["/bin/zsh", "-ilc", "command -v pdflatex"],
+        ["/bin/bash", "-lc", "command -v pdflatex"],
+    ):
+        try:
+            r = subprocess.run(
+                argv,
+                capture_output=True,
+                text=True,
+                timeout=20,
+                stdin=subprocess.DEVNULL,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if r.returncode != 0:
+            continue
+        out = (r.stdout or "").strip()
+        if not out:
+            continue
+        p = out.splitlines()[-1].strip()
+        if p and os.path.isfile(p) and os.access(p, os.X_OK):
+            return _tex_executable_path(p)
+    return None
+
+
+def _pdflatex_from_find():
+    """Поиск pdflatex в /Applications и /opt/homebrew."""
+    if sys.platform != "darwin":
+        return None
+    roots = [p for p in ("/Applications", "/opt/homebrew") if os.path.isdir(p)]
+    if not roots:
+        return None
+    try:
+        r = subprocess.run(
+            ["/usr/bin/find"] + roots + [
+                "-maxdepth", "12",
+                "-name", "pdflatex",
+                "-type", "f",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if r.returncode != 0 and not r.stdout:
+        return None
+    candidates = []
+    for line in r.stdout.splitlines():
+        p = line.strip()
+        if not p or not os.access(p, os.X_OK):
+            continue
+        low = p.lower()
+        if any(x in low for x in ("texlive", "texbin", "mactex", "tug.org", "/tex/")):
+            candidates.append(p)
+    if not candidates:
+        for line in r.stdout.splitlines():
+            p = line.strip()
+            if p and os.access(p, os.X_OK):
+                candidates.append(p)
+                break
+    if not candidates:
+        return None
+    pref = [p for p in candidates if "texlive" in p.lower()]
+    pick = sorted(pref or candidates, key=len)[0]
+    return _tex_executable_path(pick)
+
+
+def find_pdflatex():
+    """Абсолютный путь к pdflatex или None."""
+    search_path = _tex_search_path()
+    p = shutil.which("pdflatex", path=search_path)
+    if p and os.path.isfile(p):
+        return _tex_executable_path(p)
+    if sys.platform == "darwin":
+        for pattern in (
+            "/Library/TeX/texbin/pdflatex",
+            "/usr/local/texlive/*/bin/*/pdflatex",
+            "/opt/homebrew/texlive/*/bin/*/pdflatex",
+            "/Library/TeX/texlive/*/bin/*/pdflatex",
+        ):
+            for path in sorted(glob.glob(pattern)):
+                if os.path.isfile(path) and os.access(path, os.X_OK):
+                    return _tex_executable_path(path)
+    p = shutil.which("pdflatex")
+    if p and os.path.isfile(p):
+        return _tex_executable_path(p)
+    p = _pdflatex_from_login_shell()
+    if p:
+        return p
+    return _pdflatex_from_find()
+
+
+def find_bibtex(pdflatex_path):
+    """bibtex рядом с pdflatex или в PATH."""
+    if pdflatex_path:
+        d = os.path.dirname(pdflatex_path)
+        b = os.path.join(d, "bibtex")
+        if os.path.isfile(b):
+            return _tex_executable_path(b)
+    search_path = _tex_search_path()
+    p = shutil.which("bibtex", path=search_path)
+    if p and os.path.isfile(p):
+        return _tex_executable_path(p)
+    p = shutil.which("bibtex")
+    return _tex_executable_path(p) if p and os.path.isfile(p) else None
+
+
+def print_tex_install_help():
+    print(
+        "\npdflatex не найден. Установите LaTeX.\n\n"
+        "macOS (лёгкий вариант, ~100 МБ):\n"
+        "  brew install --cask basictex\n"
+        "  echo 'export PATH=\"/Library/TeX/texbin:$PATH\"' >> ~/.zshrc\n"
+        "  source ~/.zshrc\n\n"
+        "macOS (полный MacTeX):\n"
+        "  brew install --cask mactex\n"
+        "  # если brew говорит «установлен», а файлов нет — доустановите .pkg:\n"
+        "  open \"$(brew --prefix)/Caskroom/mactex\"\n\n"
+        "После установки:\n"
+        "  eval \"$(/usr/libexec/path_helper)\"\n"
+        "  python3 build_paper.py --latex\n"
+    )
+
+
 def run(cmd, cwd=None):
     print(f"  → {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    try:
+        # pdflatex может печатать байты не в UTF-8 (локаль, шрифты в .log)
+        result = subprocess.run(
+            cmd,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except FileNotFoundError as e:
+        print(f"ОШИБКА: исполняемый файл не найден: {e.filename or cmd[0]}")
+        return False
     if result.returncode != 0:
         print(f"ОШИБКА (код {result.returncode}):")
         print(result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout)
@@ -94,18 +285,33 @@ def generate_plots():
 def compile_latex():
     print("\n=== Компиляция LaTeX ===")
 
-    pdflatex_cmd = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", TEX_MAIN]
-    bibtex_cmd = ["bibtex", TEX_MAIN]
+    pdflatex = find_pdflatex()
+    if not pdflatex:
+        print_tex_install_help()
+        return False
 
-    # pdflatex → bibtex → pdflatex → pdflatex
+    bibtex = find_bibtex(pdflatex)
+    if not bibtex:
+        print("Предупреждение: bibtex не найден, шаг bibtex пропускается.\n")
+
+    pdflatex_cmd = [
+        pdflatex,
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        TEX_MAIN,
+    ]
+    bibtex_cmd = [bibtex, TEX_MAIN] if bibtex else None
+
     steps = [
         ("pdflatex (1/3)", pdflatex_cmd),
-        ("bibtex",         bibtex_cmd),
+        ("bibtex", bibtex_cmd),
         ("pdflatex (2/3)", pdflatex_cmd),
         ("pdflatex (3/3)", pdflatex_cmd),
     ]
 
     for name, cmd in steps:
+        if cmd is None:
+            continue
         print(f"\n[{name}]")
         if not run(cmd, cwd=PAPER_DIR):
             if "bibtex" in name:
