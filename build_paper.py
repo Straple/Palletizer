@@ -18,7 +18,7 @@ LaTeX: после установки MacTeX выполните в термина
     eval "$(/usr/libexec/path_helper)"
 или перезапустите терминал.
 
-Артефакты сборки (.aux, .log, .pdf, …) пишутся в papers_general/texbuild/
+Артефакты сборки (.aux, .log, .pdf, …) пишутся в papers/texbuild/
 (каталог в .gitignore).
 """
 
@@ -28,7 +28,7 @@ import shutil
 import subprocess
 import sys
 
-PAPER_DIR = os.path.join(os.path.dirname(__file__), "papers_general")
+PAPER_DIR = os.path.join(os.path.dirname(__file__), "papers")
 SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "src", "scripts")
 TEX_MAIN = "2025-3Dpallette-HSE"
 # Относительно PAPER_DIR; см. .gitignore
@@ -302,7 +302,7 @@ def compile_latex():
     if not bibtex:
         print("Предупреждение: bibtex не найден, шаг bibtex пропускается.\n")
 
-    # Все выходы pdflatex/bibtex — в texbuild/, исходники .tex остаются в papers_general/
+    # Все выходы pdflatex/bibtex — в texbuild/, исходники .tex остаются в papers/
     out_dir_arg = f"-output-directory={TEX_BUILD_SUBDIR}"
     pdflatex_cmd = [
         pdflatex,

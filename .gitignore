@@ -11,6 +11,6 @@ venv
 CMakePresets.json
 bin
 
-# LaTeX (build_paper.py, -output-directory)
-papers_general/texbuild/
+# LaTeX
+texbuild
 

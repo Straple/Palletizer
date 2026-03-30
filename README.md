@@ -7,7 +7,7 @@
 
 ### Справочник по алгоритмам и статьям
 
-Подробная таблица: какой солвер что делает, какие классические методы из литературы соответствуют, ключи BibTeX из `papers_general/pallete.bib` — в **[papers_general/ALGORITHMS.md](papers_general/ALGORITHMS.md)**. Обзор источников также в `papers_general/3-Obzor.tex`.
+Подробная таблица: какой солвер что делает, какие классические методы из литературы соответствуют, ключи BibTeX из `papers/pallete.bib` — в **[papers/ALGORITHMS.md](papers/ALGORITHMS.md)**. Обзор источников также в `papers/3-Obzor.tex`.
 
 ### Multi-pallet / multitests
 * В `TestData` поле `pallet_count` задаёт число паллет; ответ `Answer` хранит `pallets[p]` — список коробок на каждой паллете. CSV ответа: колонка `Pallet` (индекс с нуля), затем `SKU,x,y,z,X,Y,Z`.

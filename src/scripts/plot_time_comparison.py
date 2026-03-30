@@ -92,13 +92,13 @@ def main():
     plt.tight_layout()
     
     # Сохраняем в PDF
-    output_path = 'papers_general/figures/time_comparison.pdf'
+    output_path = 'papers/figures/time_comparison.pdf'
     plt.savefig(output_path, format='pdf', bbox_inches='tight')
     print(f"График сохранён в {output_path}")
     
     # Также сохраним PNG для превью
-    plt.savefig('papers_general/figures/time_comparison.png', format='png', bbox_inches='tight', dpi=150)
-    print("PNG превью сохранено в papers_general/figures/time_comparison.png")
+    plt.savefig('papers/figures/time_comparison.png', format='png', bbox_inches='tight', dpi=150)
+    print("PNG превью сохранено в papers/figures/time_comparison.png")
 
 if __name__ == '__main__':
     main()

@@ -79,7 +79,7 @@ def main():
 
     plt.tight_layout()
 
-    output = 'papers_general/figures/algorithm_comparison.pdf'
+    output = 'papers/figures/algorithm_comparison.pdf'
     plt.savefig(output, format='pdf', bbox_inches='tight')
     plt.savefig(output.replace('.pdf', '.png'), format='png', bbox_inches='tight', dpi=150)
     print(f'Saved {output}')

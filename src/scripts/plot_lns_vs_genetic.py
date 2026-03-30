@@ -68,7 +68,7 @@ def main():
 
     plt.tight_layout()
 
-    output = 'papers_general/figures/lns_vs_genetic_time.pdf'
+    output = 'papers/figures/lns_vs_genetic_time.pdf'
     plt.savefig(output, format='pdf', bbox_inches='tight')
     plt.savefig(output.replace('.pdf', '.png'), format='png', bbox_inches='tight', dpi=150)
     print(f'Saved {output}')
