@@ -1,5 +1,23 @@
- 
+% pallete.bib
+%
+% Для каждой записи в комментарии указано, где взять готовый BibTeX «как у издателя».
+% Типовые варианты:
+%   • DOI: https://doi.org/<DOI> — на странице кнопка «Cite» / «Export» (Crossref, издатель).
+%   • IEEE Xplore: страница статьи → «Cite This» → «BibTeX».
+%   • SpringerLink / Nature: «Cite this article» → BibTeX.
+%   • ScienceDirect: «Export» → BibTeX.
+%   • INFORMS: страница статьи → Download citations / cite.
+%   • arXiv: страница абстракта → «Export BibTeX Citation».
+%   • dblp: https://dblp.org — страница публикации → «export record» → BibTeX.
+%   • Google Patents: страница патента → «Cite» (проверьте поля вручную).
+%   • Google Scholar: «Цитировать» → BibTeX (поля часто кривые — сверяйте с DOI).
+%
+% Записи ниже могут отличаться от автоэкспорта (сокращения, поля для gost780u) —
+% комментарий указывает канонический URL для сверки.
 
+% --- TR-MFTI-khelvas2019-boxes ---
+% Поиск и экспорт: elibrary.ru по названию / авторам; либо сайт выпуска трудов МФТИ.
+%   https://www.elibrary.ru/  (поиск: «Разработка алгоритма укладки паллет» Хельвас)
 @ARTICLE{TR-MFTI-khelvas2019-boxes,
   author = {Гиля - Зетинов,А.А. and Хельвас, А.В. and     Панкратов, К.К.},
   title = {Разработка алгоритма укладки паллет на полностью автоматизированном складе},
@@ -13,13 +31,19 @@
 Показана слабая зависимость качества укладки от точности задания размеров коробок.}
 }
 
+% --- khel-EnT2019 ---
+% IEEE Xplore → Cite This → BibTeX:
+%   https://ieeexplore.ieee.org/document/9030576
 @INPROCEEDINGS{khel-EnT2019,
 crossref = "EnT2019",
 author = "A. Gilya-Zetinov and D. Demianova and A. Khelvas",
 title = "Palletizing for Full-automated Warehouses on the Genetics Algorithm Base",
 doi={10.1109/EnT47717.2019.9030576},
 pages = "1-5."}
- 
+
+% --- EnT2019 ---
+% Тот же материал конференции на IEEE:
+%   https://ieeexplore.ieee.org/document/9030576
 @PROCEEDINGS{EnT2019,
 editor = "2019 International Conference on Engineering and Telecommunication (EnT)",
 publisher="IEEE",
@@ -27,7 +51,9 @@ year="2019",
 title = "International Conference on Engineering and Telecommunication (EnT) Proceedings",
 booktitle = "International Conference on Engineering and Telecommunication (EnT) Proceedings"}
 
-
+% --- USPatent8423178B2 ---
+% Google Patents → Cite:
+%   https://patents.google.com/patent/US8423178B2/en
 @patent{USPatent8423178B2,
 author = {Baumann, Michael},
 year = {2013},
@@ -37,6 +63,9 @@ title = {Method and device for automated commissioning of bundles},
 note={US Patent 8423178B2}
 }
 
+% --- US11613434B2 ---
+% Google Patents → Cite:
+%   https://patents.google.com/patent/US11613434B2/en
 @patent{US11613434B2,
 author = {Pankratov, Kirill and David, Ehrenberg and Larry , Sweet},
 year = {2020},
@@ -46,6 +75,10 @@ title = {Pallet building system},
 note={US Patent  11613434 B2}
 }
 
+% --- TimSort_teor (McIlroy, SODA 1993) ---
+% ACM Digital Library (или dblp) → BibTeX:
+%   https://dl.acm.org/doi/10.5555/313559.313859
+%   https://dblp.org/rec/conf/soda/McIlroy93
 @inproceedings{TimSort_teor,
 author = {McIlroy, Peter},
 title = {Optimistic sorting and information theoretic complexity},
@@ -60,15 +93,23 @@ location = {Austin, Texas, USA},
 series = {SODA '93}
 }
 
+% --- karabulut ---
+% SpringerLink — глава LNCS → Cite this chapter → BibTeX:
+%   https://link.springer.com/chapter/10.1007/978-3-540-30198-1_45
+% DOI: 10.1007/978-3-540-30198-1_45
 @inproceedings{karabulut,
   author    = {K. Karabulut and M. M. İnceoglu},
   title     = {A hybrid genetic algorithm for packing in 3D with deepest bottom left with fill method},
   booktitle = {International Conference on Advances in Information Systems},
   publisher = {Springer},
   year      = {2004},
-  pages     = {441--450}
+  pages     = {441--450},
+  doi       = {10.1007/978-3-540-30198-1_45}
 }
 
+% --- korelin ---
+% Нет единого DOI: поиск Google Scholar / elibrary / сайт НГТУ им. Алексеева → «Цитировать».
+%   https://scholar.google.com/scholar?q=Генетический+алгоритм+трёхмерной+упаковки+Корелин+2017
 @inproceedings{korelin,
   author = {О. П. Тимофеева, Т. Ю. Чернышева, А. В. Волков and О. Н. Корелин},
   title = {Генетический алгоритм в оптимизации трёхмерной упаковки блоков в контейнер},
@@ -76,38 +117,59 @@ series = {SODA '93}
   year = {2017}
 }
 
+% --- Wei2011 ---
+% SpringerLink — глава IEA/AIE 2011 (LNCS 6704) → Cite this chapter → BibTeX:
+%   https://link.springer.com/chapter/10.1007/978-3-642-21827-9_29
+% Журнальная версия (другие страницы): EJOR 215(2), 337--346, DOI 10.1016/j.ejor.2011.08.020
 @inproceedings{Wei2011,
   author    = {Lijun Wei and Andrew Lim and Wenbin Zhu},
   title     = {A Skyline-Based Heuristic for the 2D Rectangular Strip Packing Problem},
   booktitle = {IEA/AIE 2011},
-  year      = {2011}
+  year      = {2011},
+  doi       = {10.1007/978-3-642-21827-9_29}
 }
 
+% --- Zhang2024 ---
+% Nature Scientific Reports → Cite this article → BibTeX:
+%   https://www.nature.com/articles/s41598-024-56699-7
+% DOI: 10.1038/s41598-024-56699-7
 @article{Zhang2024,
   author  = {Boliang Zhang and Yu Yao and H.~K. Kan and Wuman Luo},
   title   = {A {GAN}-Based Genetic Algorithm for Solving the 3D Bin Packing Problem},
   journal = {Scientific Reports},
   volume  = {14},
   pages   = {7775},
-  year    = {2024}
+  year    = {2024},
+  doi     = {10.1038/s41598-024-56699-7}
 }
 
+% --- Calzavara2021 ---
+% SpringerLink → Cite this article → BibTeX:
+%   https://doi.org/10.1007/s10479-020-03633-4
 @article{Calzavara2021,
   author  = {Gabriele Calzavara and Manuel Iori and Marco Locatelli and Mayron Moreira},
   title   = {Mathematical Models and Heuristic Algorithms for Pallet Building Problems with Practical Constraints},
   journal = {Annals of Operations Research},
-  year    = {2021}
+  year    = {2021},
+  doi     = {10.1007/s10479-020-03633-4}
 }
 
+% --- Queiroz2012 ---
+% ScienceDirect → Export citation → BibTeX:
+%   https://doi.org/10.1016/j.cor.2011.05.005
 @article{Queiroz2012,
   author  = {Thiago A. de Queiroz and Fl{\'a}vio K. Miyazawa and Yoshiko Wakabayashi and Eduardo C. Xavier},
   title   = {Algorithms for 3D Guillotine Cutting Problems: Unbounded Knapsack, Cutting Stock and Strip Packing},
   journal = {Computers \& Operations Research},
   volume  = {39},
   pages   = {728--738},
-  year    = {2012}
+  year    = {2012},
+  doi     = {10.1016/j.cor.2011.05.005}
 }
 
+% --- Ananno2024 ---
+% IEEE Xplore → Cite This → BibTeX:
+%   https://ieeexplore.ieee.org/document/10473069
 @article{Ananno2024,
   author  = {Anan A. Ananno and Luis Ribeiro},
   title   = {A Multi-Heuristic Algorithm for Multi-Container 3-D Bin Packing Problem Optimization Using Real-World Constraints},
@@ -117,15 +179,22 @@ series = {SODA '93}
   year    = {2024}
 }
 
+% --- Alonso2016 ---
+% Hindawi / Wiley — страница статьи → Download citations (или Crossref по DOI):
+%   https://doi.org/10.1155/2016/9610252
 @article{Alonso2016,
   author  = {Maria T. Alonso and Ram{\'o}n Alvarez-Valdes and Francisco Parreno and Jos\'e M. Tamarit},
   title   = {Algorithms for Pallet Building and Truck Loading in an Interdepot Transportation Problem},
   journal = {Mathematical Problems in Engineering},
   volume  = {2016},
   pages   = {1--19},
-  year    = {2016}
+  year    = {2016},
+  doi     = {10.1155/2016/9610252}
 }
 
+% --- Fang2023 ---
+% PLOS ONE → Download Article Citation → BibTeX:
+%   https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0282598
 @article{Fang2023,
   author  = {Jie Fang and Yunqing Rao and Mingliang Shi},
   title   = {A Deep Reinforcement Learning Algorithm for the Rectangular Strip Packing Problem},
@@ -133,18 +202,26 @@ series = {SODA '93}
   volume  = {18},
   number  = {3},
   pages   = {e0282598},
-  year    = {2023}
+  year    = {2023},
+  doi     = {10.1371/journal.pone.0282598}
 }
 
+% --- Ali2022 ---
+% ScienceDirect → Export citation → BibTeX:
+%   https://doi.org/10.1016/j.cie.2022.108122
 @article{Ali2022,
   author  = {Sara Ali and Antonio G. Ramos and Maria A. Carravilla and Jos\'e F. Oliveira},
   title   = {On-Line Three-Dimensional Packing Problems: A Review of Off-Line and On-Line Solution Approaches},
   journal = {Computers \& Industrial Engineering},
   volume  = {168},
   pages   = {108122},
-  year    = {2022}
+  year    = {2022},
+  doi     = {10.1016/j.cie.2022.108122}
 }
 
+% --- Zhao2021 ---
+% arXiv → Export BibTeX:
+%   https://arxiv.org/abs/2108.13680
 @article{Zhao2021,
   author  = {Hang Zhao and Chenyang Zhu and Xin Xu and Hui Huang and Kai Xu},
   title   = {Learning Practically Feasible Policies for Online 3D Bin Packing},
@@ -152,6 +229,9 @@ series = {SODA '93}
   year    = {2021}
 }
 
+% --- Amossen2010 ---
+% ScienceDirect → Export citation → BibTeX:
+%   https://doi.org/10.1016/j.cor.2009.12.004
 @article{Amossen2010,
   author  = {Rasmus R. Amossen and David Pisinger},
   title   = {Multi-Dimensional Bin Packing Problems with Guillotine Constraints},
@@ -159,18 +239,26 @@ series = {SODA '93}
   volume  = {37},
   number  = {11},
   pages   = {1999--2006},
-  year    = {2010}
+  year    = {2010},
+  doi     = {10.1016/j.cor.2009.12.004}
 }
 
+% --- Yang2023 ---
+% PeerJ → Cite this article → BibTeX:
+%   https://doi.org/10.7717/peerj-cs.1613
 @article{Yang2023,
   author  = {Jianglong Yang and Kaibo Liang and Huwei Liu and Man Shan and Li Zhou},
   title   = {Optimizing E-Commerce Warehousing through Open Dimension Management in a Three-Dimensional Bin Packing System},
   journal = {PeerJ Computer Science},
   volume  = {9},
   pages   = {e1613},
-  year    = {2023}
+  year    = {2023},
+  doi     = {10.7717/peerj-cs.1613}
 }
 
+% --- Faroe2003 ---
+% INFORMS PubsOnLine → Download citation / Crossref:
+%   https://doi.org/10.1287/ijoc.15.3.267.16075
 @article{Faroe2003,
   author  = {Oluf Faroe and David Pisinger and Martin Zachariasen},
   title   = {Guided Local Search for the Three-Dimensional Bin-Packing Problem},
@@ -178,9 +266,13 @@ series = {SODA '93}
   volume  = {15},
   number  = {3},
   pages   = {267--283},
-  year    = {2003}
+  year    = {2003},
+  doi     = {10.1287/ijoc.15.3.267.16075}
 }
 
+% --- Parreno2008 ---
+% INFORMS / Crossref:
+%   https://doi.org/10.1287/ijoc.1070.0254
 @article{Parreno2008,
   author  = {Francisco Parreno and Ram{\'o}n Alvarez-Valdes and Jos\'e M. Tamarit and Jos\'e F. Oliveira},
   title   = {A Maximal-Space Algorithm for the Container Loading Problem},
@@ -188,9 +280,13 @@ series = {SODA '93}
   volume  = {20},
   number  = {3},
   pages   = {412--422},
-  year    = {2008}
+  year    = {2008},
+  doi     = {10.1287/ijoc.1070.0254}
 }
 
+% --- Bischoff1995 ---
+% ScienceDirect → Export citation → BibTeX:
+%   https://doi.org/10.1016/0305-0483(95)00015-4
 @article{Bischoff1995,
   author  = {Eberhard E. Bischoff and M. S. W. Ratcliff},
   title   = {Issues in the Development of Approaches to Container Loading},
@@ -198,9 +294,13 @@ series = {SODA '93}
   volume  = {23},
   number  = {4},
   pages   = {377--390},
-  year    = {1995}
+  year    = {1995},
+  doi     = {10.1016/0305-0483(95)00015-4}
 }
 
+% --- Wascher2007 ---
+% ScienceDirect → Export citation → BibTeX:
+%   https://doi.org/10.1016/j.ejor.2005.12.070
 @article{Wascher2007,
   author  = {Gerhard Wascher and Heike Hau{\ss}ner and Holger Schumann},
   title   = {An Improved Typology of Cutting and Packing Problems},
@@ -208,9 +308,13 @@ series = {SODA '93}
   volume  = {183},
   number  = {3},
   pages   = {1109--1130},
-  year    = {2007}
+  year    = {2007},
+  doi     = {10.1016/j.ejor.2005.12.070}
 }
 
+% --- Bortfeldt2013 ---
+% ScienceDirect → Export citation → BibTeX:
+%   https://doi.org/10.1016/j.ejor.2012.12.006
 @article{Bortfeldt2013,
   author  = {Andreas Bortfeldt and Gerhard Wascher},
   title   = {Constraints in Container Loading -- A State-of-the-Art Review},
@@ -218,9 +322,13 @@ series = {SODA '93}
   volume  = {229},
   number  = {1},
   pages   = {1--20},
-  year    = {2013}
+  year    = {2013},
+  doi     = {10.1016/j.ejor.2012.12.006}
 }
 
+% --- Martello2000 ---
+% INFORMS / Crossref:
+%   https://doi.org/10.1287/opre.48.2.256.12485
 @article{Martello2000,
   author  = {Silvano Martello and David Pisinger and Daniele Vigo},
   title   = {The Three-Dimensional Bin Packing Problem},
@@ -228,9 +336,13 @@ series = {SODA '93}
   volume  = {48},
   number  = {2},
   pages   = {256--267},
-  year    = {2000}
+  year    = {2000},
+  doi     = {10.1287/opre.48.2.256.12485}
 }
 
+% --- Jylanki2010 ---
+% PDF на сайте Aalto (метаданные часто вручную); см. также Google Scholar «Cite»:
+%   https://urn.fi/URN:NBN:fi:aalto-201405231246
 @techreport{Jylanki2010,
   author       = {Jukka Jylanki},
   title        = {A Thousand Ways to Pack the Bin — A Practical Approach to Two-Dimensional Rectangle Bin Packing},
@@ -240,6 +352,9 @@ series = {SODA '93}
   year         = {2010},
 }
 
+% --- Lodi2002 ---
+% ScienceDirect → Export citation → BibTeX:
+%   https://doi.org/10.1016/S0377-2217(02)00109-X
 @article{Lodi2002,
   author  = {Andrea Lodi and Silvano Martello and Daniele Vigo},
   title   = {Heuristic Algorithms for the Three-Dimensional Bin Packing Problem},
@@ -247,9 +362,13 @@ series = {SODA '93}
   volume  = {141},
   number  = {2},
   pages   = {410--420},
-  year    = {2002}
+  year    = {2002},
+  doi     = {10.1016/S0377-2217(02)00109-X}
 }
 
+% --- Zhao2014 ---
+% Wiley Online Library → Citation Tools → BibTeX:
+%   https://doi.org/10.1111/itor.12094
 @article{Zhao2014,
   author  = {Xiaozhou Zhao and Julia A. Bennell and Tolga Bekta{\c s} and Kath Dowsland},
   title   = {A Comparative Review of 3D Container Loading Algorithms},
@@ -257,9 +376,13 @@ series = {SODA '93}
   volume  = {21},
   number  = {5},
   pages   = {775--804},
-  year    = {2014}
+  year    = {2014},
+  doi     = {10.1111/itor.12094}
 }
 
+% --- Crainic2007 ---
+% CIRRELT — PDF отчёта (BibTeX обычно вручную по титульному листу):
+%   https://www.cirrelt.ca/documentstravail/CTR-2007-41.pdf
 @techreport{Crainic2007,
   author      = {Teodor Gabriel Crainic and Guido Perboli and Roberto Tadei},
   title       = {Extreme Point-Based Heuristics for Three-Dimensional Bin Packing},
@@ -268,6 +391,9 @@ series = {SODA '93}
   year        = {2007}
 }
 
+% --- CoffmanFFD1996 ---
+% Книжная глава — BibTeX часто в WorldCat / Google Books (нет одного DOI):
+%   https://books.google.com/books?id=Yl3fBwAAQBAJ (ищите главу Coffman et al.)
 @incollection{CoffmanFFD1996,
   author    = {Coffman, Jr., Edward G. and Garey, Michael R. and Johnson, David S.},
   title     = {Approximation Algorithms for Bin Packing: A Survey},
@@ -278,6 +404,9 @@ series = {SODA '93}
   pages     = {46--93}
 }
 
+% --- Pisinger2005 ---
+% ScienceDirect → Export citation → BibTeX (статья про VRP; LNS как общая эвристика):
+%   https://doi.org/10.1016/j.cor.2005.09.012
 @article{Pisinger2005,
   author = {Pisinger, David and Ropke, Stefan},
   year = {2005},
@@ -289,6 +418,9 @@ series = {SODA '93}
   doi = {10.1016/j.cor.2005.09.012}
 }
 
+% --- Ropke2006 ---
+% INFORMS / Crossref:
+%   https://doi.org/10.1287/trsc.1050.0135
 @article{Ropke2006,
   author = {Ropke, Stefan and Pisinger, David},
   year = {2006},
@@ -300,25 +432,44 @@ series = {SODA '93}
   doi = {10.1287/trsc.1050.0135}
 }
 
-@article{Shaw2002,
-  author = {Shaw, Paul},
-  year = {2002},
-  month = {04},
-  pages = {},
-  title = {Using Constraint Programming and Local Search}
+% --- Shaw1998 (в тексте \cite{Shaw1998}; ранее ошибочно указывался 2002) ---
+% SpringerLink — глава LNCS → Cite this chapter → BibTeX:
+%   https://link.springer.com/chapter/10.1007/3-540-49481-2_30
+% DOI: 10.1007/3-540-49481-2_30
+@inproceedings{Shaw1998,
+  author    = {Shaw, Paul},
+  title     = {Using Constraint Programming and Local Search Methods to Solve Vehicle Routing Problems},
+  booktitle = {Principles and Practice of Constraint Programming --- CP98},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {1520},
+  pages     = {417--431},
+  publisher = {Springer},
+  year      = {1998},
+  doi       = {10.1007/3-540-49481-2_30}
 }
 
-@inbook{Pisinger2010,
-  author = {Pisinger, David and Ropke, Stefan},
-  year = {2010},
-  month = {09},
-  pages = {399-419},
-  title = {Large Neighborhood Search},
-  isbn = {978-1-4419-1663-1},
-  journal = {Handbook of Metaheuristics},
-  doi = {10.1007/978-1-4419-1665-5_13}
+% --- Pisinger2010 ---
+% SpringerLink — глава Handbook of Metaheuristics → Cite this chapter → BibTeX:
+%   https://link.springer.com/chapter/10.1007/978-1-4419-1665-5_13
+% DOI: 10.1007/978-1-4419-1665-5_13
+@incollection{Pisinger2010,
+  author    = {Pisinger, David and R{\o}pke, Stefan},
+  title     = {Large Neighborhood Search},
+  booktitle = {Handbook of Metaheuristics},
+  editor    = {Gendreau, Michel and Potvin, Jean-Yves},
+  edition   = {2},
+  series    = {International Series in Operations Research \& Management Science},
+  volume    = {146},
+  pages     = {399--419},
+  publisher = {Springer},
+  address   = {Boston, MA},
+  year      = {2010},
+  doi       = {10.1007/978-1-4419-1665-5_13}
 }
 
+% --- Ekici2023 ---
+% ScienceDirect → Export citation → BibTeX (поле doi без префикса https://):
+%   https://doi.org/10.1016/j.ejor.2022.12.042
 @article{Ekici2023,
   title = {A large neighborhood search algorithm and lower bounds for the variable-Sized bin packing problem with conflicts},
   journal = {European Journal of Operational Research},
@@ -327,7 +478,7 @@ series = {SODA '93}
   pages = {1007-1020},
   year = {2023},
   issn = {0377-2217},
-  doi = {https://doi.org/10.1016/j.ejor.2022.12.042},
+  doi = {10.1016/j.ejor.2022.12.042},
   url = {https://www.sciencedirect.com/science/article/pii/S0377221722010256},
   author = {Ali Ekici},
   keywords = {Packing, Variable-sized bin packing, Item conflicts, Large neighborhood search, Lower bound}
