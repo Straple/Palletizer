@@ -68,7 +68,7 @@ python3 src/scripts/visualizer.py answers/261.csv --pallet-length 1200 --pallet-
 
 Пример визуализации (скрин из вложений репозитория):
 
-<img width="1773" height="1375" alt="boxes" src="https://github.com/user-attachments/assets/644d93dd-a7ed-45fe-a58f-ed61cd5896e0" />
+<img width="1773" height="1375" alt="boxes" src="https://github.com/user-attachments/assets/3195a5bc-a7ed-45fe-a58f-ed61cd5896e0" />
 
 Карта высот (HeightHandler):
 
